@@ -90,6 +90,18 @@ public class EmbeddedServer extends NanoHTTPD {
 
     @Override
     public Response serve(IHTTPSession session) {
+        // CORS 预检请求
+        if (Method.OPTIONS.equals(session.getMethod())) {
+            Response r = Response.newFixedLengthResponse(Status.OK, "text/plain", "");
+            addCorsHeaders(r);
+            return r;
+        }
+        Response response = doServe(session);
+        addCorsHeaders(response);
+        return response;
+    }
+
+    private Response doServe(IHTTPSession session) {
         String uri = session.getUri();
         Log.i(TAG, "Request: " + uri + " method=" + session.getMethod());
 
@@ -143,6 +155,18 @@ public class EmbeddedServer extends NanoHTTPD {
         } catch (Exception e) {
             Log.e(TAG, "Serve error", e);
             return Response.newFixedLengthResponse(Status.INTERNAL_ERROR, "text/plain", "Error");
+        }
+    }
+
+    /**
+     * 为响应添加 CORS 跨域头，允许管理面板跨端口调用 API
+     */
+    private void addCorsHeaders(Response response) {
+        response.addHeader("Access-Control-Allow-Origin", "*");
+        response.addHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+        response.addHeader("Access-Control-Allow-Headers", "Content-Type, x-user-qq, Authorization");
+        response.addHeader("Access-Control-Max-Age", "86400");
+    }
         }
     }
 
