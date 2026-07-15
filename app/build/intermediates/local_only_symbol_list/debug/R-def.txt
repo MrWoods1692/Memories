@@ -1,9 +1,5 @@
 R_DEF: Internal format may change without notice
 local
-id edit_frpc_config
-id text_admin_url
-id text_frpc_status
-id text_server_info
-id text_status
+id webview_admin
 layout activity_main
 string app_name

@@ -1,5 +1,6 @@
 package com.example.memories;
 
+import android.app.AlarmManager;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -76,6 +77,21 @@ public class ServerService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         return START_STICKY;
+    }
+
+    @Override
+    public void onTaskRemoved(Intent rootIntent) {
+        super.onTaskRemoved(rootIntent);
+        // App 被划掉后自动重启
+        Intent restartIntent = new Intent(getApplicationContext(), ServerService.class);
+        PendingIntent pi = PendingIntent.getService(
+            getApplicationContext(), 0, restartIntent,
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? PendingIntent.FLAG_IMMUTABLE : 0
+        );
+        AlarmManager am = (AlarmManager) getSystemService(ALARM_SERVICE);
+        if (am != null) {
+            am.set(AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + 1000, pi);
+        }
     }
 
     @Override

@@ -86,6 +86,25 @@ public class FloatingWindow extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        // 如果悬浮窗被系统移除，重新创建
+        if (floatView != null && windowManager != null) {
+            try {
+                if (!floatView.isAttachedToWindow()) {
+                    WindowManager.LayoutParams params = new WindowManager.LayoutParams(
+                        WindowManager.LayoutParams.WRAP_CONTENT,
+                        WindowManager.LayoutParams.WRAP_CONTENT,
+                        Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+                            ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+                            : WindowManager.LayoutParams.TYPE_PHONE,
+                        WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+                        PixelFormat.TRANSLUCENT
+                    );
+                    params.gravity = Gravity.END | Gravity.CENTER_VERTICAL;
+                    params.x = 16;
+                    windowManager.addView(floatView, params);
+                }
+            } catch (Exception ignored) {}
+        }
         // 自动打开 WiFi
         try {
             WifiManager wifi = (WifiManager) getApplicationContext().getSystemService(WIFI_SERVICE);
@@ -94,6 +113,21 @@ public class FloatingWindow extends Service {
             }
         } catch (Exception ignored) {}
         return START_STICKY;
+    }
+
+    @Override
+    public void onTaskRemoved(Intent rootIntent) {
+        super.onTaskRemoved(rootIntent);
+        // App 被划掉后，发送广播重启自己
+        Intent restartIntent = new Intent(getApplicationContext(), FloatingWindow.class);
+        PendingIntent pi = PendingIntent.getService(
+            getApplicationContext(), 0, restartIntent,
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? PendingIntent.FLAG_IMMUTABLE : 0
+        );
+        android.app.AlarmManager am = (android.app.AlarmManager) getSystemService(ALARM_SERVICE);
+        if (am != null) {
+            am.set(android.app.AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + 1000, pi);
+        }
     }
 
     @Override
