@@ -100,6 +100,8 @@ export interface NetworkInfo {
   tx_bytes: number;
   rx_speed?: number;
   tx_speed?: number;
+  total_rx: number;
+  total_tx: number;
 }
 
 export interface HardwareInfo {

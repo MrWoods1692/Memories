@@ -20,7 +20,7 @@ import android.widget.Toast;
 /** 悬浮窗服务：显示一个小图标，点击快速打开 App */
 public class FloatingWindow extends Service {
     private WindowManager windowManager;
-    private View floatView;
+    private ImageView floatView;
     private static final String CHANNEL_ID = "floating_channel";
     private static final int NOTIFICATION_ID = 100;
 

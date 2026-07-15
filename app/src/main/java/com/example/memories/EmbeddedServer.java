@@ -514,7 +514,7 @@ public class EmbeddedServer extends NanoHTTPD {
                 network.put("dns", dns);
             } catch (Exception ignored) {}
 
-            // 实时网速 (通过 /proc/net/dev)
+            // 实时网速 + 累计流量统计
             try {
                 long[] rxTx = readNetworkBytes();
                 long rx = rxTx[0];
@@ -522,7 +522,31 @@ public class EmbeddedServer extends NanoHTTPD {
                 network.put("rx_bytes", rx);
                 network.put("tx_bytes", tx);
 
-                // 计算速率 (需要两次采样)
+                // 累计流量（持久化到数据库）
+                long prevRx = parseLong(db.getConfig("total_rx"), 0);
+                long prevTx = parseLong(db.getConfig("total_tx"), 0);
+                // 如果本次读取值比上次小，说明计数器重置了（重启），累加差值
+                if (rx >= prevRx) {
+                    db.setConfig("total_rx", String.valueOf(rx));
+                } else {
+                    // 计数器回绕/重置：保存之前累计 + 当前值
+                    long baseRx = parseLong(db.getConfig("total_rx_base"), 0);
+                    db.setConfig("total_rx_base", String.valueOf(baseRx + prevRx));
+                    db.setConfig("total_rx", String.valueOf(rx));
+                }
+                if (tx >= prevTx) {
+                    db.setConfig("total_tx", String.valueOf(tx));
+                } else {
+                    long baseTx = parseLong(db.getConfig("total_tx_base"), 0);
+                    db.setConfig("total_tx_base", String.valueOf(baseTx + prevTx));
+                    db.setConfig("total_tx", String.valueOf(tx));
+                }
+                long totalRx = parseLong(db.getConfig("total_rx_base"), 0) + rx;
+                long totalTx = parseLong(db.getConfig("total_tx_base"), 0) + tx;
+                network.put("total_rx", totalRx);
+                network.put("total_tx", totalTx);
+
+                // 计算速率
                 long now = System.currentTimeMillis();
                 if (lastNetCheck > 0 && now > lastNetCheck) {
                     double elapsedSec = (now - lastNetCheck) / 1000.0;
@@ -648,6 +672,11 @@ public class EmbeddedServer extends NanoHTTPD {
         } catch (Exception e) {
             return 0;
         }
+    }
+
+    private long parseLong(String s, long def) {
+        if (s == null) return def;
+        try { return Long.parseLong(s); } catch (NumberFormatException e) { return def; }
     }
 
     /** 读取文件的第一行，失败返回 null */

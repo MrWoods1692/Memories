@@ -220,6 +220,11 @@ export function Dashboard({ toast: _toast }: DashboardProps) {
                 <div style={{fontSize:'1.1rem',fontWeight:700,color:si.network.tx_speed !== undefined ? 'var(--info)' : 'var(--text-tertiary)'}}>{fmtSpeed(si.network.tx_speed)}</div>
               </div>
             </div>
+            {/* 累计流量 */}
+            <div style={{marginTop:10,display:'grid',gridTemplateColumns:'1fr 1fr',gap:6,fontSize:'0.68rem',color:'var(--text-tertiary)'}}>
+              <span>累计下载: {fmtBytes(si.network.total_rx)}</span>
+              <span>累计上传: {fmtBytes(si.network.total_tx)}</span>
+            </div>
           </div>
 
           {/* 设备 */}
