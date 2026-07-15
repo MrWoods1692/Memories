@@ -40,12 +40,84 @@ export interface AppConfig {
   oauth_prefix?: string;
   oauth_client_id?: string;
   oauth_client_secret?: string;
-  oauth_redirect_uri?: string;
+  oauth_domain?: string;
   frpc_config?: string;
 }
 
 export interface FrpcStatus {
   configured: boolean;
+}
+
+export interface DiskInfo {
+  total: number;
+  free: number;
+  used: number;
+}
+
+export interface CpuFreqInfo {
+  governor?: string;
+  cur_khz?: number;
+  max_khz?: number;
+  min_khz?: number;
+}
+
+export interface CpuLoadInfo {
+  avg1: number;
+  avg5: number;
+  avg15: number;
+  running?: number;
+  total_procs?: number;
+}
+
+export interface CpuInfo {
+  cores: number;
+  arch: string;
+  model: string;
+  implementer: string;
+  cpu_arch: string;
+  variant: string;
+  part: string;
+  revision: string;
+  features: string;
+  bogomips: number;
+  frequencies: Record<string, CpuFreqInfo>;
+  load: CpuLoadInfo;
+}
+
+export interface MemoryInfo {
+  jvm_max: number;
+  jvm_allocated: number;
+  jvm_free: number;
+  sys_total: number;
+  sys_available: number;
+}
+
+export interface NetworkInfo {
+  lan_ip: string;
+  wifi_ssid?: string;
+}
+
+export interface BatteryInfo {
+  level: number;
+  status: string;
+  charging: boolean;
+  power_source: string;
+  temperature: number;
+  voltage: number;
+  health: string;
+  technology: string;
+  device_model: string;
+  android_version: string;
+}
+
+export interface SysInfo {
+  disk: DiskInfo;
+  db_size: number;
+  uptime: number;
+  cpu: CpuInfo;
+  memory: MemoryInfo;
+  network: NetworkInfo;
+  battery: BatteryInfo;
 }
 
 export interface WebdavConfig {

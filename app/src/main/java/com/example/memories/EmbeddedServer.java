@@ -1,6 +1,12 @@
 package com.example.memories;
 
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.os.BatteryManager;
+import android.os.Build;
+import android.os.Environment;
+import android.os.StatFs;
 import android.util.Log;
 
 import fi.iki.elonen.NanoHTTPD;
@@ -9,12 +15,15 @@ import fi.iki.elonen.NanoHTTPD.Response;
 import fi.iki.elonen.NanoHTTPD.Response.Status;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.RandomAccessFile;
 import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.util.Enumeration;
+import java.util.Locale;
 import java.util.Map;
 
 import org.json.JSONObject;
@@ -22,10 +31,12 @@ import org.json.JSONObject;
 public class EmbeddedServer extends NanoHTTPD {
     private static final String TAG = "EmbeddedServer";
     private final Context context;
+    private final long startTime;
 
     public EmbeddedServer(int port, Context ctx) {
         super(port);
         this.context = ctx.getApplicationContext();
+        this.startTime = System.currentTimeMillis();
     }
 
     /**
@@ -127,6 +138,10 @@ public class EmbeddedServer extends NanoHTTPD {
 
             if (uri.equals("/status") && Method.GET.equals(session.getMethod())) {
                 return handleStatus(session);
+            }
+
+            if (uri.equals("/sysinfo") && Method.GET.equals(session.getMethod())) {
+                return handleSysInfo(session);
             }
 
             if (uri.startsWith("/bans")) {
@@ -278,11 +293,287 @@ public class EmbeddedServer extends NanoHTTPD {
             JSONObject o = new JSONObject();
             o.put("db_path", db.getDatabasePathString());
             o.put("image_count", db.getImageCount());
-            o.put("uptime", System.currentTimeMillis());
+            o.put("uptime", System.currentTimeMillis() - startTime);
             return NanoHTTPD.newFixedLengthResponse(Status.OK, "application/json", o.toString());
         } catch (Exception e) {
             Log.e(TAG, "status error", e);
             return NanoHTTPD.newFixedLengthResponse(Status.INTERNAL_ERROR, "text/plain", "error");
+        }
+    }
+
+    private Response handleSysInfo(IHTTPSession session) {
+        try {
+            JSONObject o = new JSONObject();
+
+            // --- 磁盘信息 ---
+            File dataDir = Environment.getDataDirectory();
+            StatFs statFs = new StatFs(dataDir.getPath());
+            long blockSize = statFs.getBlockSizeLong();
+            long totalBlocks = statFs.getBlockCountLong();
+            long freeBlocks = statFs.getAvailableBlocksLong();
+            long totalBytes = blockSize * totalBlocks;
+            long freeBytes = blockSize * freeBlocks;
+            long usedBytes = totalBytes - freeBytes;
+
+            JSONObject disk = new JSONObject();
+            disk.put("total", totalBytes);
+            disk.put("free", freeBytes);
+            disk.put("used", usedBytes);
+            o.put("disk", disk);
+
+            // --- 数据大小 ---
+            DatabaseHelper db = new DatabaseHelper(context);
+            File dbFile = new File(db.getDatabasePathString());
+            long dbSize = dbFile.exists() ? dbFile.length() : 0;
+            o.put("db_size", dbSize);
+
+            // --- 运行时间 ---
+            long uptime = System.currentTimeMillis() - startTime;
+            o.put("uptime", uptime);
+
+            // --- CPU 信息 ---
+            int cores = Runtime.getRuntime().availableProcessors();
+            JSONObject cpu = new JSONObject();
+            cpu.put("cores", cores);
+            cpu.put("arch", System.getProperty("os.arch", "unknown"));
+
+            // 详细解析 /proc/cpuinfo
+            String cpuModel = "unknown";
+            String cpuImplementer = "";
+            String cpuArch = "";
+            String cpuVariant = "";
+            String cpuPart = "";
+            String cpuRevision = "";
+            String cpuFeatures = "";
+            double bogoMips = 0;
+            try {
+                BufferedReader br = new BufferedReader(new java.io.FileReader("/proc/cpuinfo"));
+                String line;
+                while ((line = br.readLine()) != null) {
+                    String[] parts = line.split(":");
+                    if (parts.length < 2) continue;
+                    String key = parts[0].trim();
+                    String val = parts[1].trim();
+                    if (key.equals("Hardware") || key.equals("model name")) {
+                        cpuModel = val;
+                    } else if (key.equals("CPU implementer")) {
+                        cpuImplementer = val;
+                    } else if (key.equals("CPU architecture")) {
+                        cpuArch = val;
+                    } else if (key.equals("CPU variant")) {
+                        cpuVariant = val;
+                    } else if (key.equals("CPU part")) {
+                        cpuPart = val;
+                    } else if (key.equals("CPU revision")) {
+                        cpuRevision = val;
+                    } else if (key.equals("Features") && cpuFeatures.isEmpty()) {
+                        cpuFeatures = val;
+                    } else if (key.equals("BogoMIPS") && bogoMips == 0) {
+                        try { bogoMips = Double.parseDouble(val); } catch (Exception ignored) {}
+                    }
+                }
+                br.close();
+            } catch (Exception ignored) {}
+            cpu.put("model", cpuModel);
+            cpu.put("implementer", cpuImplementer);
+            cpu.put("cpu_arch", cpuArch);
+            cpu.put("variant", cpuVariant);
+            cpu.put("part", cpuPart);
+            cpu.put("revision", cpuRevision);
+            cpu.put("features", cpuFeatures);
+            cpu.put("bogomips", bogoMips);
+
+            // 读取 CPU governor 和频率 (尝试所有核心)
+            JSONObject freq = new JSONObject();
+            try {
+                for (int i = 0; i < Math.min(cores, 8); i++) {
+                    String cpuPath = "/sys/devices/system/cpu/cpu" + i + "/cpufreq/";
+                    JSONObject coreInfo = new JSONObject();
+                    try {
+                        String gov = readFirstLine(cpuPath + "scaling_governor");
+                        if (gov != null) coreInfo.put("governor", gov);
+                        String curFreq = readFirstLine(cpuPath + "scaling_cur_freq");
+                        if (curFreq != null) coreInfo.put("cur_khz", Long.parseLong(curFreq.trim()));
+                        String maxFreq = readFirstLine(cpuPath + "scaling_max_freq");
+                        if (maxFreq != null) coreInfo.put("max_khz", Long.parseLong(maxFreq.trim()));
+                        String minFreq = readFirstLine(cpuPath + "cpuinfo_max_freq");
+                        if (minFreq == null) minFreq = readFirstLine(cpuPath + "scaling_min_freq");
+                        if (minFreq != null) coreInfo.put("min_khz", Long.parseLong(minFreq.trim()));
+                    } catch (Exception ignored) {}
+                    if (coreInfo.length() > 0) freq.put("core" + i, coreInfo);
+                }
+            } catch (Exception ignored) {}
+            cpu.put("frequencies", freq);
+
+            // CPU 负载
+            JSONObject load = new JSONObject();
+            try {
+                String loadAvg = readFirstLine("/proc/loadavg");
+                if (loadAvg != null) {
+                    String[] parts = loadAvg.split("\\s+");
+                    if (parts.length >= 3) {
+                        load.put("avg1", Double.parseDouble(parts[0]));
+                        load.put("avg5", Double.parseDouble(parts[1]));
+                        load.put("avg15", Double.parseDouble(parts[2]));
+                        // 运行/总进程数
+                        if (parts.length >= 4) {
+                            String[] procParts = parts[3].split("/");
+                            if (procParts.length >= 2) {
+                                load.put("running", Integer.parseInt(procParts[0]));
+                                load.put("total_procs", Integer.parseInt(procParts[1]));
+                            }
+                        }
+                    }
+                }
+            } catch (Exception ignored) {}
+            cpu.put("load", load);
+
+            o.put("cpu", cpu);
+
+            // --- 内存信息 ---
+            JSONObject memory = new JSONObject();
+            Runtime rt = Runtime.getRuntime();
+            long maxMem = rt.maxMemory();    // JVM 最大内存
+            long totalMem = rt.totalMemory(); // JVM 已分配
+            long freeMem = rt.freeMemory();   // JVM 空闲
+            memory.put("jvm_max", maxMem);
+            memory.put("jvm_allocated", totalMem);
+            memory.put("jvm_free", freeMem);
+
+            // 系统内存 (通过 /proc/meminfo)
+            try {
+                BufferedReader br = new BufferedReader(new java.io.FileReader("/proc/meminfo"));
+                String line;
+                while ((line = br.readLine()) != null) {
+                    if (line.startsWith("MemTotal:")) {
+                        memory.put("sys_total", parseKb(line) * 1024);
+                    } else if (line.startsWith("MemAvailable:")) {
+                        memory.put("sys_available", parseKb(line) * 1024);
+                        break;
+                    }
+                }
+                br.close();
+            } catch (Exception e) {
+                memory.put("sys_total", 0);
+                memory.put("sys_available", 0);
+            }
+            o.put("memory", memory);
+
+            // --- 网络信息 ---
+            JSONObject network = new JSONObject();
+            network.put("lan_ip", getLanIpAddress());
+            // 尝试获取 WiFi SSID (需要额外权限)
+            try {
+                android.net.wifi.WifiManager wifiMgr = (android.net.wifi.WifiManager)
+                    context.getApplicationContext().getSystemService(Context.WIFI_SERVICE);
+                if (wifiMgr != null && wifiMgr.getConnectionInfo() != null) {
+                    String ssid = wifiMgr.getConnectionInfo().getSSID();
+                    if (ssid != null && !ssid.equals("<unknown ssid>")) {
+                        network.put("wifi_ssid", ssid.replace("\"", ""));
+                    }
+                }
+            } catch (Exception ignored) {}
+            o.put("network", network);
+
+            // --- 电池 & UPS 信息 ---
+            JSONObject battery = new JSONObject();
+            try {
+                IntentFilter ifilter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
+                Intent batteryStatus = context.registerReceiver(null, ifilter);
+                if (batteryStatus != null) {
+                    int level = batteryStatus.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
+                    int scale = batteryStatus.getIntExtra(BatteryManager.EXTRA_SCALE, 100);
+                    int pct = scale > 0 ? (level * 100 / scale) : -1;
+                    battery.put("level", pct);
+
+                    int status = batteryStatus.getIntExtra(BatteryManager.EXTRA_STATUS, -1);
+                    String statusText;
+                    boolean charging;
+                    switch (status) {
+                        case BatteryManager.BATTERY_STATUS_CHARGING: statusText = "充电中"; charging = true; break;
+                        case BatteryManager.BATTERY_STATUS_DISCHARGING: statusText = "放电中"; charging = false; break;
+                        case BatteryManager.BATTERY_STATUS_FULL: statusText = "已充满"; charging = true; break;
+                        case BatteryManager.BATTERY_STATUS_NOT_CHARGING: statusText = "未充电"; charging = false; break;
+                        default: statusText = "未知"; charging = false; break;
+                    }
+                    battery.put("status", statusText);
+                    battery.put("charging", charging);
+
+                    int plugged = batteryStatus.getIntExtra(BatteryManager.EXTRA_PLUGGED, -1);
+                    String powerSource;
+                    switch (plugged) {
+                        case BatteryManager.BATTERY_PLUGGED_AC: powerSource = "交流电"; break;
+                        case BatteryManager.BATTERY_PLUGGED_USB: powerSource = "USB"; break;
+                        case BatteryManager.BATTERY_PLUGGED_WIRELESS: powerSource = "无线充电"; break;
+                        default: powerSource = "电池供电"; break;
+                    }
+                    battery.put("power_source", powerSource);
+
+                    // 温度 (0.1°C 单位)
+                    int temp = batteryStatus.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, 0);
+                    battery.put("temperature", temp / 10.0);
+
+                    // 电压 (mV)
+                    int voltage = batteryStatus.getIntExtra(BatteryManager.EXTRA_VOLTAGE, 0);
+                    battery.put("voltage", voltage / 1000.0);
+
+                    // 健康状态
+                    int health = batteryStatus.getIntExtra(BatteryManager.EXTRA_HEALTH, -1);
+                    String healthText;
+                    switch (health) {
+                        case BatteryManager.BATTERY_HEALTH_GOOD: healthText = "良好"; break;
+                        case BatteryManager.BATTERY_HEALTH_OVERHEAT: healthText = "过热"; break;
+                        case BatteryManager.BATTERY_HEALTH_DEAD: healthText = "损坏"; break;
+                        case BatteryManager.BATTERY_HEALTH_OVER_VOLTAGE: healthText = "过压"; break;
+                        case BatteryManager.BATTERY_HEALTH_COLD: healthText = "过冷"; break;
+                        default: healthText = "未知"; break;
+                    }
+                    battery.put("health", healthText);
+
+                    // 技术类型
+                    String tech = batteryStatus.getStringExtra(BatteryManager.EXTRA_TECHNOLOGY);
+                    battery.put("technology", tech != null ? tech : "未知");
+                }
+            } catch (Exception e) {
+                battery.put("level", -1);
+                battery.put("status", "不可用");
+                battery.put("charging", false);
+                battery.put("power_source", "未知");
+                battery.put("temperature", 0);
+                battery.put("voltage", 0);
+                battery.put("health", "未知");
+                battery.put("technology", "未知");
+            }
+            // 设备信息
+            battery.put("device_model", Build.MODEL);
+            battery.put("android_version", Build.VERSION.RELEASE);
+            o.put("battery", battery);
+
+            return NanoHTTPD.newFixedLengthResponse(Status.OK, "application/json", o.toString());
+        } catch (Exception e) {
+            Log.e(TAG, "sysinfo error", e);
+            return NanoHTTPD.newFixedLengthResponse(Status.INTERNAL_ERROR, "text/plain", "error");
+        }
+    }
+
+    /** 从 /proc/meminfo 行中提取 KB 数值 */
+    private long parseKb(String line) {
+        try {
+            return Long.parseLong(line.replaceAll("[^0-9]", "").trim());
+        } catch (Exception e) {
+            return 0;
+        }
+    }
+
+    /** 读取文件的第一行，失败返回 null */
+    private String readFirstLine(String path) {
+        try {
+            BufferedReader br = new BufferedReader(new java.io.FileReader(path));
+            String line = br.readLine();
+            br.close();
+            return line != null ? line.trim() : null;
+        } catch (Exception e) {
+            return null;
         }
     }
 

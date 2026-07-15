@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { apiGet, apiPost } from '../api';
-import { IconSettings, IconCloud, IconKey, IconLink, IconCloudUpload } from '../components/Icons';
+import { IconSettings, IconCloud, IconKey, IconLink, IconCloudUpload, IconCopy } from '../components/Icons';
+import { NumberInput } from '../components/NumberInput';
+import { copyToClipboard } from '../hooks';
 import type { AppConfig, FrpcStatus } from '../types';
 
 interface SettingsProps {
@@ -15,10 +17,10 @@ export function Settings({ toast }: SettingsProps) {
   const load = async () => {
     try {
       const [cfg, frpc] = await Promise.all([
-        apiGet<string>('/config'),
+        apiGet<AppConfig>('/config'),
         apiGet<FrpcStatus>('/frpc/status'),
       ]);
-      try { setConfig(JSON.parse(cfg as unknown as string)); } catch { /* ignore */ }
+      setConfig(cfg);
       setFrpcStatus(frpc);
     } catch (e) {
       console.error(e);
@@ -56,8 +58,17 @@ export function Settings({ toast }: SettingsProps) {
     await saveConfig('oauth_prefix', config.oauth_prefix || '');
     await saveConfig('oauth_client_id', config.oauth_client_id || '');
     await saveConfig('oauth_client_secret', config.oauth_client_secret || '');
-    await saveConfig('oauth_redirect_uri', config.oauth_redirect_uri || '');
+    const domain = (config.oauth_domain || '').replace(/\/+$/, '');
+    await saveConfig('oauth_redirect_uri', domain ? `${domain}/oauth/callback` : '');
     toast('保存成功');
+  };
+
+  const callbackUrl = ((config.oauth_domain || '').replace(/\/+$/, '')) + '/oauth/callback';
+
+  const handleCopyCallback = async () => {
+    if (!config.oauth_domain) { toast('请先填写域名', 'error'); return; }
+    const ok = await copyToClipboard(callbackUrl);
+    toast(ok ? '回调地址已复制' : '复制失败', ok ? 'success' : 'error');
   };
 
   const saveFrpcConfig = async () => {
@@ -101,12 +112,12 @@ export function Settings({ toast }: SettingsProps) {
         <h2><IconSettings size={16} /> 服务器配置</h2>
         <div className="form-row">
           <div className="form-group">
-            <label>API 服务端口 <span style={{color:'var(--text-muted)',fontWeight:400}}>(重启生效)</span></label>
-            <input type="number" value={config.server_port || '8080'} onChange={e => updateConfig('server_port', e.target.value)} />
+            <label>API 服务端口 <span style={{color:'var(--text-tertiary)',fontWeight:400}}>(重启生效)</span></label>
+            <NumberInput value={parseInt(config.server_port || '8080')} onChange={v => updateConfig('server_port', String(v))} min={1} max={65535} />
           </div>
           <div className="form-group">
-            <label>管理面板端口 <span style={{color:'var(--text-muted)',fontWeight:400}}>(重启生效)</span></label>
-            <input type="number" value={config.admin_port || '8081'} onChange={e => updateConfig('admin_port', e.target.value)} />
+            <label>管理面板端口 <span style={{color:'var(--text-tertiary)',fontWeight:400}}>(重启生效)</span></label>
+            <NumberInput value={parseInt(config.admin_port || '8081')} onChange={v => updateConfig('admin_port', String(v))} min={1} max={65535} />
           </div>
         </div>
         <div className="form-row">
@@ -154,6 +165,17 @@ export function Settings({ toast }: SettingsProps) {
           <label>OAuth 前缀 (prefix)</label>
           <input type="text" value={config.oauth_prefix || ''} onChange={e => updateConfig('oauth_prefix', e.target.value)} placeholder="your-campus" />
         </div>
+        <div className="form-group">
+          <label>服务器域名</label>
+          <input type="text" value={config.oauth_domain || ''} onChange={e => updateConfig('oauth_domain', e.target.value)} placeholder="https://memories.example.com" />
+        </div>
+        {config.oauth_domain && (
+          <div className="callback-bar">
+            <span className="callback-label">回调地址</span>
+            <code className="callback-url">{callbackUrl}</code>
+            <button className="btn btn-ghost btn-sm" onClick={handleCopyCallback}><IconCopy size={13} /> 复制</button>
+          </div>
+        )}
         <div className="form-row">
           <div className="form-group">
             <label>Client ID</label>
@@ -163,10 +185,6 @@ export function Settings({ toast }: SettingsProps) {
             <label>Client Secret</label>
             <input type="password" value={config.oauth_client_secret || ''} onChange={e => updateConfig('oauth_client_secret', e.target.value)} />
           </div>
-        </div>
-        <div className="form-group">
-          <label>Redirect URI</label>
-          <input type="text" value={config.oauth_redirect_uri || ''} onChange={e => updateConfig('oauth_redirect_uri', e.target.value)} placeholder="https://..." />
         </div>
         <div className="form-actions">
           <button className="btn btn-primary" onClick={saveOauthConfig}><IconKey size={14} /> 保存 OAuth</button>

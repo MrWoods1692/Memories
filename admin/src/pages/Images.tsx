@@ -1,7 +1,8 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { apiGet, apiPost, apiDelete } from '../api';
 import { ConfirmDialog } from '../components/ConfirmDialog';
-import { IconImage, IconSearch, IconTrash, IconCheck, IconX } from '../components/Icons';
+import { IconImage, IconSearch, IconTrash, IconCheck, IconX, IconCopy } from '../components/Icons';
+import { useDebounce, copyToClipboard, relativeTime } from '../hooks';
 import { fmtTs } from './Dashboard';
 import type { ImageItem, ImageStatus } from '../types';
 
@@ -11,31 +12,35 @@ interface ImagesProps {
 }
 
 export function Images({ toast, refreshKey }: ImagesProps) {
-  const [images, setImages] = useState<ImageItem[]>([]);
+  const [rawImages, setRawImages] = useState<ImageItem[]>([]);
   const [filter, setFilter] = useState('');
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search, 300);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [confirmAction, setConfirmAction] = useState<(() => void) | null>(null);
   const [confirmMsg, setConfirmMsg] = useState('');
   const [loading, setLoading] = useState(true);
+  const [acting, setActing] = useState<Set<number>>(new Set());
 
-  const load = useCallback(async () => {
+  const loadRaw = useCallback(async () => {
     try {
       const imgs = await apiGet<ImageItem[]>('/images');
-      let filtered = Array.isArray(imgs) ? imgs : [];
-      if (filter) filtered = filtered.filter(i => i.status === parseInt(filter) as ImageStatus);
-      if (search) filtered = filtered.filter(i => (i.url || '').toLowerCase().includes(search.toLowerCase()));
-      setImages(filtered);
+      setRawImages(Array.isArray(imgs) ? imgs : []);
     } catch (e) {
       console.error(e);
     } finally {
       setLoading(false);
     }
-  }, [filter, search]);
+  }, []);
 
-  useEffect(() => {
-    load();
-  }, [load, refreshKey]);
+  useEffect(() => { loadRaw(); }, [loadRaw, refreshKey]);
+
+  const images = useMemo(() => {
+    let result = rawImages;
+    if (filter) result = result.filter(i => i.status === parseInt(filter) as ImageStatus);
+    if (debouncedSearch) result = result.filter(i => (i.url || '').toLowerCase().includes(debouncedSearch.toLowerCase()));
+    return result;
+  }, [rawImages, filter, debouncedSearch]);
 
   const toggleSelectAll = (checked: boolean) => {
     if (checked) {
@@ -55,12 +60,15 @@ export function Images({ toast, refreshKey }: ImagesProps) {
   };
 
   const auditImage = async (id: number, status: ImageStatus) => {
+    setActing(prev => new Set(prev).add(id));
     try {
       await apiPost(`/images/${id}/audit`, { status: String(status) });
       toast(status === 1 ? '已通过' : '已拒绝');
-      load();
+      loadRaw();
     } catch {
       toast('操作失败', 'error');
+    } finally {
+      setActing(prev => { const n = new Set(prev); n.delete(id); return n; });
     }
   };
 
@@ -70,7 +78,7 @@ export function Images({ toast, refreshKey }: ImagesProps) {
       try {
         await apiDelete(`/images/${id}`);
         toast('已删除');
-        load();
+        loadRaw();
       } catch {
         toast('删除失败', 'error');
       }
@@ -79,10 +87,7 @@ export function Images({ toast, refreshKey }: ImagesProps) {
   };
 
   const batchDelete = () => {
-    if (selected.size === 0) {
-      toast('请先选择图片', 'error');
-      return;
-    }
+    if (selected.size === 0) { toast('请先选择图片', 'error'); return; }
     setConfirmMsg(`确定删除选中的 ${selected.size} 张图片？`);
     setConfirmAction(() => async () => {
       for (const id of selected) {
@@ -90,17 +95,23 @@ export function Images({ toast, refreshKey }: ImagesProps) {
       }
       setSelected(new Set());
       toast('批量删除完成');
-      load();
+      loadRaw();
       setConfirmAction(null);
     });
   };
 
+  const handleCopyUrl = async (url: string) => {
+    const ok = await copyToClipboard(url);
+    toast(ok ? '已复制到剪贴板' : '复制失败', ok ? 'success' : 'error');
+  };
+
+  const isSearching = search !== debouncedSearch;
   const statusLabels: Record<number, string> = { 0: '待审核', 1: '已通过', 2: '已拒绝' };
   const statusBadge: Record<number, string> = { 0: 'badge-0', 1: 'badge-1', 2: 'badge-2' };
 
   return (
     <div className="card">
-      <h2><IconImage size={16} /> 图片列表 <span className="card-count">共 {images.length} 张</span></h2>
+      <h2><IconImage size={16} /> 图片列表 <span className="card-count">共 {images.length} 张{isSearching ? '…' : ''}</span></h2>
 
       <div className="filter-bar">
         <select value={filter} onChange={e => setFilter(e.target.value)}>
@@ -109,18 +120,25 @@ export function Images({ toast, refreshKey }: ImagesProps) {
           <option value="1">已通过</option>
           <option value="2">已拒绝</option>
         </select>
-        <input
-          type="text" placeholder="搜索 URL..." value={search}
-          onChange={e => setSearch(e.target.value)}
-        />
-        <button className="btn btn-primary btn-sm" onClick={load}><IconSearch size={13} /> 搜索</button>
-        <button className="btn btn-danger btn-sm" onClick={batchDelete}><IconTrash size={13} /> 批量删除 ({selected.size})</button>
+        <div className="search-wrap">
+          <IconSearch size={14} className="search-icon" />
+          <input
+            type="text" placeholder="搜索 URL…" value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="search-input"
+          />
+        </div>
+        {selected.size > 0 && (
+          <button className="btn btn-danger btn-sm" onClick={batchDelete}>
+            <IconTrash size={13} /> 删除选中 ({selected.size})
+          </button>
+        )}
       </div>
 
       {loading ? (
         <div>
           {[1,2,3,4,5].map(i => (
-            <div key={i} className="skeleton-row" style={{gridTemplateColumns:'30px 40px 1fr 80px 120px 100px'}}>
+            <div key={i} className="skeleton-row" style={{gridTemplateColumns:'30px 40px 1fr 80px 110px 110px'}}>
               <div className="skeleton" /><div className="skeleton" />
               <div className="skeleton" /><div className="skeleton" />
               <div className="skeleton" /><div className="skeleton" />
@@ -130,14 +148,14 @@ export function Images({ toast, refreshKey }: ImagesProps) {
       ) : images.length === 0 ? (
         <div className="empty">
           <div className="empty-icon"><IconImage size={48} /></div>
-          <p>暂无图片</p>
+          <p>{rawImages.length === 0 ? '还没有图片，通过 API 上传第一张吧' : '没有匹配的图片'}</p>
         </div>
       ) : (
         <div className="table-wrapper">
           <table>
             <thead>
               <tr>
-                <th style={{width:36}}><input type="checkbox" onChange={e => toggleSelectAll(e.target.checked)} /></th>
+                <th style={{width:36}}><input type="checkbox" onChange={e => toggleSelectAll(e.target.checked)} checked={selected.size === images.length && images.length > 0} /></th>
                 <th>ID</th>
                 <th>URL</th>
                 <th>状态</th>
@@ -146,27 +164,29 @@ export function Images({ toast, refreshKey }: ImagesProps) {
               </tr>
             </thead>
             <tbody>
-              {images.map(i => (
-                <tr key={i.id}>
-                  <td>
-                    <input
-                      type="checkbox" checked={selected.has(i.id)}
-                      onChange={() => toggleSelect(i.id)}
-                    />
+              {images.map(i => {
+                const busy = acting.has(i.id);
+                return (
+                <tr key={i.id} className={selected.has(i.id) ? 'row-selected' : ''} onClick={() => toggleSelect(i.id)}>
+                  <td onClick={e => e.stopPropagation()}>
+                    <input type="checkbox" checked={selected.has(i.id)} onChange={() => toggleSelect(i.id)} />
                   </td>
-                  <td style={{color:'var(--accent-light)',fontWeight:600}}>#{i.id}</td>
-                  <td className="url" title={i.url}>{i.url}</td>
+                  <td style={{color:'var(--accent)',fontWeight:600,fontSize:'0.72rem'}}>#{i.id}</td>
+                  <td className="url" title={i.url}>
+                    {i.url}
+                    <button className="btn-copy" onClick={e => { e.stopPropagation(); handleCopyUrl(i.url); }} title="复制链接"><IconCopy size={12} /></button>
+                  </td>
                   <td><span className={`badge ${statusBadge[i.status]}`}>{statusLabels[i.status]}</span></td>
-                  <td style={{whiteSpace:'nowrap'}}>{fmtTs(i.created_at)}</td>
-                  <td>
-                    <button className="btn btn-success btn-xs" onClick={() => auditImage(i.id, 1)} title="通过"><IconCheck size={12} /></button>
+                  <td style={{whiteSpace:'nowrap',fontSize:'0.73rem'}} title={fmtTs(i.created_at)}>{relativeTime(i.created_at)}</td>
+                  <td onClick={e => e.stopPropagation()}>
+                    <button className="btn btn-success btn-xs" onClick={() => auditImage(i.id, 1)} title="通过" disabled={busy}>{busy ? <span className="spin">⟳</span> : <IconCheck size={12} />}</button>
                     {' '}
-                    <button className="btn btn-warn btn-xs" onClick={() => auditImage(i.id, 2)} title="拒绝"><IconX size={12} /></button>
+                    <button className="btn btn-warn btn-xs" onClick={() => auditImage(i.id, 2)} title="拒绝" disabled={busy}>{busy ? <span className="spin">⟳</span> : <IconX size={12} />}</button>
                     {' '}
                     <button className="btn btn-danger btn-xs" onClick={() => deleteImage(i.id)} title="删除"><IconTrash size={12} /></button>
                   </td>
                 </tr>
-              ))}
+              )})}
             </tbody>
           </table>
         </div>
