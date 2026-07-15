@@ -9,10 +9,6 @@ import android.text.TextWatcher;
 import android.widget.EditText;
 import android.widget.TextView;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.InputStream;
-
 public class MainActivity extends android.app.Activity {
     private FrpcManager frpcManager;
     private DatabaseHelper dbHelper;
@@ -22,14 +18,13 @@ public class MainActivity extends android.app.Activity {
     private TextView textAdminUrl;
     private Handler handler = new Handler(Looper.getMainLooper());
     private boolean autoStartPending = false;
-    private String frpcBinaryPath = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        frpcManager = new FrpcManager();
+        frpcManager = new FrpcManager(this);
         dbHelper = new DatabaseHelper(this);
 
         // 绑定视图
@@ -37,9 +32,6 @@ public class MainActivity extends android.app.Activity {
         textFrpcStatus = findViewById(R.id.text_frpc_status);
         textServerInfo = findViewById(R.id.text_server_info);
         textAdminUrl = findViewById(R.id.text_admin_url);
-
-        // 从 assets 提取内置 frpc 二进制
-        frpcBinaryPath = extractFrpcBinary();
 
         // 加载已保存的 frpc 配置
         loadFrpcConfig();
@@ -85,44 +77,6 @@ public class MainActivity extends android.app.Activity {
     }
 
     /**
-     * 从 assets 提取内置 frpc 二进制到内部存储，首次提取后缓存复用
-     * @return frpc 可执行文件路径，提取失败返回 null
-     */
-    private String extractFrpcBinary() {
-        File frpcFile = new File(getFilesDir(), "frpc");
-
-        // 如果已提取过且文件存在，直接复用
-        if (frpcFile.exists() && frpcFile.canExecute()) {
-            return frpcFile.getAbsolutePath();
-        }
-
-        // 从 assets 提取
-        try {
-            InputStream in = getAssets().open("frpc");
-            FileOutputStream out = new FileOutputStream(frpcFile);
-            byte[] buf = new byte[8192];
-            int len;
-            while ((len = in.read(buf)) > 0) {
-                out.write(buf, 0, len);
-            }
-            out.close();
-            in.close();
-
-            // 设置可执行权限
-            frpcFile.setExecutable(true);
-
-            return frpcFile.getAbsolutePath();
-        } catch (Exception e) {
-            // assets 中没有 frpc 文件，降级到数据库中的自定义路径
-            String savedPath = dbHelper.getConfig("frpc_path");
-            if (savedPath != null && !savedPath.isEmpty()) {
-                return savedPath;
-            }
-            return null;
-        }
-    }
-
-    /**
      * 延迟自动启动：用户停止输入 2 秒后自动校验并启动 frpc
      */
     private void scheduleAutoStart() {
@@ -153,11 +107,7 @@ public class MainActivity extends android.app.Activity {
     private void tryAutoStartFrpc() {
         String config = editFrpcConfig.getText().toString().trim();
 
-        // frpc 二进制未就绪或配置为空则不启动
-        if (frpcBinaryPath == null) {
-            textFrpcStatus.setText("FRPC: 未找到 frpc 可执行文件，请在 assets 中放置 frpc");
-            return;
-        }
+        // 配置为空则不启动
         if (config.isEmpty()) {
             if (frpcManager.isRunning()) {
                 frpcManager.stopFrpc();
@@ -191,9 +141,8 @@ public class MainActivity extends android.app.Activity {
             return;
         }
 
-        // 启动 frpc（使用内置二进制路径）
-        File workDir = getFilesDir();
-        boolean ok = frpcManager.startFrpc(config, frpcBinaryPath, workDir);
+        // 启动 frpc（使用 frp_android 库）
+        boolean ok = frpcManager.startFrpc(config);
         if (ok) {
             textFrpcStatus.setText("FRPC: 启动成功 ✓ (端口 " + serverPort + ")");
         } else {

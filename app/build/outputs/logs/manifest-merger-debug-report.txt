@@ -4,6 +4,7 @@ ADDED from /home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:1:1-36:
 INJECTED from /home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:1:1-36:12
 INJECTED from /home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:1:1-36:12
 INJECTED from /home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:1:1-36:12
+MERGED from [frp_universal.aar] /home/mrcwoods/.gradle/caches/transforms-3/be361b4501df0ebd3cdb000a5c363e1d/transformed/frp_universal/AndroidManifest.xml:1:1-2:50
 	package
 		INJECTED from /home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml
 	android:versionName
@@ -89,6 +90,8 @@ uses-sdk
 INJECTED from /home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml reason: use-sdk injection requested
 INJECTED from /home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml
 INJECTED from /home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml
+MERGED from [frp_universal.aar] /home/mrcwoods/.gradle/caches/transforms-3/be361b4501df0ebd3cdb000a5c363e1d/transformed/frp_universal/AndroidManifest.xml:2:1-39
+MERGED from [frp_universal.aar] /home/mrcwoods/.gradle/caches/transforms-3/be361b4501df0ebd3cdb000a5c363e1d/transformed/frp_universal/AndroidManifest.xml:2:1-39
 	android:targetSdkVersion
 		INJECTED from /home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml
 	android:minSdkVersion
