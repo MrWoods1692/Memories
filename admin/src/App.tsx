@@ -51,13 +51,12 @@ export default function App() {
     <>
       <div className="header">
         <div className="header-brand">
-          <svg className="header-logo" width="24" height="24" viewBox="0 0 24 24" fill="none">
-            <defs>
-              <linearGradient id="lg" x1="4" y1="4" x2="20" y2="20"><stop stopColor="#818cf8"/><stop offset="1" stopColor="#6366f1"/></linearGradient>
-            </defs>
-            <rect x="3" y="5" width="18" height="14" rx="3" stroke="url(#lg)" strokeWidth="1.8"/>
-            <circle cx="8.5" cy="10" r="1.8" stroke="url(#lg)" strokeWidth="1.2"/>
-            <path d="M3 16.5 8 13l4 3 4.5-4 4.5 3" stroke="url(#lg)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+          <svg className="header-logo" width="24" height="24" viewBox="0 0 108 108" fill="none">
+            <path fill="#1D6E5A" d="M18,16h72a16,16 0,0 1,16 16v44a16,16 0,0 1,-16 16H18a16,16 0,0 1,-16 -16V32a16,16 0,0 1,16 -16z"/>
+            <path fill="#53C49E" fillOpacity="0.42" d="M8,76c18,-26 40,-36 92,-49v49a10,10 0,0 1,-10 10H18a10,10 0,0 1,-10 -10z"/>
+            <path fill="#F8F7F2" d="M24,72l18,-22 14,15 9,-11 19,18z"/>
+            <circle cx="72" cy="34" r="9" fill="#E9C46A"/>
+            <path fill="#FFFFFF" fillOpacity="0.36" d="M22,24h42a5,5 0,0 1,0 10H22a5,5 0,0 1,0 -10z"/>
           </svg>
           <h1>Memories</h1>
         </div>
