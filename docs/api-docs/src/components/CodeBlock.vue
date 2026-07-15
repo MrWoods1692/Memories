@@ -25,16 +25,16 @@ function handleCopy() {
 
 <style scoped>
 .code-block {
-  background: #1e293b;
-  color: #e2e8f0;
-  padding: 14px 18px;
+  background: #1d1d1f;
+  color: #f5f5f7;
+  padding: 18px 22px;
   border-radius: var(--radius);
   font-family: 'SF Mono', 'Fira Code', 'Fira Mono', Menlo, Consolas, monospace;
   font-size: 13px;
-  line-height: 1.65;
+  line-height: 1.7;
   overflow-x: auto;
   position: relative;
-  margin: 8px 0 16px;
+  margin: 10px 0 18px;
 }
 
 .code-block pre {
@@ -49,25 +49,28 @@ function handleCopy() {
 
 .copy-btn {
   position: absolute;
-  top: 8px;
-  right: 12px;
-  background: rgba(255, 255, 255, 0.1);
+  top: 10px;
+  right: 14px;
+  background: rgba(255,255,255,0.08);
   border: none;
-  color: #94a3b8;
-  padding: 4px 10px;
-  border-radius: 4px;
+  color: rgba(255,255,255,0.5);
+  padding: 5px 12px;
+  border-radius: 6px;
   cursor: pointer;
   font-size: 11px;
-  transition: all 0.15s;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  transition: all 0.18s ease;
   z-index: 1;
 }
 
 .copy-btn:hover {
-  background: rgba(255, 255, 255, 0.2);
-  color: #e2e8f0;
+  background: rgba(255,255,255,0.16);
+  color: rgba(255,255,255,0.9);
 }
 
 .copy-btn.copied {
-  color: #4ade80;
+  background: rgba(52,199,89,0.2);
+  color: #34c759;
 }
 </style>

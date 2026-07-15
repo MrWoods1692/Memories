@@ -102,103 +102,115 @@ const authLabel = computed(() => {
 <style scoped>
 .endpoint-card {
   background: var(--card-bg);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  margin-bottom: 20px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  margin-bottom: 14px;
   overflow: hidden;
-  box-shadow: var(--shadow);
-  transition: box-shadow 0.2s;
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow var(--transition), transform var(--transition);
 }
 
 .endpoint-card:hover {
   box-shadow: var(--shadow-lg);
+  transform: translateY(-1px);
 }
 
 .endpoint-header {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 16px 20px;
-  border-bottom: 1px solid var(--border);
+  gap: 14px;
+  padding: 18px 22px;
   cursor: pointer;
   user-select: none;
+  transition: background 0.15s ease;
+}
+
+.endpoint-header:hover {
+  background: rgba(0,0,0,0.015);
 }
 
 .method-tag {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
-  padding: 3px 10px;
-  border-radius: 4px;
+  padding: 4px 12px;
+  border-radius: 6px;
   text-transform: uppercase;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.04em;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .method-tag.GET {
-  background: rgba(34, 197, 94, 0.1);
-  color: #16a34a;
+  background: rgba(52,199,89,0.1);
+  color: #1b7a36;
 }
 
 .method-tag.POST {
-  background: rgba(59, 130, 246, 0.1);
-  color: #2563eb;
+  background: rgba(0,113,227,0.1);
+  color: #005bbf;
 }
 
 .method-tag.DELETE {
-  background: rgba(239, 68, 68, 0.1);
-  color: #dc2626;
+  background: rgba(255,59,48,0.1);
+  color: #c41e16;
 }
 
 .path {
   font-family: 'SF Mono', 'Fira Code', 'Fira Mono', Menlo, Consolas, monospace;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--text);
   flex: 1;
+  letter-spacing: -0.01em;
 }
 
 .summary {
   font-size: 13px;
   color: var(--text-secondary);
   white-space: nowrap;
+  font-weight: 400;
 }
 
 .expand-icon {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--text-secondary);
-  transition: transform 0.2s;
+  transition: transform 0.25s ease;
+  opacity: 0.5;
+  flex-shrink: 0;
 }
 
 .expand-icon.open {
   transform: rotate(180deg);
+  opacity: 0.8;
 }
 
 .endpoint-body {
-  padding: 20px;
+  padding: 6px 22px 22px;
 }
 
 .auth-badge {
   display: inline-block;
   font-size: 11px;
-  font-weight: 600;
-  padding: 2px 10px;
-  border-radius: 12px;
-  margin-bottom: 12px;
+  font-weight: 500;
+  padding: 3px 12px;
+  border-radius: 20px;
+  margin-bottom: 14px;
+  letter-spacing: 0.01em;
 }
 
 .auth-badge.none {
-  background: #f1f5f9;
-  color: #64748b;
+  background: #f5f5f7;
+  color: var(--text-secondary);
 }
 
 .auth-badge.admin {
-  background: #fef3c7;
-  color: #92400e;
+  background: #fff3e0;
+  color: #b45309;
 }
 
 .auth-badge.reviewer {
-  background: #dbeafe;
-  color: #1e40af;
+  background: var(--accent-light);
+  color: var(--accent);
 }
 
 .description {
@@ -206,15 +218,16 @@ const authLabel = computed(() => {
   color: var(--text-secondary);
   margin-bottom: 8px;
   line-height: 1.6;
+  font-weight: 400;
 }
 
 .section-label {
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 600;
   color: var(--text-secondary);
   text-transform: uppercase;
-  letter-spacing: 0.03em;
-  margin: 16px 0 8px;
+  letter-spacing: 0.05em;
+  margin: 18px 0 10px;
 }
 
 .response-desc {
@@ -222,17 +235,18 @@ const authLabel = computed(() => {
   font-size: 13px;
   color: var(--text);
   background: var(--code-bg);
-  padding: 10px 14px;
-  border-radius: 6px;
+  padding: 12px 16px;
+  border-radius: var(--radius-sm);
 }
 
 .notes {
-  margin-top: 12px;
-  padding: 10px 14px;
-  background: #fefce8;
-  border-radius: 6px;
+  margin-top: 16px;
+  padding: 12px 16px;
+  background: #fffbeb;
+  border-radius: var(--radius-sm);
   font-size: 13px;
-  color: #854d0e;
+  color: #92400e;
   line-height: 1.5;
+  border: 1px solid #fef3c7;
 }
 </style>

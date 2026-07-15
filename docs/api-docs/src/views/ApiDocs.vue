@@ -140,87 +140,98 @@ function toggleTable(name) {
 
 <style scoped>
 .section {
-  margin-bottom: 48px;
-  scroll-margin-top: 24px;
+  margin-bottom: 56px;
+  scroll-margin-top: 32px;
 }
 
 .section-title {
-  font-size: 26px;
+  font-size: 28px;
   font-weight: 700;
   color: var(--text);
-  margin-bottom: 8px;
-  letter-spacing: -0.02em;
+  margin-bottom: 6px;
+  letter-spacing: -0.025em;
 }
 
 .section-desc {
   color: var(--text-secondary);
-  margin-bottom: 24px;
+  margin-bottom: 28px;
   font-size: 15px;
-  line-height: 1.6;
+  line-height: 1.55;
+  font-weight: 400;
 }
 
 .section-desc code {
   background: var(--code-bg);
-  padding: 1px 6px;
-  border-radius: 3px;
+  padding: 2px 7px;
+  border-radius: 5px;
   font-size: 13px;
 }
 
 .intro-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 14px;
   margin-bottom: 32px;
 }
 
 .intro-card {
   background: var(--card-bg);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 20px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow var(--transition), transform var(--transition);
+}
+
+.intro-card:hover {
   box-shadow: var(--shadow);
+  transform: translateY(-2px);
 }
 
 .intro-card .icon {
-  font-size: 24px;
-  margin-bottom: 8px;
+  font-size: 28px;
+  margin-bottom: 10px;
 }
 
 .intro-card h3 {
   font-size: 15px;
   font-weight: 600;
-  margin: 0 0 4px;
+  margin: 0 0 5px;
+  color: var(--text);
+  letter-spacing: -0.01em;
 }
 
 .intro-card p {
   font-size: 13px;
   color: var(--text-secondary);
   margin: 0;
+  line-height: 1.5;
 }
 
 .intro-card code {
   background: var(--code-bg);
-  padding: 1px 5px;
-  border-radius: 3px;
+  padding: 1px 6px;
+  border-radius: 4px;
   font-size: 12px;
+  font-weight: 500;
 }
 
 .info-card {
   background: var(--card-bg);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 20px;
-  box-shadow: var(--shadow);
-  margin-bottom: 20px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 18px;
 }
 
 .info-card h3 {
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--text-secondary);
   text-transform: uppercase;
-  letter-spacing: 0.03em;
-  margin: 16px 0 8px;
+  letter-spacing: 0.06em;
+  margin: 20px 0 10px;
 }
 
 .info-card h3:first-child {
@@ -228,94 +239,104 @@ function toggleTable(name) {
 }
 
 .convention-list {
-  margin: 0 0 16px 20px;
+  margin: 0 0 18px 22px;
   font-size: 14px;
   color: var(--text-secondary);
-  line-height: 1.8;
+  line-height: 1.9;
 }
 
 .convention-list code {
   background: var(--code-bg);
-  padding: 1px 6px;
-  border-radius: 3px;
-  font-size: 13px;
+  padding: 2px 7px;
+  border-radius: 5px;
+  font-size: 12px;
+  font-weight: 500;
 }
 
 .simple-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 14px;
-  margin: 8px 0 16px;
+  margin: 10px 0 18px;
 }
 
 .simple-table th {
   text-align: left;
-  padding: 10px 14px;
+  padding: 11px 16px;
   background: var(--code-bg);
   font-weight: 600;
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: 11px;
   text-transform: uppercase;
-  letter-spacing: 0.03em;
-  border-bottom: 2px solid var(--border);
+  letter-spacing: 0.05em;
+  border-bottom: 2px solid var(--border-light);
 }
 
 .simple-table td {
-  padding: 10px 14px;
-  border-bottom: 1px solid var(--border);
+  padding: 11px 16px;
+  border-bottom: 1px solid var(--border-light);
   vertical-align: top;
+}
+
+.simple-table tr:last-child td {
+  border-bottom: none;
 }
 
 .simple-table code {
   background: var(--code-bg);
-  padding: 1px 6px;
-  border-radius: 3px;
+  padding: 2px 7px;
+  border-radius: 5px;
   font-size: 13px;
+  font-weight: 500;
 }
 
 /* Database cards */
 .db-card {
-  margin-bottom: 16px;
+  margin-bottom: 14px;
   overflow: hidden;
 }
 
 .db-header {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 16px 20px;
+  gap: 14px;
+  padding: 18px 24px;
   cursor: pointer;
   user-select: none;
-  border-bottom: 1px solid var(--border);
+  transition: background 0.15s ease;
 }
 
 .db-header:hover {
-  background: var(--code-bg);
+  background: rgba(0,0,0,0.015);
 }
 
 .db-name {
   font-family: 'SF Mono', 'Fira Code', monospace;
   font-weight: 700;
   font-size: 15px;
+  letter-spacing: -0.01em;
 }
 
 .db-desc {
   color: var(--text-secondary);
   font-size: 13px;
   flex: 1;
+  font-weight: 400;
 }
 
 .expand-icon {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--text-secondary);
-  transition: transform 0.2s;
+  transition: transform 0.25s ease;
+  opacity: 0.5;
 }
 
 .expand-icon.open {
   transform: rotate(180deg);
+  opacity: 0.8;
 }
 
 .db-body {
-  padding: 20px;
+  padding: 4px 24px 24px;
 }
 </style>
