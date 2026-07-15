@@ -55,6 +55,9 @@ public class MainActivity extends android.app.Activity {
         // 启动悬浮窗
         startFloatingWindow();
 
+        // 延迟打开管理页面（等待服务启动）
+        handler.postDelayed(this::openAdminPage, 1000);
+
         // 更新服务器信息
         updateServerInfo();
 
@@ -181,6 +184,19 @@ public class MainActivity extends android.app.Activity {
         String adminUrl = "http://" + lanIp + ":" + adminPort + "/admin";
         textServerInfo.setText("API端口: " + port + " | 图片数: " + count);
         textAdminUrl.setText("管理页面: " + adminUrl);
+    }
+
+    private void openAdminPage() {
+        String adminPortStr = dbHelper.getConfig("admin_port");
+        int adminPort = 8081;
+        if (adminPortStr != null) {
+            try { adminPort = Integer.parseInt(adminPortStr); } catch (NumberFormatException ignored) {}
+        }
+        String lanIp = EmbeddedServer.getLanIpAddress();
+        String url = "http://" + lanIp + ":" + adminPort + "/admin";
+        Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+        browserIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        startActivity(browserIntent);
     }
 
     @Override
