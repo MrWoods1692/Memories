@@ -115,6 +115,29 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         db.insertWithOnConflict("config", null, cv, SQLiteDatabase.CONFLICT_REPLACE);
     }
 
+    public String listUsersJson() {
+        SQLiteDatabase db = getReadableDatabase();
+        Cursor c = db.rawQuery("SELECT id, qq, role FROM users ORDER BY id", null);
+        JSONArray arr = new JSONArray();
+        while (c.moveToNext()) {
+            JSONObject o = new JSONObject();
+            try {
+                o.put("id", c.getLong(0));
+                o.put("qq", c.getString(1));
+                o.put("role", c.getInt(2));
+                arr.put(o);
+            } catch (Exception ignored) {}
+        }
+        c.close();
+        return arr.toString();
+    }
+
+    public boolean deleteUser(String qq) {
+        SQLiteDatabase db = getWritableDatabase();
+        int rows = db.delete("users", "qq=?", new String[]{qq});
+        return rows > 0;
+    }
+
     public String getDatabasePathString() {
         return getReadableDatabase().getPath();
     }

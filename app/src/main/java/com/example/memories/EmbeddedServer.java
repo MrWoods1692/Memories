@@ -46,6 +46,10 @@ public class EmbeddedServer extends NanoHTTPD {
                 return handleStatus(session);
             }
 
+            if (uri.startsWith("/users")) {
+                return handleUsers(session);
+            }
+
             if (uri.startsWith("/oauth")) {
                 return handleOauth(session);
             }
@@ -180,6 +184,59 @@ public class EmbeddedServer extends NanoHTTPD {
             Log.e(TAG, "status error", e);
             return Response.newFixedLengthResponse(Status.INTERNAL_ERROR, "text/plain", "error");
         }
+    }
+
+    private Response handleUsers(IHTTPSession session) {
+        DatabaseHelper db = new DatabaseHelper(context);
+        String uri = session.getUri();
+        Method method = session.getMethod();
+
+        // require admin for all user management
+        String qq = session.getHeaders().get("x-user-qq");
+        int role = db.getUserRole(qq);
+        if (role < 2) return Response.newFixedLengthResponse(Status.UNAUTHORIZED, "text/plain", "admin required");
+
+        try {
+            // GET /users - list all users
+            if ("/users".equals(uri) && Method.GET.equals(method)) {
+                String json = db.listUsersJson();
+                return Response.newFixedLengthResponse(Status.OK, "application/json", json);
+            }
+
+            // POST /users - add reviewer (role=1) or admin (role=2)
+            if ("/users".equals(uri) && Method.POST.equals(method)) {
+                Map<String, String> files = new java.util.HashMap<>();
+                session.parseBody(files);
+                Map<String, String> params = session.getParms();
+                String userQq = params.get("qq");
+                String roleStr = params.get("role");
+                if (userQq == null || userQq.isEmpty()) {
+                    return Response.newFixedLengthResponse(Status.BAD_REQUEST, "text/plain", "missing qq");
+                }
+                int newRole = 1; // default reviewer
+                if (roleStr != null) {
+                    try { newRole = Integer.parseInt(roleStr); } catch (NumberFormatException ignored) {}
+                }
+                if (newRole < 1 || newRole > 2) {
+                    return Response.newFixedLengthResponse(Status.BAD_REQUEST, "text/plain", "role must be 1 (reviewer) or 2 (admin)");
+                }
+                db.addUser(userQq, newRole);
+                return Response.newFixedLengthResponse(Status.OK, "application/json", "{\"qq\":\""+userQq+"\",\"role\":"+newRole+"}");
+            }
+
+            // DELETE /users/{qq} - remove a user
+            String[] parts = uri.split("/");
+            if (parts.length >= 3 && Method.DELETE.equals(method)) {
+                String targetQq = parts[2];
+                boolean ok = db.deleteUser(targetQq);
+                return Response.newFixedLengthResponse(ok ? Status.OK : Status.NOT_FOUND, "text/plain", ok ? "deleted" : "not found");
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "handleUsers error", e);
+            return Response.newFixedLengthResponse(Status.INTERNAL_ERROR, "text/plain", "error");
+        }
+
+        return Response.newFixedLengthResponse(Status.NOT_IMPLEMENTED, "text/plain", "Not Implemented");
     }
 
     private Response handleOauth(IHTTPSession session) {
