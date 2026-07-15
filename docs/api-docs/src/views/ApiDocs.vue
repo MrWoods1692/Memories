@@ -12,17 +12,17 @@
         <div class="intro-card">
           <div class="icon">🖥️</div>
           <h3>API 服务器</h3>
-          <p>端口 <code>8080</code>，处理所有 REST API 请求</p>
+          <p>端口 <code>8080</code>，REST API，<strong>允许外网访问 + 跨域</strong></p>
         </div>
         <div class="intro-card">
           <div class="icon">📦</div>
           <h3>管理面板</h3>
-          <p>端口 <code>8081</code>，提供 React 管理界面静态文件</p>
+          <p>端口 <code>8081</code>，React 管理界面，<strong>仅限局域网访问</strong></p>
         </div>
         <div class="intro-card">
-          <div class="icon">🔒</div>
-          <h3>局域网安全</h3>
-          <p>只接受局域网请求，自动 CORS 支持</p>
+          <div class="icon">🌐</div>
+          <h3>CORS 跨域支持</h3>
+          <p>API 服务器对所有响应自动添加 CORS 头，允许任意来源调用</p>
         </div>
         <div class="intro-card">
           <div class="icon">🗄️</div>
@@ -39,7 +39,8 @@
         <ul class="convention-list">
           <li>POST 请求使用 <code>application/x-www-form-urlencoded</code> 编码</li>
           <li>响应为 <code>application/json</code> 或 <code>text/plain</code></li>
-          <li>所有响应自动添加 CORS 头，允许跨端口调用</li>
+          <li><strong>API 服务器 (8080)</strong>：允许外网访问，所有响应自动添加 CORS 头</li>
+          <li><strong>管理面板 (8081)</strong>：仅限局域网访问（10.x / 172.16-31.x / 192.168.x / 127.x），外网不可访问</li>
           <li>局域网用户自动获得管理员权限</li>
         </ul>
       </div>
@@ -59,6 +60,17 @@
             <tr><td><code>0</code></td><td>未注册用户</td><td>仅可上传图片</td></tr>
             <tr><td><code>1</code></td><td>审核员 (Reviewer)</td><td>审核图片（通过/拒绝）</td></tr>
             <tr><td><code>2</code></td><td>管理员 (Admin)</td><td>审核图片 + 管理用户 + 封禁管理 + 修改配置</td></tr>
+          </tbody>
+        </table>
+
+        <h3>网络访问策略</h3>
+        <table class="simple-table">
+          <thead>
+            <tr><th>服务</th><th>端口</th><th>跨域 (CORS)</th><th>外网访问</th><th>局域网访问</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>API 服务器</td><td><code>8080</code></td><td>✅ 允许</td><td>✅ 允许</td><td>✅ 允许</td></tr>
+            <tr><td>管理面板</td><td><code>8081</code></td><td>—</td><td>❌ 禁止</td><td>✅ 允许</td></tr>
           </tbody>
         </table>
 
