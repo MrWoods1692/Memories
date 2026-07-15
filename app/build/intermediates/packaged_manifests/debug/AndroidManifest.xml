@@ -10,6 +10,7 @@
 
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
@@ -19,7 +20,8 @@
         android:debuggable="true"
         android:extractNativeLibs="false"
         android:label="Memories"
-        android:supportsRtl="true" >
+        android:supportsRtl="true"
+        android:theme="@android:style/Theme.DeviceDefault.NoActionBar" >
         <activity
             android:name="com.example.memories.MainActivity"
             android:exported="true" >
@@ -32,7 +34,8 @@
 
         <service
             android:name="com.example.memories.ServerService"
-            android:exported="false" />
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
 
         <receiver
             android:name="com.example.memories.BootReceiver"

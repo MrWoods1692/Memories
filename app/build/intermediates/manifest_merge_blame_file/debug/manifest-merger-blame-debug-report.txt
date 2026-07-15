@@ -14,64 +14,71 @@
 12    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
 12-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:4:5-77
 12-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:4:22-74
-13    <uses-permission android:name="android.permission.INTERNET" />
-13-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:5:5-67
-13-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:5:22-64
-14    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-14-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:6:5-79
-14-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:6:22-76
-15    <uses-permission android:name="android.permission.WAKE_LOCK" />
-15-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:7:5-68
-15-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:7:22-65
-16
-17    <application
-17-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:9:5-31:19
-18        android:allowBackup="true"
-18-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:10:9-35
-19        android:debuggable="true"
-20        android:extractNativeLibs="false"
-21        android:label="Memories"
-21-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:11:9-33
-22        android:supportsRtl="true" >
-22-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:12:9-35
-23        <activity
-23-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:14:9-19:20
-24            android:name="com.example.memories.MainActivity"
-24-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:14:19-67
-25            android:exported="true" >
-25-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:14:68-91
-26            <intent-filter>
-26-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:15:13-18:29
-27                <action android:name="android.intent.action.MAIN" />
-27-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:16:17-69
-27-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:16:25-66
-28
-29                <category android:name="android.intent.category.LAUNCHER" />
-29-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:17:17-77
-29-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:17:27-74
-30            </intent-filter>
-31        </activity>
-32
-33        <service
-33-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:21:9-23:40
-34            android:name="com.example.memories.ServerService"
-34-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:22:13-62
-35            android:exported="false" />
-35-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:23:13-37
-36
-37        <receiver
-37-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:25:9-29:20
-38            android:name="com.example.memories.BootReceiver"
-38-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:25:19-67
-39            android:exported="true" >
-39-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:25:68-91
-40            <intent-filter>
-40-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:26:13-28:29
-41                <action android:name="android.intent.action.BOOT_COMPLETED" />
-41-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:27:17-79
-41-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:27:25-76
-42            </intent-filter>
-43        </receiver>
-44    </application>
-45
-46</manifest>
+13    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+13-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:5:5-87
+13-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:5:22-84
+14    <uses-permission android:name="android.permission.INTERNET" />
+14-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:6:5-67
+14-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:6:22-64
+15    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+15-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:7:5-79
+15-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:7:22-76
+16    <uses-permission android:name="android.permission.WAKE_LOCK" />
+16-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:8:5-68
+16-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:8:22-65
+17
+18    <application
+18-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:10:5-34:19
+19        android:allowBackup="true"
+19-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:11:9-35
+20        android:debuggable="true"
+21        android:extractNativeLibs="false"
+22        android:label="Memories"
+22-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:12:9-33
+23        android:supportsRtl="true"
+23-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:13:9-35
+24        android:theme="@android:style/Theme.DeviceDefault.NoActionBar" >
+24-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:14:9-71
+25        <activity
+25-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:16:9-21:20
+26            android:name="com.example.memories.MainActivity"
+26-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:16:19-67
+27            android:exported="true" >
+27-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:16:68-91
+28            <intent-filter>
+28-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:17:13-20:29
+29                <action android:name="android.intent.action.MAIN" />
+29-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:18:17-69
+29-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:18:25-66
+30
+31                <category android:name="android.intent.category.LAUNCHER" />
+31-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:19:17-77
+31-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:19:27-74
+32            </intent-filter>
+33        </activity>
+34
+35        <service
+35-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:23:9-26:56
+36            android:name="com.example.memories.ServerService"
+36-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:24:13-62
+37            android:exported="false"
+37-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:25:13-37
+38            android:foregroundServiceType="dataSync" />
+38-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:26:13-53
+39
+40        <receiver
+40-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:28:9-32:20
+41            android:name="com.example.memories.BootReceiver"
+41-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:28:19-67
+42            android:exported="true" >
+42-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:28:68-91
+43            <intent-filter>
+43-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:29:13-31:29
+44                <action android:name="android.intent.action.BOOT_COMPLETED" />
+44-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:30:17-79
+44-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:30:25-76
+45            </intent-filter>
+46        </receiver>
+47    </application>
+48
+49</manifest>

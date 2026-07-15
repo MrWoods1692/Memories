@@ -53,6 +53,8 @@ public class MainActivity extends android.app.Activity {
             @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
             @Override
             public void afterTextChanged(Editable s) {
+                // 立即持久化保存到数据库，确保粘贴的配置不丢失
+                saveConfigImmediately();
                 scheduleAutoStart();
             }
         };
@@ -99,6 +101,21 @@ public class MainActivity extends android.app.Activity {
             tryAutoStartFrpc();
         }
     };
+
+    /**
+     * 立即将 frpc 配置持久化到数据库（永久储存），不等待启动校验
+     */
+    private void saveConfigImmediately() {
+        String path = editFrpcPath.getText().toString().trim();
+        String config = editFrpcConfig.getText().toString().trim();
+
+        if (!path.isEmpty()) {
+            dbHelper.setConfig("frpc_path", path);
+        }
+        if (!config.isEmpty()) {
+            dbHelper.setConfig("frpc_config", config);
+        }
+    }
 
     private void tryAutoStartFrpc() {
         String path = editFrpcPath.getText().toString().trim();
