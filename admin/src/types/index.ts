@@ -41,13 +41,11 @@ export interface AppConfig {
   oauth_client_id?: string;
   oauth_client_secret?: string;
   oauth_redirect_uri?: string;
-  frpc_path?: string;
   frpc_config?: string;
 }
 
 export interface FrpcStatus {
   configured: boolean;
-  frpc_path?: string;
 }
 
 export interface WebdavConfig {

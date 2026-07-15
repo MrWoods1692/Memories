@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { IconCheck, IconX } from './Icons';
 
 type ToastType = 'success' | 'error';
 
@@ -18,7 +19,7 @@ export function useToast() {
     setToasts(prev => [...prev, { id, message, type }]);
     setTimeout(() => {
       setToasts(prev => prev.filter(t => t.id !== id));
-    }, 3000);
+    }, 3500);
   }, []);
 
   return { toasts, toast };
@@ -27,19 +28,10 @@ export function useToast() {
 export function ToastContainer({ toasts }: { toasts: ToastItem[] }) {
   if (toasts.length === 0) return null;
   return (
-    <div style={{
-      position: 'fixed', bottom: 20, right: 20, zIndex: 999,
-      display: 'flex', flexDirection: 'column', gap: 8,
-    }}>
+    <div className="toast-container">
       {toasts.map(t => (
-        <div
-          key={t.id}
-          style={{
-            padding: '12px 20px', borderRadius: 8, color: '#fff', fontSize: 13,
-            background: t.type === 'success' ? '#2e7d32' : '#c62828',
-            animation: 'slideIn .3s ease',
-          }}
-        >
+        <div key={t.id} className={`toast-item toast-${t.type}`}>
+          {t.type === 'success' ? <IconCheck size={15} /> : <IconX size={15} />}
           {t.message}
         </div>
       ))}

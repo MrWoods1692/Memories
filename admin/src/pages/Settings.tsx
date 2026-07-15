@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { apiGet, apiPost } from '../api';
+import { IconSettings, IconCloud, IconKey, IconLink, IconCloudUpload } from '../components/Icons';
 import type { AppConfig, FrpcStatus } from '../types';
 
 interface SettingsProps {
@@ -60,8 +61,7 @@ export function Settings({ toast }: SettingsProps) {
   };
 
   const saveFrpcConfig = async () => {
-    await saveConfig('frpc_path', config.frpc_path || '');
-    await saveConfig('frpc_config', config.frpc_config || '');
+    await apiPost('/frpc/config', { frpc_config: config.frpc_config || '' });
     toast('保存成功');
     load();
   };
@@ -79,98 +79,115 @@ export function Settings({ toast }: SettingsProps) {
     setConfig(prev => ({ ...prev, [key]: value }));
   };
 
-  if (loading) return <div className="loading">加载中...</div>;
+  if (loading) {
+    return (
+      <div className="settings-grid">
+        {[1,2,3,4].map(i => (
+          <div key={i} className="card">
+            <div className="skeleton" style={{width:'60%',height:18,marginBottom:18}} />
+            <div className="skeleton" style={{width:'100%',height:14,marginBottom:8}} />
+            <div className="skeleton" style={{width:'80%',height:14,marginBottom:8}} />
+            <div className="skeleton" style={{width:'50%',height:14}} />
+          </div>
+        ))}
+      </div>
+    );
+  }
 
   return (
-    <div>
+    <div className="settings-grid">
       {/* 服务器配置 */}
       <div className="card">
-        <h2>🔧 服务器配置</h2>
+        <h2><IconSettings size={16} /> 服务器配置</h2>
         <div className="form-row">
-          <div>
-            <label>API 服务端口 (重启生效)</label>
+          <div className="form-group">
+            <label>API 服务端口 <span style={{color:'var(--text-muted)',fontWeight:400}}>(重启生效)</span></label>
             <input type="number" value={config.server_port || '8080'} onChange={e => updateConfig('server_port', e.target.value)} />
           </div>
-          <div>
-            <label>管理面板端口 (重启生效)</label>
+          <div className="form-group">
+            <label>管理面板端口 <span style={{color:'var(--text-muted)',fontWeight:400}}>(重启生效)</span></label>
             <input type="number" value={config.admin_port || '8081'} onChange={e => updateConfig('admin_port', e.target.value)} />
           </div>
         </div>
         <div className="form-row">
-          <div>
+          <div className="form-group">
             <label>平台名称</label>
             <input type="text" value={config.platform_name || ''} onChange={e => updateConfig('platform_name', e.target.value)} placeholder="Memories" />
           </div>
-          <div>
+          <div className="form-group">
             <label>平台 Logo URL</label>
             <input type="text" value={config.platform_logo || ''} onChange={e => updateConfig('platform_logo', e.target.value)} placeholder="https://..." />
           </div>
         </div>
-        <button className="btn btn-primary" onClick={saveServerConfig}>💾 保存服务器配置</button>
+        <div className="form-actions">
+          <button className="btn btn-primary" onClick={saveServerConfig}><IconSettings size={14} /> 保存服务器配置</button>
+        </div>
       </div>
 
       {/* WebDAV 备份配置 */}
       <div className="card">
-        <h2>🌐 WebDAV 备份配置</h2>
-        <div>
+        <h2><IconCloud size={16} /> WebDAV 备份配置</h2>
+        <div className="form-group">
           <label>WebDAV URL</label>
           <input type="text" value={config.webdav_url || ''} onChange={e => updateConfig('webdav_url', e.target.value)} placeholder="https://webdav.example.com/backup" />
         </div>
         <div className="form-row">
-          <div>
+          <div className="form-group">
             <label>用户名</label>
             <input type="text" value={config.webdav_user || ''} onChange={e => updateConfig('webdav_user', e.target.value)} />
           </div>
-          <div>
+          <div className="form-group">
             <label>密码</label>
             <input type="password" value={config.webdav_pass || ''} onChange={e => updateConfig('webdav_pass', e.target.value)} />
           </div>
         </div>
-        <button className="btn btn-primary" onClick={saveWebdavConfig}>💾 保存 WebDAV 配置</button>
-        <button className="btn btn-success" style={{ marginLeft: 10 }} onClick={triggerBackup}>📤 测试备份</button>
+        <div className="form-actions">
+          <button className="btn btn-primary" onClick={saveWebdavConfig}><IconCloud size={14} /> 保存 WebDAV</button>
+          <button className="btn btn-success" onClick={triggerBackup}><IconCloudUpload size={14} /> 测试备份</button>
+        </div>
       </div>
 
       {/* OAuth 配置 */}
       <div className="card">
-        <h2>🔑 OAuth 配置</h2>
-        <div>
+        <h2><IconKey size={16} /> OAuth 配置</h2>
+        <div className="form-group">
           <label>OAuth 前缀 (prefix)</label>
           <input type="text" value={config.oauth_prefix || ''} onChange={e => updateConfig('oauth_prefix', e.target.value)} placeholder="your-campus" />
         </div>
         <div className="form-row">
-          <div>
+          <div className="form-group">
             <label>Client ID</label>
             <input type="text" value={config.oauth_client_id || ''} onChange={e => updateConfig('oauth_client_id', e.target.value)} />
           </div>
-          <div>
+          <div className="form-group">
             <label>Client Secret</label>
             <input type="password" value={config.oauth_client_secret || ''} onChange={e => updateConfig('oauth_client_secret', e.target.value)} />
           </div>
         </div>
-        <div>
+        <div className="form-group">
           <label>Redirect URI</label>
           <input type="text" value={config.oauth_redirect_uri || ''} onChange={e => updateConfig('oauth_redirect_uri', e.target.value)} placeholder="https://..." />
         </div>
-        <button className="btn btn-primary" onClick={saveOauthConfig}>💾 保存 OAuth 配置</button>
+        <div className="form-actions">
+          <button className="btn btn-primary" onClick={saveOauthConfig}><IconKey size={14} /> 保存 OAuth</button>
+        </div>
       </div>
 
       {/* FRPC 内网穿透 */}
       <div className="card">
-        <h2>🔗 FRPC 内网穿透</h2>
-        <div>
-          <label>FRPC 可执行文件路径</label>
-          <input type="text" value={config.frpc_path || ''} onChange={e => updateConfig('frpc_path', e.target.value)} placeholder="/data/local/tmp/frpc" />
-        </div>
-        <div>
-          <label>FRPC 配置文件内容 (INI格式)</label>
+        <h2><IconLink size={16} /> FRPC 内网穿透</h2>
+        <div className="form-group">
+          <label>配置文件内容 (INI 格式)</label>
           <textarea
-            rows={6} value={config.frpc_config || ''}
+            rows={8} value={config.frpc_config || ''}
             onChange={e => updateConfig('frpc_config', e.target.value)}
-            placeholder={'[common]\nserver_addr = ...\nserver_port = ...\ntoken = ...\n\n[web]\ntype = tcp\nlocal_ip = 127.0.0.1\nlocal_port = 8080\nremote_port = 8080'}
+            placeholder={'[common]\nserver_addr = example.com\nserver_port = 7000\ntoken = your_token\n\n[web]\ntype = tcp\nlocal_ip = 127.0.0.1\nlocal_port = 8080\nremote_port = 8080'}
           />
         </div>
-        <button className="btn btn-primary" onClick={saveFrpcConfig}>💾 保存 FRPC 配置</button>
-        <div style={{ marginTop: 12, fontSize: 13, color: '#888' }}>
+        <div className="form-actions">
+          <button className="btn btn-primary" onClick={saveFrpcConfig}><IconLink size={14} /> 保存 FRPC 配置</button>
+        </div>
+        <div style={{ marginTop: 14, padding: '10px 14px', background: 'var(--bg-secondary)', borderRadius: 'var(--radius)', fontSize: 13, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center' }}>
           <span className={`status-dot ${frpcStatus.configured ? 'on' : 'off'}`} />
           {frpcStatus.configured ? 'FRPC 已配置' : 'FRPC 未配置'}
         </div>

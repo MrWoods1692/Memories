@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { apiGet, apiPost, apiDelete } from '../api';
 import { ConfirmDialog } from '../components/ConfirmDialog';
+import { IconUsers, IconPlus, IconTrash, IconUser, IconShield } from '../components/Icons';
 import { h } from './Dashboard';
 import type { User, UserRole } from '../types';
 
@@ -58,13 +59,13 @@ export function Users({ toast }: UsersProps) {
   return (
     <div>
       <div className="card">
-        <h2>➕ 添加用户</h2>
+        <h2><IconPlus size={16} /> 添加用户</h2>
         <div className="form-row">
-          <div>
-            <label>QQ号</label>
-            <input type="text" value={qq} onChange={e => setQq(e.target.value)} placeholder="输入QQ号" />
+          <div className="form-group">
+            <label>QQ 号</label>
+            <input type="text" value={qq} onChange={e => setQq(e.target.value)} placeholder="输入 QQ 号" />
           </div>
-          <div>
+          <div className="form-group">
             <label>角色</label>
             <select value={role} onChange={e => setRole(parseInt(e.target.value) as UserRole)}>
               <option value={1}>审核员</option>
@@ -72,37 +73,51 @@ export function Users({ toast }: UsersProps) {
             </select>
           </div>
         </div>
-        <button className="btn btn-primary" onClick={addUser}>添加用户</button>
+        <div className="form-actions">
+          <button className="btn btn-primary" onClick={addUser}><IconPlus size={15} /> 添加用户</button>
+        </div>
       </div>
 
       <div className="card">
-        <h2>👥 用户列表</h2>
+        <h2><IconUsers size={16} /> 用户列表 <span className="card-count">共 {users.length} 人</span></h2>
         {loading ? (
-          <div className="loading">加载中...</div>
+          <div>
+            {[1,2,3].map(i => (
+              <div key={i} className="skeleton-row" style={{gridTemplateColumns:'40px 120px 80px 60px'}}>
+                <div className="skeleton" /><div className="skeleton" />
+                <div className="skeleton" /><div className="skeleton" />
+              </div>
+            ))}
+          </div>
         ) : users.length === 0 ? (
-          <div className="empty">暂无用户</div>
+          <div className="empty">
+            <div className="empty-icon"><IconUser size={48} /></div>
+            <p>暂无用户</p>
+          </div>
         ) : (
-          <table>
-            <thead>
-              <tr><th>ID</th><th>QQ</th><th>角色</th><th>操作</th></tr>
-            </thead>
-            <tbody>
-              {users.map(u => (
-                <tr key={u.id}>
-                  <td>{u.id}</td>
-                  <td>{h(u.qq)}</td>
-                  <td>
-                    <span className={`badge ${u.role >= 2 ? 'badge-admin' : 'badge-reviewer'}`}>
-                      {u.role >= 2 ? '管理员' : '审核员'}
-                    </span>
-                  </td>
-                  <td>
-                    <button className="btn btn-danger btn-sm" onClick={() => deleteUser(u.qq)}>移除</button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="table-wrapper">
+            <table>
+              <thead>
+                <tr><th>ID</th><th>QQ</th><th>角色</th><th>操作</th></tr>
+              </thead>
+              <tbody>
+                {users.map(u => (
+                  <tr key={u.id}>
+                    <td style={{color:'var(--text-muted)',fontSize:12}}>#{u.id}</td>
+                    <td style={{fontWeight:500}}>{h(u.qq)}</td>
+                    <td>
+                      <span className={`badge ${u.role >= 2 ? 'badge-admin' : 'badge-reviewer'}`}>
+                        <IconShield size={11} /> {u.role >= 2 ? '管理员' : '审核员'}
+                      </span>
+                    </td>
+                    <td>
+                      <button className="btn btn-danger btn-xs" onClick={() => deleteUser(u.qq)}><IconTrash size={12} /> 移除</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 

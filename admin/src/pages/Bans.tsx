@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { apiGet, apiPost, apiDelete } from '../api';
 import { ConfirmDialog } from '../components/ConfirmDialog';
+import { IconBan, IconUnlock, IconAlert } from '../components/Icons';
 import { h, fmtTs } from './Dashboard';
 import type { BannedUser } from '../types';
 
@@ -59,44 +60,58 @@ export function Bans({ toast }: BansProps) {
   return (
     <div>
       <div className="card">
-        <h2>🚫 封禁用户</h2>
+        <h2><IconBan size={16} /> 封禁用户</h2>
         <div className="form-row">
-          <div>
-            <label>QQ号</label>
-            <input type="text" value={qq} onChange={e => setQq(e.target.value)} placeholder="输入QQ号" />
+          <div className="form-group">
+            <label>QQ 号</label>
+            <input type="text" value={qq} onChange={e => setQq(e.target.value)} placeholder="输入 QQ 号" />
           </div>
-          <div>
+          <div className="form-group">
             <label>封禁原因</label>
             <input type="text" value={reason} onChange={e => setReason(e.target.value)} placeholder="可选" />
           </div>
         </div>
-        <button className="btn btn-danger" onClick={banUser}>封禁用户</button>
+        <div className="form-actions">
+          <button className="btn btn-danger" onClick={banUser}><IconBan size={15} /> 封禁用户</button>
+        </div>
       </div>
 
       <div className="card">
-        <h2>📋 封禁列表</h2>
+        <h2><IconAlert size={16} /> 封禁列表 <span className="card-count">共 {bans.length} 条</span></h2>
         {loading ? (
-          <div className="loading">加载中...</div>
+          <div>
+            {[1,2,3].map(i => (
+              <div key={i} className="skeleton-row" style={{gridTemplateColumns:'120px 1fr 140px 60px'}}>
+                <div className="skeleton" /><div className="skeleton" />
+                <div className="skeleton" /><div className="skeleton" />
+              </div>
+            ))}
+          </div>
         ) : bans.length === 0 ? (
-          <div className="empty">暂无封禁</div>
+          <div className="empty">
+            <div className="empty-icon"><IconBan size={48} /></div>
+            <p>暂无封禁记录</p>
+          </div>
         ) : (
-          <table>
-            <thead>
-              <tr><th>QQ</th><th>原因</th><th>封禁时间</th><th>操作</th></tr>
-            </thead>
-            <tbody>
-              {bans.map(b => (
-                <tr key={b.qq}>
-                  <td>{h(b.qq)}</td>
-                  <td>{h(b.reason || '-')}</td>
-                  <td>{fmtTs(b.banned_at)}</td>
-                  <td>
-                    <button className="btn btn-success btn-sm" onClick={() => unbanUser(b.qq)}>解封</button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="table-wrapper">
+            <table>
+              <thead>
+                <tr><th>QQ</th><th>原因</th><th>封禁时间</th><th>操作</th></tr>
+              </thead>
+              <tbody>
+                {bans.map(b => (
+                  <tr key={b.qq}>
+                    <td style={{fontWeight:500,color:'var(--danger)'}}>{h(b.qq)}</td>
+                    <td style={{color:'var(--text-muted)'}}>{h(b.reason || '-')}</td>
+                    <td style={{whiteSpace:'nowrap'}}>{fmtTs(b.banned_at)}</td>
+                    <td>
+                      <button className="btn btn-success btn-xs" onClick={() => unbanUser(b.qq)}><IconUnlock size={12} /> 解封</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 

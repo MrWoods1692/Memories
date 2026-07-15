@@ -423,9 +423,8 @@ public class EmbeddedServer extends NanoHTTPD {
             // GET /frpc/config - 获取 frpc 配置
             if ("/frpc/config".equals(uri) && Method.GET.equals(method)) {
                 JSONObject o = new JSONObject();
-                o.put("frpc_path", db.getConfig("frpc_path"));
                 o.put("frpc_config", db.getConfig("frpc_config"));
-                o.put("configured", db.getConfig("frpc_path") != null && db.getConfig("frpc_config") != null);
+                o.put("configured", db.getConfig("frpc_config") != null && !db.getConfig("frpc_config").isEmpty());
                 return NanoHTTPD.newFixedLengthResponse(Status.OK, "application/json", o.toString());
             }
 
@@ -435,9 +434,7 @@ public class EmbeddedServer extends NanoHTTPD {
                 Map<String, String> files = new java.util.HashMap<>();
                 session.parseBody(files);
                 Map<String, String> params = session.getParms();
-                String path = params.get("frpc_path");
                 String config = params.get("frpc_config");
-                if (path != null) db.setConfig("frpc_path", path);
                 if (config != null) db.setConfig("frpc_config", config);
                 return NanoHTTPD.newFixedLengthResponse(Status.OK, "text/plain", "ok");
             }
@@ -445,9 +442,8 @@ public class EmbeddedServer extends NanoHTTPD {
             // GET /frpc/status - 获取 frpc 运行状态
             if ("/frpc/status".equals(uri) && Method.GET.equals(method)) {
                 JSONObject o = new JSONObject();
-                // 状态由 ServerService 维护，这里返回配置状态
-                o.put("configured", db.getConfig("frpc_path") != null && db.getConfig("frpc_config") != null);
-                o.put("frpc_path", db.getConfig("frpc_path"));
+                String cfg = db.getConfig("frpc_config");
+                o.put("configured", cfg != null && !cfg.isEmpty());
                 return NanoHTTPD.newFixedLengthResponse(Status.OK, "application/json", o.toString());
             }
         } catch (Exception e) {
