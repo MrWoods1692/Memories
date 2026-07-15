@@ -10,17 +10,19 @@ import android.widget.EditText;
 import android.widget.TextView;
 
 import java.io.File;
+import java.io.FileOutputStream;
+import java.io.InputStream;
 
 public class MainActivity extends android.app.Activity {
     private FrpcManager frpcManager;
     private DatabaseHelper dbHelper;
-    private EditText editFrpcPath;
     private EditText editFrpcConfig;
     private TextView textFrpcStatus;
     private TextView textServerInfo;
     private TextView textAdminUrl;
     private Handler handler = new Handler(Looper.getMainLooper());
     private boolean autoStartPending = false;
+    private String frpcBinaryPath = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -31,11 +33,13 @@ public class MainActivity extends android.app.Activity {
         dbHelper = new DatabaseHelper(this);
 
         // 绑定视图
-        editFrpcPath = findViewById(R.id.edit_frpc_path);
         editFrpcConfig = findViewById(R.id.edit_frpc_config);
         textFrpcStatus = findViewById(R.id.text_frpc_status);
         textServerInfo = findViewById(R.id.text_server_info);
         textAdminUrl = findViewById(R.id.text_admin_url);
+
+        // 从 assets 提取内置 frpc 二进制
+        frpcBinaryPath = extractFrpcBinary();
 
         // 加载已保存的 frpc 配置
         loadFrpcConfig();
@@ -47,8 +51,8 @@ public class MainActivity extends android.app.Activity {
         // 更新服务器信息
         updateServerInfo();
 
-        // 输入框变化监听：保存配置并尝试自动启动
-        TextWatcher configWatcher = new TextWatcher() {
+        // 输入框变化监听：粘贴配置后立即保存并尝试自动启动
+        editFrpcConfig.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
             @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
             @Override
@@ -57,9 +61,7 @@ public class MainActivity extends android.app.Activity {
                 saveConfigImmediately();
                 scheduleAutoStart();
             }
-        };
-        editFrpcPath.addTextChangedListener(configWatcher);
-        editFrpcConfig.addTextChangedListener(configWatcher);
+        });
 
         // 页面加载后尝试自动启动（如果已有有效配置）
         scheduleAutoStart();
@@ -78,10 +80,46 @@ public class MainActivity extends android.app.Activity {
     }
 
     private void loadFrpcConfig() {
-        String path = dbHelper.getConfig("frpc_path");
         String config = dbHelper.getConfig("frpc_config");
-        if (path != null) editFrpcPath.setText(path);
         if (config != null) editFrpcConfig.setText(config);
+    }
+
+    /**
+     * 从 assets 提取内置 frpc 二进制到内部存储，首次提取后缓存复用
+     * @return frpc 可执行文件路径，提取失败返回 null
+     */
+    private String extractFrpcBinary() {
+        File frpcFile = new File(getFilesDir(), "frpc");
+
+        // 如果已提取过且文件存在，直接复用
+        if (frpcFile.exists() && frpcFile.canExecute()) {
+            return frpcFile.getAbsolutePath();
+        }
+
+        // 从 assets 提取
+        try {
+            InputStream in = getAssets().open("frpc");
+            FileOutputStream out = new FileOutputStream(frpcFile);
+            byte[] buf = new byte[8192];
+            int len;
+            while ((len = in.read(buf)) > 0) {
+                out.write(buf, 0, len);
+            }
+            out.close();
+            in.close();
+
+            // 设置可执行权限
+            frpcFile.setExecutable(true);
+
+            return frpcFile.getAbsolutePath();
+        } catch (Exception e) {
+            // assets 中没有 frpc 文件，降级到数据库中的自定义路径
+            String savedPath = dbHelper.getConfig("frpc_path");
+            if (savedPath != null && !savedPath.isEmpty()) {
+                return savedPath;
+            }
+            return null;
+        }
     }
 
     /**
@@ -106,28 +144,26 @@ public class MainActivity extends android.app.Activity {
      * 立即将 frpc 配置持久化到数据库（永久储存），不等待启动校验
      */
     private void saveConfigImmediately() {
-        String path = editFrpcPath.getText().toString().trim();
         String config = editFrpcConfig.getText().toString().trim();
-
-        if (!path.isEmpty()) {
-            dbHelper.setConfig("frpc_path", path);
-        }
         if (!config.isEmpty()) {
             dbHelper.setConfig("frpc_config", config);
         }
     }
 
     private void tryAutoStartFrpc() {
-        String path = editFrpcPath.getText().toString().trim();
         String config = editFrpcConfig.getText().toString().trim();
 
-        // 配置不完整则不启动
-        if (path.isEmpty() || config.isEmpty()) {
+        // frpc 二进制未就绪或配置为空则不启动
+        if (frpcBinaryPath == null) {
+            textFrpcStatus.setText("FRPC: 未找到 frpc 可执行文件，请在 assets 中放置 frpc");
+            return;
+        }
+        if (config.isEmpty()) {
             if (frpcManager.isRunning()) {
                 frpcManager.stopFrpc();
-                textFrpcStatus.setText("FRPC: 配置不完整，已停止");
+                textFrpcStatus.setText("FRPC: 配置为空，已停止");
             } else {
-                textFrpcStatus.setText("FRPC: 等待配置");
+                textFrpcStatus.setText("FRPC: 等待粘贴配置");
             }
             return;
         }
@@ -149,19 +185,15 @@ public class MainActivity extends android.app.Activity {
             return;
         }
 
-        // 保存配置到数据库
-        dbHelper.setConfig("frpc_path", path);
-        dbHelper.setConfig("frpc_config", config);
-
         // 如果已经在运行且配置没变，不重复启动
         if (frpcManager.isRunning()) {
             textFrpcStatus.setText("FRPC: 运行中 ✓ (端口 " + serverPort + ")");
             return;
         }
 
-        // 启动 frpc
+        // 启动 frpc（使用内置二进制路径）
         File workDir = getFilesDir();
-        boolean ok = frpcManager.startFrpc(config, path, workDir);
+        boolean ok = frpcManager.startFrpc(config, frpcBinaryPath, workDir);
         if (ok) {
             textFrpcStatus.setText("FRPC: 启动成功 ✓ (端口 " + serverPort + ")");
         } else {

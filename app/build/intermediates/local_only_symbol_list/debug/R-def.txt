@@ -1,7 +1,6 @@
 R_DEF: Internal format may change without notice
 local
 id edit_frpc_config
-id edit_frpc_path
 id text_admin_url
 id text_frpc_status
 id text_server_info

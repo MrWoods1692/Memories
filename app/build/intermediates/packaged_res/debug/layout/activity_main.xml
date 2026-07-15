@@ -31,23 +31,10 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="frpc 可执行文件路径"
-            android:textSize="14sp" />
-
-        <EditText
-            android:id="@+id/edit_frpc_path"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="/data/local/tmp/frpc"
-            android:inputType="text"
-            android:singleLine="true" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="frpc.ini 配置内容"
-            android:textSize="14sp"
-            android:layout_marginTop="8dp" />
+            android:text="粘贴 frpc.ini 配置内容（frpc 二进制已内置）"
+            android:textSize="12sp"
+            android:textColor="#888"
+            android:layout_marginBottom="4dp" />
 
         <EditText
             android:id="@+id/edit_frpc_config"
@@ -56,7 +43,10 @@
             android:hint="[common]\nserver_addr = your-server.com\nserver_port = 7000\ntoken = your-token\n\n[memories-api]\ntype = tcp\nlocal_ip = 127.0.0.1\nlocal_port = 8080\nremote_port = 8080"
             android:inputType="textMultiLine"
             android:gravity="top"
-            android:scrollbars="vertical" />
+            android:scrollbars="vertical"
+            android:background="#12122a"
+            android:textColor="#e0e0e0"
+            android:padding="10dp" />
 
         <TextView
             android:id="@+id/text_frpc_status"
