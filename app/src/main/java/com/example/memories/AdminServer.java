@@ -3,10 +3,10 @@ package com.example.memories;
 import android.content.Context;
 import android.util.Log;
 
-import org.nanohttpd.protocols.http.IHTTPSession;
-import org.nanohttpd.protocols.http.NanoHTTPD;
-import org.nanohttpd.protocols.http.response.Response;
-import org.nanohttpd.protocols.http.response.Status;
+import fi.iki.elonen.NanoHTTPD;
+import fi.iki.elonen.NanoHTTPD.IHTTPSession;
+import fi.iki.elonen.NanoHTTPD.Response;
+import fi.iki.elonen.NanoHTTPD.Response.Status;
 
 import java.net.InetAddress;
 
@@ -31,7 +31,7 @@ public class AdminServer extends NanoHTTPD {
 
         // 仅局域网可访问
         if (!isLanRequest(session)) {
-            return Response.newFixedLengthResponse(Status.FORBIDDEN, "text/plain", "仅局域网可访问管理面板");
+            return NanoHTTPD.newFixedLengthResponse(Status.FORBIDDEN, "text/plain", "仅局域网可访问管理面板");
         }
 
         Log.i(TAG, "Admin request: " + uri);
@@ -40,7 +40,7 @@ public class AdminServer extends NanoHTTPD {
             return serveAdminPage();
         }
 
-        return Response.newFixedLengthResponse(Status.NOT_FOUND, "text/plain", "Not Found");
+        return NanoHTTPD.newFixedLengthResponse(Status.NOT_FOUND, "text/plain", "Not Found");
     }
 
     private boolean isLanRequest(IHTTPSession session) {
@@ -73,7 +73,7 @@ public class AdminServer extends NanoHTTPD {
     private Response serveAdminPage() {
         String apiBase = "http://" + EmbeddedServer.getLanIpAddress() + ":" + apiPort;
         String html = getAdminPageHtml(apiBase);
-        return Response.newFixedLengthResponse(Status.OK, "text/html; charset=utf-8", html);
+        return NanoHTTPD.newFixedLengthResponse(Status.OK, "text/html; charset=utf-8", html);
     }
 
     private String getAdminPageHtml(String apiBase) {

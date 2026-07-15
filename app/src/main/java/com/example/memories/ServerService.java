@@ -9,9 +9,6 @@ import android.os.Build;
 import android.os.IBinder;
 import android.util.Log;
 
-import androidx.annotation.Nullable;
-import androidx.core.app.NotificationCompat;
-
 public class ServerService extends Service {
     private EmbeddedServer server;
     private AdminServer adminServer;
@@ -55,7 +52,7 @@ public class ServerService extends Service {
         }
 
         String lanIp = EmbeddedServer.getLanIpAddress();
-        Notification n = new NotificationCompat.Builder(this, CHANNEL_ID)
+        Notification n = new Notification.Builder(this, CHANNEL_ID)
                 .setContentTitle("Memories Server")
                 .setContentText("API:" + apiPort + " | 管理:" + adminPort + " | " + lanIp)
                 .setSmallIcon(android.R.drawable.ic_menu_upload)
@@ -76,7 +73,6 @@ public class ServerService extends Service {
         if (adminServer != null) adminServer.stop();
     }
 
-    @Nullable
     @Override
     public IBinder onBind(Intent intent) {
         return null;

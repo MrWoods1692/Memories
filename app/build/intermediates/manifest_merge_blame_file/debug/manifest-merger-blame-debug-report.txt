@@ -1,0 +1,77 @@
+1<?xml version="1.0" encoding="utf-8"?>
+2<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+3    package="com.example.memories"
+4    android:versionCode="1"
+5    android:versionName="0.1" >
+6
+7    <uses-sdk
+8        android:minSdkVersion="29"
+9        android:targetSdkVersion="35" />
+10
+11    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+11-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:3:5-81
+11-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:3:22-78
+12    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+12-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:4:5-77
+12-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:4:22-74
+13    <uses-permission android:name="android.permission.INTERNET" />
+13-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:5:5-67
+13-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:5:22-64
+14    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+14-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:6:5-79
+14-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:6:22-76
+15    <uses-permission android:name="android.permission.WAKE_LOCK" />
+15-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:7:5-68
+15-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:7:22-65
+16
+17    <application
+17-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:9:5-31:19
+18        android:allowBackup="true"
+18-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:10:9-35
+19        android:debuggable="true"
+20        android:extractNativeLibs="false"
+21        android:label="Memories"
+21-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:11:9-33
+22        android:supportsRtl="true" >
+22-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:12:9-35
+23        <activity
+23-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:14:9-19:20
+24            android:name="com.example.memories.MainActivity"
+24-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:14:19-67
+25            android:exported="true" >
+25-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:14:68-91
+26            <intent-filter>
+26-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:15:13-18:29
+27                <action android:name="android.intent.action.MAIN" />
+27-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:16:17-69
+27-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:16:25-66
+28
+29                <category android:name="android.intent.category.LAUNCHER" />
+29-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:17:17-77
+29-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:17:27-74
+30            </intent-filter>
+31        </activity>
+32
+33        <service
+33-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:21:9-23:40
+34            android:name="com.example.memories.ServerService"
+34-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:22:13-62
+35            android:exported="false" />
+35-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:23:13-37
+36
+37        <receiver
+37-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:25:9-29:20
+38            android:name="com.example.memories.BootReceiver"
+38-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:25:19-67
+39            android:exported="true" >
+39-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:25:68-91
+40            <intent-filter>
+40-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:26:13-28:29
+41                <action android:name="android.intent.action.BOOT_COMPLETED" />
+41-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:27:17-79
+41-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:27:25-76
+42            </intent-filter>
+43        </receiver>
+44    </application>
+45
+46</manifest>

@@ -3,10 +3,10 @@ package com.example.memories;
 import android.content.Context;
 import android.util.Log;
 
-import org.nanohttpd.protocols.http.IHTTPSession;
-import org.nanohttpd.protocols.http.NanoHTTPD;
-import org.nanohttpd.protocols.http.response.Response;
-import org.nanohttpd.protocols.http.response.Status;
+import fi.iki.elonen.NanoHTTPD;
+import fi.iki.elonen.NanoHTTPD.IHTTPSession;
+import fi.iki.elonen.NanoHTTPD.Response;
+import fi.iki.elonen.NanoHTTPD.Response.Status;
 
 import java.io.BufferedReader;
 import java.io.InputStream;
@@ -16,6 +16,8 @@ import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.util.Enumeration;
 import java.util.Map;
+
+import org.json.JSONObject;
 
 public class EmbeddedServer extends NanoHTTPD {
     private static final String TAG = "EmbeddedServer";
@@ -92,7 +94,7 @@ public class EmbeddedServer extends NanoHTTPD {
     public Response serve(IHTTPSession session) {
         // CORS 预检请求
         if (Method.OPTIONS.equals(session.getMethod())) {
-            Response r = Response.newFixedLengthResponse(Status.OK, "text/plain", "");
+            Response r = NanoHTTPD.newFixedLengthResponse(Status.OK, "text/plain", "");
             addCorsHeaders(r);
             return r;
         }
@@ -107,7 +109,7 @@ public class EmbeddedServer extends NanoHTTPD {
 
         try {
             if ("/health".equals(uri)) {
-                return Response.newFixedLengthResponse(Status.OK, "text/plain", "OK");
+                return NanoHTTPD.newFixedLengthResponse(Status.OK, "text/plain", "OK");
             }
 
             if (uri.startsWith("/images")) {
@@ -151,10 +153,10 @@ public class EmbeddedServer extends NanoHTTPD {
                 return handleOauth(session);
             }
 
-            return Response.newFixedLengthResponse(Status.NOT_FOUND, "text/plain", "Not Found");
+            return NanoHTTPD.newFixedLengthResponse(Status.NOT_FOUND, "text/plain", "Not Found");
         } catch (Exception e) {
             Log.e(TAG, "Serve error", e);
-            return Response.newFixedLengthResponse(Status.INTERNAL_ERROR, "text/plain", "Error");
+            return NanoHTTPD.newFixedLengthResponse(Status.INTERNAL_ERROR, "text/plain", "Error");
         }
     }
 
@@ -167,8 +169,6 @@ public class EmbeddedServer extends NanoHTTPD {
         response.addHeader("Access-Control-Allow-Headers", "Content-Type, x-user-qq, Authorization");
         response.addHeader("Access-Control-Max-Age", "86400");
     }
-        }
-    }
 
     private Response handleImages(IHTTPSession session) {
         String uri = session.getUri();
@@ -178,7 +178,7 @@ public class EmbeddedServer extends NanoHTTPD {
         try {
             if ("/images".equals(uri) && Method.GET.equals(method)) {
                 String json = db.listImagesJson();
-                return Response.newFixedLengthResponse(Status.OK, "application/json", json);
+                return NanoHTTPD.newFixedLengthResponse(Status.OK, "application/json", json);
             }
 
             if ("/images".equals(uri) && Method.POST.equals(method)) {
@@ -187,10 +187,10 @@ public class EmbeddedServer extends NanoHTTPD {
                 Map<String, String> params = session.getParms();
                 String url = params.get("url");
                 if (url == null || url.isEmpty()) {
-                    return Response.newFixedLengthResponse(Status.BAD_REQUEST, "text/plain", "missing url");
+                    return NanoHTTPD.newFixedLengthResponse(Status.BAD_REQUEST, "text/plain", "missing url");
                 }
                 long id = db.addImage(url);
-                return Response.newFixedLengthResponse(Status.OK, "application/json", "{\"id\":"+id+"}");
+                return NanoHTTPD.newFixedLengthResponse(Status.OK, "application/json", "{\"id\":"+id+"}");
             }
 
             // /images/{id}
@@ -199,35 +199,35 @@ public class EmbeddedServer extends NanoHTTPD {
                 String idStr = parts[2];
                 long id = Long.parseLong(idStr);
                 if (Method.DELETE.equals(method)) {
-                    if (!isAdmin(session, db)) return Response.newFixedLengthResponse(Status.UNAUTHORIZED, "text/plain", "admin required");
+                    if (!isAdmin(session, db)) return NanoHTTPD.newFixedLengthResponse(Status.UNAUTHORIZED, "text/plain", "admin required");
                     boolean ok = db.deleteImage(id);
-                    return Response.newFixedLengthResponse(ok?Status.OK:Status.NOT_FOUND, "text/plain", ok?"deleted":"not found");
+                    return NanoHTTPD.newFixedLengthResponse(ok?Status.OK:Status.NOT_FOUND, "text/plain", ok?"deleted":"not found");
                 }
 
                 if (parts.length >= 4 && "audit".equals(parts[3]) && Method.POST.equals(method)) {
                     String qq = session.getHeaders().get("x-user-qq");
                     int role = db.getUserRole(qq);
-                    if (!isLanRequest(session) && role < 1) return Response.newFixedLengthResponse(Status.UNAUTHORIZED, "text/plain", "reviewer required");
+                    if (!isLanRequest(session) && role < 1) return NanoHTTPD.newFixedLengthResponse(Status.UNAUTHORIZED, "text/plain", "reviewer required");
                     Map<String, String> files = new java.util.HashMap<>();
                     session.parseBody(files);
                     Map<String, String> params = session.getParms();
                     String statusStr = params.get("status");
                     int status = Integer.parseInt(statusStr == null ? "0" : statusStr);
                     boolean ok = db.updateImageStatus(id, status);
-                    return Response.newFixedLengthResponse(ok?Status.OK:Status.NOT_FOUND, "text/plain", ok?"updated":"not found");
+                    return NanoHTTPD.newFixedLengthResponse(ok?Status.OK:Status.NOT_FOUND, "text/plain", ok?"updated":"not found");
                 }
             }
         } catch (Exception e) {
             Log.e(TAG, "handleImages error", e);
-            return Response.newFixedLengthResponse(Status.INTERNAL_ERROR, "text/plain", "error");
+            return NanoHTTPD.newFixedLengthResponse(Status.INTERNAL_ERROR, "text/plain", "error");
         }
 
-        return Response.newFixedLengthResponse(Status.NOT_IMPLEMENTED, "text/plain", "Not Implemented");
+        return NanoHTTPD.newFixedLengthResponse(Status.NOT_IMPLEMENTED, "text/plain", "Not Implemented");
     }
 
     private Response handleBackup(IHTTPSession session) {
         DatabaseHelper db = new DatabaseHelper(context);
-        if (!isAdmin(session, db)) return Response.newFixedLengthResponse(Status.UNAUTHORIZED, "text/plain", "admin required");
+        if (!isAdmin(session, db)) return NanoHTTPD.newFixedLengthResponse(Status.UNAUTHORIZED, "text/plain", "admin required");
 
         try {
             String cfg = db.getConfigJson();
@@ -235,40 +235,40 @@ public class EmbeddedServer extends NanoHTTPD {
             String webdavUrl = o.optString("webdav_url", null);
             String webdavUser = o.optString("webdav_user", null);
             String webdavPass = o.optString("webdav_pass", null);
-            if (webdavUrl == null || webdavUrl.isEmpty()) return Response.newFixedLengthResponse(Status.BAD_REQUEST, "text/plain", "webdav not configured");
+            if (webdavUrl == null || webdavUrl.isEmpty()) return NanoHTTPD.newFixedLengthResponse(Status.BAD_REQUEST, "text/plain", "webdav not configured");
 
             String dbPath = db.getDatabasePathString();
             java.io.File f = new java.io.File(dbPath);
             String remoteName = "memories_backup_"+System.currentTimeMillis()+".db";
             boolean ok = WebDavBackup.uploadFile(webdavUrl, webdavUser, webdavPass, f, remoteName);
-            return Response.newFixedLengthResponse(ok?Status.OK:Status.INTERNAL_ERROR, "text/plain", ok?"uploaded":"upload failed");
+            return NanoHTTPD.newFixedLengthResponse(ok?Status.OK:Status.INTERNAL_ERROR, "text/plain", ok?"uploaded":"upload failed");
         } catch (Exception e) {
             Log.e(TAG, "backup error", e);
-            return Response.newFixedLengthResponse(Status.INTERNAL_ERROR, "text/plain", "error");
+            return NanoHTTPD.newFixedLengthResponse(Status.INTERNAL_ERROR, "text/plain", "error");
         }
     }
 
     private Response handleGetConfig(IHTTPSession session) {
         DatabaseHelper db = new DatabaseHelper(context);
         String json = db.getConfigJson();
-        return Response.newFixedLengthResponse(Status.OK, "application/json", json);
+        return NanoHTTPD.newFixedLengthResponse(Status.OK, "application/json", json);
     }
 
     private Response handleSetConfig(IHTTPSession session) {
         DatabaseHelper db = new DatabaseHelper(context);
-        if (!isAdmin(session, db)) return Response.newFixedLengthResponse(Status.UNAUTHORIZED, "text/plain", "admin required");
+        if (!isAdmin(session, db)) return NanoHTTPD.newFixedLengthResponse(Status.UNAUTHORIZED, "text/plain", "admin required");
         try {
             Map<String,String> files = new java.util.HashMap<>();
             session.parseBody(files);
             Map<String,String> params = session.getParms();
             String k = params.get("k");
             String v = params.get("v");
-            if (k==null) return Response.newFixedLengthResponse(Status.BAD_REQUEST, "text/plain", "missing k");
+            if (k==null) return NanoHTTPD.newFixedLengthResponse(Status.BAD_REQUEST, "text/plain", "missing k");
             db.setConfig(k, v==null?"":v);
-            return Response.newFixedLengthResponse(Status.OK, "text/plain", "ok");
+            return NanoHTTPD.newFixedLengthResponse(Status.OK, "text/plain", "ok");
         } catch (Exception e) {
             Log.e(TAG, "setConfig error", e);
-            return Response.newFixedLengthResponse(Status.INTERNAL_ERROR, "text/plain", "error");
+            return NanoHTTPD.newFixedLengthResponse(Status.INTERNAL_ERROR, "text/plain", "error");
         }
     }
 
@@ -279,10 +279,10 @@ public class EmbeddedServer extends NanoHTTPD {
             o.put("db_path", db.getDatabasePathString());
             o.put("image_count", db.getImageCount());
             o.put("uptime", System.currentTimeMillis());
-            return Response.newFixedLengthResponse(Status.OK, "application/json", o.toString());
+            return NanoHTTPD.newFixedLengthResponse(Status.OK, "application/json", o.toString());
         } catch (Exception e) {
             Log.e(TAG, "status error", e);
-            return Response.newFixedLengthResponse(Status.INTERNAL_ERROR, "text/plain", "error");
+            return NanoHTTPD.newFixedLengthResponse(Status.INTERNAL_ERROR, "text/plain", "error");
         }
     }
 
@@ -291,13 +291,13 @@ public class EmbeddedServer extends NanoHTTPD {
         String uri = session.getUri();
         Method method = session.getMethod();
 
-        if (!isAdmin(session, db)) return Response.newFixedLengthResponse(Status.UNAUTHORIZED, "text/plain", "admin required");
+        if (!isAdmin(session, db)) return NanoHTTPD.newFixedLengthResponse(Status.UNAUTHORIZED, "text/plain", "admin required");
 
         try {
             // GET /users - list all users
             if ("/users".equals(uri) && Method.GET.equals(method)) {
                 String json = db.listUsersJson();
-                return Response.newFixedLengthResponse(Status.OK, "application/json", json);
+                return NanoHTTPD.newFixedLengthResponse(Status.OK, "application/json", json);
             }
 
             // POST /users - add reviewer (role=1) or admin (role=2)
@@ -308,17 +308,17 @@ public class EmbeddedServer extends NanoHTTPD {
                 String userQq = params.get("qq");
                 String roleStr = params.get("role");
                 if (userQq == null || userQq.isEmpty()) {
-                    return Response.newFixedLengthResponse(Status.BAD_REQUEST, "text/plain", "missing qq");
+                    return NanoHTTPD.newFixedLengthResponse(Status.BAD_REQUEST, "text/plain", "missing qq");
                 }
                 int newRole = 1; // default reviewer
                 if (roleStr != null) {
                     try { newRole = Integer.parseInt(roleStr); } catch (NumberFormatException ignored) {}
                 }
                 if (newRole < 1 || newRole > 2) {
-                    return Response.newFixedLengthResponse(Status.BAD_REQUEST, "text/plain", "role must be 1 (reviewer) or 2 (admin)");
+                    return NanoHTTPD.newFixedLengthResponse(Status.BAD_REQUEST, "text/plain", "role must be 1 (reviewer) or 2 (admin)");
                 }
                 db.addUser(userQq, newRole);
-                return Response.newFixedLengthResponse(Status.OK, "application/json", "{\"qq\":\""+userQq+"\",\"role\":"+newRole+"}");
+                return NanoHTTPD.newFixedLengthResponse(Status.OK, "application/json", "{\"qq\":\""+userQq+"\",\"role\":"+newRole+"}");
             }
 
             // DELETE /users/{qq} - remove a user
@@ -326,14 +326,14 @@ public class EmbeddedServer extends NanoHTTPD {
             if (parts.length >= 3 && Method.DELETE.equals(method)) {
                 String targetQq = parts[2];
                 boolean ok = db.deleteUser(targetQq);
-                return Response.newFixedLengthResponse(ok ? Status.OK : Status.NOT_FOUND, "text/plain", ok ? "deleted" : "not found");
+                return NanoHTTPD.newFixedLengthResponse(ok ? Status.OK : Status.NOT_FOUND, "text/plain", ok ? "deleted" : "not found");
             }
         } catch (Exception e) {
             Log.e(TAG, "handleUsers error", e);
-            return Response.newFixedLengthResponse(Status.INTERNAL_ERROR, "text/plain", "error");
+            return NanoHTTPD.newFixedLengthResponse(Status.INTERNAL_ERROR, "text/plain", "error");
         }
 
-        return Response.newFixedLengthResponse(Status.NOT_IMPLEMENTED, "text/plain", "Not Implemented");
+        return NanoHTTPD.newFixedLengthResponse(Status.NOT_IMPLEMENTED, "text/plain", "Not Implemented");
     }
 
     // --- 封禁用户管理 ---
@@ -343,13 +343,13 @@ public class EmbeddedServer extends NanoHTTPD {
         String uri = session.getUri();
         Method method = session.getMethod();
 
-        if (!isAdmin(session, db)) return Response.newFixedLengthResponse(Status.UNAUTHORIZED, "text/plain", "admin required");
+        if (!isAdmin(session, db)) return NanoHTTPD.newFixedLengthResponse(Status.UNAUTHORIZED, "text/plain", "admin required");
 
         try {
             // GET /bans - 列出所有封禁用户
             if ("/bans".equals(uri) && Method.GET.equals(method)) {
                 String json = db.listBannedUsersJson();
-                return Response.newFixedLengthResponse(Status.OK, "application/json", json);
+                return NanoHTTPD.newFixedLengthResponse(Status.OK, "application/json", json);
             }
 
             // POST /bans - 封禁用户 (qq, reason)
@@ -360,10 +360,10 @@ public class EmbeddedServer extends NanoHTTPD {
                 String targetQq = params.get("qq");
                 String reason = params.get("reason");
                 if (targetQq == null || targetQq.isEmpty()) {
-                    return Response.newFixedLengthResponse(Status.BAD_REQUEST, "text/plain", "missing qq");
+                    return NanoHTTPD.newFixedLengthResponse(Status.BAD_REQUEST, "text/plain", "missing qq");
                 }
                 db.banUser(targetQq, reason);
-                return Response.newFixedLengthResponse(Status.OK, "application/json", "{\"qq\":\""+targetQq+"\",\"banned\":true}");
+                return NanoHTTPD.newFixedLengthResponse(Status.OK, "application/json", "{\"qq\":\""+targetQq+"\",\"banned\":true}");
             }
 
             // DELETE /bans/{qq} - 解封用户
@@ -371,14 +371,14 @@ public class EmbeddedServer extends NanoHTTPD {
             if (parts.length >= 3 && Method.DELETE.equals(method)) {
                 String targetQq = parts[2];
                 boolean ok = db.unbanUser(targetQq);
-                return Response.newFixedLengthResponse(ok ? Status.OK : Status.NOT_FOUND, "text/plain", ok ? "unbanned" : "not found");
+                return NanoHTTPD.newFixedLengthResponse(ok ? Status.OK : Status.NOT_FOUND, "text/plain", ok ? "unbanned" : "not found");
             }
         } catch (Exception e) {
             Log.e(TAG, "handleBans error", e);
-            return Response.newFixedLengthResponse(Status.INTERNAL_ERROR, "text/plain", "error");
+            return NanoHTTPD.newFixedLengthResponse(Status.INTERNAL_ERROR, "text/plain", "error");
         }
 
-        return Response.newFixedLengthResponse(Status.NOT_IMPLEMENTED, "text/plain", "Not Implemented");
+        return NanoHTTPD.newFixedLengthResponse(Status.NOT_IMPLEMENTED, "text/plain", "Not Implemented");
     }
 
     // --- WebDAV 备份配置获取 ---
@@ -390,10 +390,10 @@ public class EmbeddedServer extends NanoHTTPD {
             o.put("webdav_url", db.getConfig("webdav_url"));
             o.put("webdav_user", db.getConfig("webdav_user"));
             o.put("configured", db.getConfig("webdav_url") != null);
-            return Response.newFixedLengthResponse(Status.OK, "application/json", o.toString());
+            return NanoHTTPD.newFixedLengthResponse(Status.OK, "application/json", o.toString());
         } catch (Exception e) {
             Log.e(TAG, "webdavConfig error", e);
-            return Response.newFixedLengthResponse(Status.INTERNAL_ERROR, "text/plain", "error");
+            return NanoHTTPD.newFixedLengthResponse(Status.INTERNAL_ERROR, "text/plain", "error");
         }
     }
 
@@ -405,10 +405,10 @@ public class EmbeddedServer extends NanoHTTPD {
             JSONObject o = new JSONObject();
             o.put("platform_name", db.getConfig("platform_name"));
             o.put("platform_logo", db.getConfig("platform_logo"));
-            return Response.newFixedLengthResponse(Status.OK, "application/json", o.toString());
+            return NanoHTTPD.newFixedLengthResponse(Status.OK, "application/json", o.toString());
         } catch (Exception e) {
             Log.e(TAG, "platform error", e);
-            return Response.newFixedLengthResponse(Status.INTERNAL_ERROR, "text/plain", "error");
+            return NanoHTTPD.newFixedLengthResponse(Status.INTERNAL_ERROR, "text/plain", "error");
         }
     }
 
@@ -426,12 +426,12 @@ public class EmbeddedServer extends NanoHTTPD {
                 o.put("frpc_path", db.getConfig("frpc_path"));
                 o.put("frpc_config", db.getConfig("frpc_config"));
                 o.put("configured", db.getConfig("frpc_path") != null && db.getConfig("frpc_config") != null);
-                return Response.newFixedLengthResponse(Status.OK, "application/json", o.toString());
+                return NanoHTTPD.newFixedLengthResponse(Status.OK, "application/json", o.toString());
             }
 
             // POST /frpc/config - 设置 frpc 配置 (管理员)
             if ("/frpc/config".equals(uri) && Method.POST.equals(method)) {
-                if (!isAdmin(session, db)) return Response.newFixedLengthResponse(Status.UNAUTHORIZED, "text/plain", "admin required");
+                if (!isAdmin(session, db)) return NanoHTTPD.newFixedLengthResponse(Status.UNAUTHORIZED, "text/plain", "admin required");
                 Map<String, String> files = new java.util.HashMap<>();
                 session.parseBody(files);
                 Map<String, String> params = session.getParms();
@@ -439,7 +439,7 @@ public class EmbeddedServer extends NanoHTTPD {
                 String config = params.get("frpc_config");
                 if (path != null) db.setConfig("frpc_path", path);
                 if (config != null) db.setConfig("frpc_config", config);
-                return Response.newFixedLengthResponse(Status.OK, "text/plain", "ok");
+                return NanoHTTPD.newFixedLengthResponse(Status.OK, "text/plain", "ok");
             }
 
             // GET /frpc/status - 获取 frpc 运行状态
@@ -448,14 +448,14 @@ public class EmbeddedServer extends NanoHTTPD {
                 // 状态由 ServerService 维护，这里返回配置状态
                 o.put("configured", db.getConfig("frpc_path") != null && db.getConfig("frpc_config") != null);
                 o.put("frpc_path", db.getConfig("frpc_path"));
-                return Response.newFixedLengthResponse(Status.OK, "application/json", o.toString());
+                return NanoHTTPD.newFixedLengthResponse(Status.OK, "application/json", o.toString());
             }
         } catch (Exception e) {
             Log.e(TAG, "handleFrpc error", e);
-            return Response.newFixedLengthResponse(Status.INTERNAL_ERROR, "text/plain", "error");
+            return NanoHTTPD.newFixedLengthResponse(Status.INTERNAL_ERROR, "text/plain", "error");
         }
 
-        return Response.newFixedLengthResponse(Status.NOT_IMPLEMENTED, "text/plain", "Not Implemented");
+        return NanoHTTPD.newFixedLengthResponse(Status.NOT_IMPLEMENTED, "text/plain", "Not Implemented");
     }
 
     private Response handleOauth(IHTTPSession session) {
@@ -468,13 +468,13 @@ public class EmbeddedServer extends NanoHTTPD {
             if ("/oauth/config".equals(uri) && Method.GET.equals(method)) {
                 JSONObject o = new JSONObject();
                 o.put("configured", db.getConfig("oauth_prefix") != null);
-                return Response.newFixedLengthResponse(Status.OK, "application/json", o.toString());
+                return NanoHTTPD.newFixedLengthResponse(Status.OK, "application/json", o.toString());
             }
 
             // POST /oauth/config - 管理员配置 OAuth 参数
             if ("/oauth/config".equals(uri) && Method.POST.equals(method)) {
                 if (!isAdmin(session, db))
-                    return Response.newFixedLengthResponse(Status.UNAUTHORIZED, "text/plain", "admin required");
+                    return NanoHTTPD.newFixedLengthResponse(Status.UNAUTHORIZED, "text/plain", "admin required");
                 Map<String, String> files = new java.util.HashMap<>();
                 session.parseBody(files);
                 Map<String, String> params = session.getParms();
@@ -486,7 +486,7 @@ public class EmbeddedServer extends NanoHTTPD {
                 if (clientId != null) db.setConfig("oauth_client_id", clientId);
                 if (clientSecret != null) db.setConfig("oauth_client_secret", clientSecret);
                 if (redirectUri != null) db.setConfig("oauth_redirect_uri", redirectUri);
-                return Response.newFixedLengthResponse(Status.OK, "text/plain", "ok");
+                return NanoHTTPD.newFixedLengthResponse(Status.OK, "text/plain", "ok");
             }
 
             // GET /oauth/start - 发起授权，返回跳转 URL
@@ -495,13 +495,13 @@ public class EmbeddedServer extends NanoHTTPD {
                 String clientId = db.getConfig("oauth_client_id");
                 String redirectUri = db.getConfig("oauth_redirect_uri");
                 if (prefix == null || clientId == null || redirectUri == null) {
-                    return Response.newFixedLengthResponse(Status.BAD_REQUEST, "text/plain", "oauth not configured");
+                    return NanoHTTPD.newFixedLengthResponse(Status.BAD_REQUEST, "text/plain", "oauth not configured");
                 }
                 String scope = "profile tenant";
                 String authUrl = OAuthHelper.buildAuthUrl(prefix, clientId, redirectUri, scope);
                 JSONObject o = new JSONObject();
                 o.put("url", authUrl);
-                return Response.newFixedLengthResponse(Status.OK, "application/json", o.toString());
+                return NanoHTTPD.newFixedLengthResponse(Status.OK, "application/json", o.toString());
             }
 
             // GET /oauth/callback?code=...&state=... - 回调处理
@@ -510,7 +510,7 @@ public class EmbeddedServer extends NanoHTTPD {
                 String code = params.get("code");
                 String state = params.get("state");
                 if (code == null || code.isEmpty()) {
-                    return Response.newFixedLengthResponse(Status.BAD_REQUEST, "text/plain", "missing code");
+                    return NanoHTTPD.newFixedLengthResponse(Status.BAD_REQUEST, "text/plain", "missing code");
                 }
 
                 String prefix = db.getConfig("oauth_prefix");
@@ -518,25 +518,25 @@ public class EmbeddedServer extends NanoHTTPD {
                 String clientSecret = db.getConfig("oauth_client_secret");
                 String redirectUri = db.getConfig("oauth_redirect_uri");
                 if (prefix == null || clientId == null || clientSecret == null || redirectUri == null) {
-                    return Response.newFixedLengthResponse(Status.BAD_REQUEST, "text/plain", "oauth not configured");
+                    return NanoHTTPD.newFixedLengthResponse(Status.BAD_REQUEST, "text/plain", "oauth not configured");
                 }
 
                 // 换取 token
                 JSONObject tokenResp = OAuthHelper.exchangeToken(prefix, clientId, clientSecret, code, redirectUri, state);
                 if (tokenResp == null) {
-                    return Response.newFixedLengthResponse(Status.UNAUTHORIZED, "text/plain", "token exchange failed");
+                    return NanoHTTPD.newFixedLengthResponse(Status.UNAUTHORIZED, "text/plain", "token exchange failed");
                 }
 
                 String accessToken = tokenResp.optString("access_token");
                 String refreshToken = tokenResp.optString("refresh_token");
                 if (accessToken == null || accessToken.isEmpty()) {
-                    return Response.newFixedLengthResponse(Status.UNAUTHORIZED, "text/plain", "no access_token");
+                    return NanoHTTPD.newFixedLengthResponse(Status.UNAUTHORIZED, "text/plain", "no access_token");
                 }
 
                 // 获取用户信息
                 JSONObject userInfo = OAuthHelper.getUserInfo(prefix, accessToken);
                 if (userInfo == null) {
-                    return Response.newFixedLengthResponse(Status.UNAUTHORIZED, "text/plain", "userinfo failed");
+                    return NanoHTTPD.newFixedLengthResponse(Status.UNAUTHORIZED, "text/plain", "userinfo failed");
                 }
 
                 String userQq = userInfo.optString("name"); // QQ 号
@@ -556,7 +556,7 @@ public class EmbeddedServer extends NanoHTTPD {
                 result.put("is_reviewer", role >= 1);
                 result.put("is_admin", role >= 2);
 
-                return Response.newFixedLengthResponse(Status.OK, "application/json", result.toString());
+                return NanoHTTPD.newFixedLengthResponse(Status.OK, "application/json", result.toString());
             }
 
             // POST /oauth/refresh - 刷新 token
@@ -566,25 +566,25 @@ public class EmbeddedServer extends NanoHTTPD {
                 Map<String, String> params = session.getParms();
                 String refreshToken = params.get("refresh_token");
                 if (refreshToken == null || refreshToken.isEmpty()) {
-                    return Response.newFixedLengthResponse(Status.BAD_REQUEST, "text/plain", "missing refresh_token");
+                    return NanoHTTPD.newFixedLengthResponse(Status.BAD_REQUEST, "text/plain", "missing refresh_token");
                 }
                 String prefix = db.getConfig("oauth_prefix");
                 String clientId = db.getConfig("oauth_client_id");
                 String clientSecret = db.getConfig("oauth_client_secret");
                 if (prefix == null || clientId == null || clientSecret == null) {
-                    return Response.newFixedLengthResponse(Status.BAD_REQUEST, "text/plain", "oauth not configured");
+                    return NanoHTTPD.newFixedLengthResponse(Status.BAD_REQUEST, "text/plain", "oauth not configured");
                 }
                 JSONObject tokenResp = OAuthHelper.refreshToken(prefix, clientId, clientSecret, refreshToken);
                 if (tokenResp == null) {
-                    return Response.newFixedLengthResponse(Status.UNAUTHORIZED, "text/plain", "refresh failed");
+                    return NanoHTTPD.newFixedLengthResponse(Status.UNAUTHORIZED, "text/plain", "refresh failed");
                 }
-                return Response.newFixedLengthResponse(Status.OK, "application/json", tokenResp.toString());
+                return NanoHTTPD.newFixedLengthResponse(Status.OK, "application/json", tokenResp.toString());
             }
         } catch (Exception e) {
             Log.e(TAG, "handleOauth error", e);
-            return Response.newFixedLengthResponse(Status.INTERNAL_ERROR, "text/plain", "error");
+            return NanoHTTPD.newFixedLengthResponse(Status.INTERNAL_ERROR, "text/plain", "error");
         }
 
-        return Response.newFixedLengthResponse(Status.NOT_IMPLEMENTED, "text/plain", "Not Implemented");
+        return NanoHTTPD.newFixedLengthResponse(Status.NOT_IMPLEMENTED, "text/plain", "Not Implemented");
     }
 }

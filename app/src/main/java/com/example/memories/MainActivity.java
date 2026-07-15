@@ -9,11 +9,9 @@ import android.text.TextWatcher;
 import android.widget.EditText;
 import android.widget.TextView;
 
-import androidx.appcompat.app.AppCompatActivity;
-
 import java.io.File;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends android.app.Activity {
     private FrpcManager frpcManager;
     private DatabaseHelper dbHelper;
     private EditText editFrpcPath;
