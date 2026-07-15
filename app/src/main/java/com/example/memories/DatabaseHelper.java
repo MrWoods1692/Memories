@@ -115,6 +115,15 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         db.insertWithOnConflict("config", null, cv, SQLiteDatabase.CONFLICT_REPLACE);
     }
 
+    public String getConfig(String k) {
+        SQLiteDatabase db = getReadableDatabase();
+        Cursor c = db.rawQuery("SELECT v FROM config WHERE k=?", new String[]{k});
+        String v = null;
+        if (c.moveToFirst()) v = c.getString(0);
+        c.close();
+        return v;
+    }
+
     public String listUsersJson() {
         SQLiteDatabase db = getReadableDatabase();
         Cursor c = db.rawQuery("SELECT id, qq, role FROM users ORDER BY id", null);

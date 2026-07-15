@@ -240,15 +240,133 @@ public class EmbeddedServer extends NanoHTTPD {
     }
 
     private Response handleOauth(IHTTPSession session) {
-        // Placeholder: campus wall OAuth integration should be configured and implemented
+        DatabaseHelper db = new DatabaseHelper(context);
         String uri = session.getUri();
-        if (uri.equals("/oauth/start")) {
-            // return a placeholder URL for user to open
-            return Response.newFixedLengthResponse(Status.OK, "application/json", "{\"url\":\"https://campus.example.com/oauth/authorize\"}");
+        Method method = session.getMethod();
+
+        try {
+            // GET /oauth/config - 获取 OAuth 配置状态
+            if ("/oauth/config".equals(uri) && Method.GET.equals(method)) {
+                JSONObject o = new JSONObject();
+                o.put("configured", db.getConfig("oauth_prefix") != null);
+                return Response.newFixedLengthResponse(Status.OK, "application/json", o.toString());
+            }
+
+            // POST /oauth/config - 管理员配置 OAuth 参数
+            if ("/oauth/config".equals(uri) && Method.POST.equals(method)) {
+                String qq = session.getHeaders().get("x-user-qq");
+                if (db.getUserRole(qq) < 2)
+                    return Response.newFixedLengthResponse(Status.UNAUTHORIZED, "text/plain", "admin required");
+                Map<String, String> files = new java.util.HashMap<>();
+                session.parseBody(files);
+                Map<String, String> params = session.getParms();
+                String prefix = params.get("prefix");
+                String clientId = params.get("client_id");
+                String clientSecret = params.get("client_secret");
+                String redirectUri = params.get("redirect_uri");
+                if (prefix != null) db.setConfig("oauth_prefix", prefix);
+                if (clientId != null) db.setConfig("oauth_client_id", clientId);
+                if (clientSecret != null) db.setConfig("oauth_client_secret", clientSecret);
+                if (redirectUri != null) db.setConfig("oauth_redirect_uri", redirectUri);
+                return Response.newFixedLengthResponse(Status.OK, "text/plain", "ok");
+            }
+
+            // GET /oauth/start - 发起授权，返回跳转 URL
+            if ("/oauth/start".equals(uri) && Method.GET.equals(method)) {
+                String prefix = db.getConfig("oauth_prefix");
+                String clientId = db.getConfig("oauth_client_id");
+                String redirectUri = db.getConfig("oauth_redirect_uri");
+                if (prefix == null || clientId == null || redirectUri == null) {
+                    return Response.newFixedLengthResponse(Status.BAD_REQUEST, "text/plain", "oauth not configured");
+                }
+                String scope = "profile tenant";
+                String authUrl = OAuthHelper.buildAuthUrl(prefix, clientId, redirectUri, scope);
+                JSONObject o = new JSONObject();
+                o.put("url", authUrl);
+                return Response.newFixedLengthResponse(Status.OK, "application/json", o.toString());
+            }
+
+            // GET /oauth/callback?code=...&state=... - 回调处理
+            if ("/oauth/callback".equals(uri) && Method.GET.equals(method)) {
+                Map<String, String> params = session.getParms();
+                String code = params.get("code");
+                String state = params.get("state");
+                if (code == null || code.isEmpty()) {
+                    return Response.newFixedLengthResponse(Status.BAD_REQUEST, "text/plain", "missing code");
+                }
+
+                String prefix = db.getConfig("oauth_prefix");
+                String clientId = db.getConfig("oauth_client_id");
+                String clientSecret = db.getConfig("oauth_client_secret");
+                String redirectUri = db.getConfig("oauth_redirect_uri");
+                if (prefix == null || clientId == null || clientSecret == null || redirectUri == null) {
+                    return Response.newFixedLengthResponse(Status.BAD_REQUEST, "text/plain", "oauth not configured");
+                }
+
+                // 换取 token
+                JSONObject tokenResp = OAuthHelper.exchangeToken(prefix, clientId, clientSecret, code, redirectUri, state);
+                if (tokenResp == null) {
+                    return Response.newFixedLengthResponse(Status.UNAUTHORIZED, "text/plain", "token exchange failed");
+                }
+
+                String accessToken = tokenResp.optString("access_token");
+                String refreshToken = tokenResp.optString("refresh_token");
+                if (accessToken == null || accessToken.isEmpty()) {
+                    return Response.newFixedLengthResponse(Status.UNAUTHORIZED, "text/plain", "no access_token");
+                }
+
+                // 获取用户信息
+                JSONObject userInfo = OAuthHelper.getUserInfo(prefix, accessToken);
+                if (userInfo == null) {
+                    return Response.newFixedLengthResponse(Status.UNAUTHORIZED, "text/plain", "userinfo failed");
+                }
+
+                String userQq = userInfo.optString("name"); // QQ 号
+                String userName = userInfo.optString("username");
+                String tenantName = userInfo.optString("tenant_name");
+
+                // 检查该 QQ 是否在审核员/管理员列表中
+                int role = db.getUserRole(userQq);
+
+                JSONObject result = new JSONObject();
+                result.put("qq", userQq);
+                result.put("username", userName);
+                result.put("tenant_name", tenantName);
+                result.put("role", role);
+                result.put("access_token", accessToken);
+                result.put("refresh_token", refreshToken);
+                result.put("is_reviewer", role >= 1);
+                result.put("is_admin", role >= 2);
+
+                return Response.newFixedLengthResponse(Status.OK, "application/json", result.toString());
+            }
+
+            // POST /oauth/refresh - 刷新 token
+            if ("/oauth/refresh".equals(uri) && Method.POST.equals(method)) {
+                Map<String, String> files = new java.util.HashMap<>();
+                session.parseBody(files);
+                Map<String, String> params = session.getParms();
+                String refreshToken = params.get("refresh_token");
+                if (refreshToken == null || refreshToken.isEmpty()) {
+                    return Response.newFixedLengthResponse(Status.BAD_REQUEST, "text/plain", "missing refresh_token");
+                }
+                String prefix = db.getConfig("oauth_prefix");
+                String clientId = db.getConfig("oauth_client_id");
+                String clientSecret = db.getConfig("oauth_client_secret");
+                if (prefix == null || clientId == null || clientSecret == null) {
+                    return Response.newFixedLengthResponse(Status.BAD_REQUEST, "text/plain", "oauth not configured");
+                }
+                JSONObject tokenResp = OAuthHelper.refreshToken(prefix, clientId, clientSecret, refreshToken);
+                if (tokenResp == null) {
+                    return Response.newFixedLengthResponse(Status.UNAUTHORIZED, "text/plain", "refresh failed");
+                }
+                return Response.newFixedLengthResponse(Status.OK, "application/json", tokenResp.toString());
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "handleOauth error", e);
+            return Response.newFixedLengthResponse(Status.INTERNAL_ERROR, "text/plain", "error");
         }
-        if (uri.equals("/oauth/callback")) {
-            return Response.newFixedLengthResponse(Status.OK, "text/plain", "callback placeholder");
-        }
-        return Response.newFixedLengthResponse(Status.NOT_IMPLEMENTED, "text/plain", "oauth not implemented");
+
+        return Response.newFixedLengthResponse(Status.NOT_IMPLEMENTED, "text/plain", "Not Implemented");
     }
 }
