@@ -27,7 +27,15 @@ public class ServerService extends Service {
                 .build();
         startForeground(1, n);
 
-        server = new EmbeddedServer(8080, this);
+        // 从配置读取端口，默认 8080
+        DatabaseHelper db = new DatabaseHelper(this);
+        String portStr = db.getConfig("server_port");
+        int port = 8080;
+        if (portStr != null) {
+            try { port = Integer.parseInt(portStr); } catch (NumberFormatException ignored) {}
+        }
+
+        server = new EmbeddedServer(port, this);
         try {
             server.start();
         } catch (Exception e) {

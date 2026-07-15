@@ -78,4 +78,33 @@ public class FrpcManager {
     public boolean isRunning() {
         return running && frpcProcess != null && frpcProcess.isAlive();
     }
+
+    /**
+     * 从 frpc.ini 配置内容中提取 local_port
+     * 解析 [xxx] 段中的 local_port = 数字
+     */
+    public static int extractLocalPort(String configContent) {
+        if (configContent == null) return -1;
+        java.util.regex.Pattern p = java.util.regex.Pattern.compile("local_port\\s*=\\s*(\\d+)");
+        java.util.regex.Matcher m = p.matcher(configContent);
+        if (m.find()) {
+            try { return Integer.parseInt(m.group(1)); } catch (NumberFormatException e) { return -1; }
+        }
+        return -1;
+    }
+
+    /**
+     * 校验 frpc 配置中的 local_port 是否与服务器端口一致
+     * @return null 表示一致，否则返回错误信息
+     */
+    public static String validatePort(String configContent, int serverPort) {
+        int frpcPort = extractLocalPort(configContent);
+        if (frpcPort == -1) {
+            return "frpc 配置中未找到 local_port，请检查配置";
+        }
+        if (frpcPort != serverPort) {
+            return "端口不匹配！frpc local_port=" + frpcPort + "，服务器端口=" + serverPort + "，请修改一致";
+        }
+        return null; // 一致
+    }
 }

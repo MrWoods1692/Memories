@@ -4,7 +4,8 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
-import android.widget.Button;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.widget.EditText;
 import android.widget.TextView;
 
@@ -20,6 +21,7 @@ public class MainActivity extends AppCompatActivity {
     private TextView textFrpcStatus;
     private TextView textServerInfo;
     private Handler handler = new Handler(Looper.getMainLooper());
+    private boolean autoStartPending = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -34,8 +36,6 @@ public class MainActivity extends AppCompatActivity {
         editFrpcConfig = findViewById(R.id.edit_frpc_config);
         textFrpcStatus = findViewById(R.id.text_frpc_status);
         textServerInfo = findViewById(R.id.text_server_info);
-        Button btnStart = findViewById(R.id.btn_frpc_start);
-        Button btnStop = findViewById(R.id.btn_frpc_stop);
 
         // 加载已保存的 frpc 配置
         loadFrpcConfig();
@@ -47,38 +47,20 @@ public class MainActivity extends AppCompatActivity {
         // 更新服务器信息
         updateServerInfo();
 
-        // 启动 FRPC 按钮
-        btnStart.setOnClickListener(v -> {
-            String path = editFrpcPath.getText().toString().trim();
-            String config = editFrpcConfig.getText().toString().trim();
-
-            if (path.isEmpty()) {
-                textFrpcStatus.setText("FRPC: 请填写可执行文件路径");
-                return;
+        // 输入框变化监听：保存配置并尝试自动启动
+        TextWatcher configWatcher = new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
+            @Override
+            public void afterTextChanged(Editable s) {
+                scheduleAutoStart();
             }
-            if (config.isEmpty()) {
-                textFrpcStatus.setText("FRPC: 请填写配置内容");
-                return;
-            }
+        };
+        editFrpcPath.addTextChangedListener(configWatcher);
+        editFrpcConfig.addTextChangedListener(configWatcher);
 
-            // 保存配置到数据库
-            dbHelper.setConfig("frpc_path", path);
-            dbHelper.setConfig("frpc_config", config);
-
-            File workDir = getFilesDir();
-            boolean ok = frpcManager.startFrpc(config, path, workDir);
-            if (ok) {
-                textFrpcStatus.setText("FRPC: 启动成功 ✓");
-            } else {
-                textFrpcStatus.setText("FRPC: 启动失败 ✗");
-            }
-        });
-
-        // 停止 FRPC 按钮
-        btnStop.setOnClickListener(v -> {
-            frpcManager.stopFrpc();
-            textFrpcStatus.setText("FRPC: 已停止");
-        });
+        // 页面加载后尝试自动启动（如果已有有效配置）
+        scheduleAutoStart();
 
         // 定时刷新状态
         handler.postDelayed(new Runnable() {
@@ -100,9 +82,84 @@ public class MainActivity extends AppCompatActivity {
         if (config != null) editFrpcConfig.setText(config);
     }
 
+    /**
+     * 延迟自动启动：用户停止输入 2 秒后自动校验并启动 frpc
+     */
+    private void scheduleAutoStart() {
+        autoStartPending = true;
+        handler.removeCallbacks(autoStartRunnable);
+        handler.postDelayed(autoStartRunnable, 2000);
+    }
+
+    private final Runnable autoStartRunnable = new Runnable() {
+        @Override
+        public void run() {
+            if (!autoStartPending) return;
+            autoStartPending = false;
+            tryAutoStartFrpc();
+        }
+    };
+
+    private void tryAutoStartFrpc() {
+        String path = editFrpcPath.getText().toString().trim();
+        String config = editFrpcConfig.getText().toString().trim();
+
+        // 配置不完整则不启动
+        if (path.isEmpty() || config.isEmpty()) {
+            if (frpcManager.isRunning()) {
+                frpcManager.stopFrpc();
+                textFrpcStatus.setText("FRPC: 配置不完整，已停止");
+            } else {
+                textFrpcStatus.setText("FRPC: 等待配置");
+            }
+            return;
+        }
+
+        // 获取当前服务器端口
+        String portStr = dbHelper.getConfig("server_port");
+        int serverPort = 8080;
+        if (portStr != null) {
+            try { serverPort = Integer.parseInt(portStr); } catch (NumberFormatException ignored) {}
+        }
+
+        // 校验 frpc local_port 与服务器端口一致
+        String portError = FrpcManager.validatePort(config, serverPort);
+        if (portError != null) {
+            textFrpcStatus.setText("FRPC: " + portError);
+            if (frpcManager.isRunning()) {
+                frpcManager.stopFrpc();
+            }
+            return;
+        }
+
+        // 保存配置到数据库
+        dbHelper.setConfig("frpc_path", path);
+        dbHelper.setConfig("frpc_config", config);
+
+        // 如果已经在运行且配置没变，不重复启动
+        if (frpcManager.isRunning()) {
+            textFrpcStatus.setText("FRPC: 运行中 ✓ (端口 " + serverPort + ")");
+            return;
+        }
+
+        // 启动 frpc
+        File workDir = getFilesDir();
+        boolean ok = frpcManager.startFrpc(config, path, workDir);
+        if (ok) {
+            textFrpcStatus.setText("FRPC: 启动成功 ✓ (端口 " + serverPort + ")");
+        } else {
+            textFrpcStatus.setText("FRPC: 启动失败 ✗");
+        }
+    }
+
     private void updateServerInfo() {
         long count = dbHelper.getImageCount();
-        textServerInfo.setText("端口: 8080 | 图片数: " + count);
+        String portStr = dbHelper.getConfig("server_port");
+        int port = 8080;
+        if (portStr != null) {
+            try { port = Integer.parseInt(portStr); } catch (NumberFormatException ignored) {}
+        }
+        textServerInfo.setText("端口: " + port + " | 图片数: " + count);
     }
 
     @Override

@@ -58,34 +58,11 @@
             android:gravity="top"
             android:scrollbars="vertical" />
 
-        <LinearLayout
-            android:orientation="horizontal"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp">
-
-            <Button
-                android:id="@+id/btn_frpc_start"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="启动 FRPC"
-                android:layout_marginEnd="8dp" />
-
-            <Button
-                android:id="@+id/btn_frpc_stop"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="停止 FRPC" />
-
-        </LinearLayout>
-
         <TextView
             android:id="@+id/text_frpc_status"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="FRPC: 未启动"
+            android:text="FRPC: 等待配置"
             android:textSize="14sp"
             android:layout_marginTop="8dp" />
 

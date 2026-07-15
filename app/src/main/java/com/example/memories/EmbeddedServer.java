@@ -8,6 +8,12 @@ import org.nanohttpd.protocols.http.NanoHTTPD;
 import org.nanohttpd.protocols.http.response.Response;
 import org.nanohttpd.protocols.http.response.Status;
 
+import java.io.BufferedReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.net.InetAddress;
+import java.net.NetworkInterface;
+import java.util.Enumeration;
 import java.util.Map;
 
 public class EmbeddedServer extends NanoHTTPD {
@@ -68,6 +74,11 @@ public class EmbeddedServer extends NanoHTTPD {
 
             if (uri.startsWith("/oauth")) {
                 return handleOauth(session);
+            }
+
+            // /admin 管理面板 - 仅局域网可访问
+            if (uri.equals("/admin") || uri.equals("/admin/")) {
+                return handleAdminPage(session);
             }
 
             return Response.newFixedLengthResponse(Status.NOT_FOUND, "text/plain", "Not Found");
