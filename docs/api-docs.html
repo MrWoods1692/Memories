@@ -1,0 +1,1018 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Memories API 文档</title>
+  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --sidebar-bg: #1e293b;
+      --sidebar-text: #cbd5e1;
+      --sidebar-active: #38bdf8;
+      --sidebar-hover: #334155;
+      --card-bg: #ffffff;
+      --text: #1e293b;
+      --text-secondary: #64748b;
+      --border: #e2e8f0;
+      --accent: #3b82f6;
+      --accent-light: #eff6ff;
+      --success: #22c55e;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --method-get: #22c55e;
+      --method-post: #3b82f6;
+      --method-delete: #ef4444;
+      --code-bg: #f1f5f9;
+      --radius: 8px;
+      --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
+      --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -4px rgba(0,0,0,0.1);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans SC', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    #app { display: flex; min-height: 100vh; }
+
+    /* ===== Sidebar ===== */
+    .sidebar {
+      width: 280px;
+      min-width: 280px;
+      background: var(--sidebar-bg);
+      color: var(--sidebar-text);
+      position: fixed;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      overflow-y: auto;
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+    }
+    .sidebar-header {
+      padding: 24px 20px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+    .sidebar-header h1 {
+      font-size: 20px;
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: -0.02em;
+    }
+    .sidebar-header .version {
+      font-size: 12px;
+      color: var(--sidebar-text);
+      margin-top: 4px;
+    }
+    .sidebar-nav {
+      flex: 1;
+      padding: 12px 0;
+    }
+    .nav-group {
+      margin-bottom: 4px;
+    }
+    .nav-group-title {
+      padding: 8px 20px 4px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #64748b;
+    }
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 20px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.15s;
+      border-left: 3px solid transparent;
+      color: var(--sidebar-text);
+      text-decoration: none;
+    }
+    .nav-item:hover {
+      background: var(--sidebar-hover);
+      color: #e2e8f0;
+    }
+    .nav-item.active {
+      background: rgba(56,189,248,0.1);
+      color: var(--sidebar-active);
+      border-left-color: var(--sidebar-active);
+    }
+    .nav-item .method-badge {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 1px 6px;
+      border-radius: 3px;
+      text-transform: uppercase;
+      min-width: 40px;
+      text-align: center;
+    }
+    .method-badge.get { background: rgba(34,197,94,0.15); color: #4ade80; }
+    .method-badge.post { background: rgba(59,130,246,0.15); color: #60a5fa; }
+    .method-badge.delete { background: rgba(239,68,68,0.15); color: #f87171; }
+
+    /* ===== Main Content ===== */
+    .main {
+      flex: 1;
+      margin-left: 280px;
+      padding: 32px 40px;
+      max-width: 960px;
+    }
+
+    .section {
+      margin-bottom: 48px;
+    }
+    .section:target {
+      scroll-margin-top: 24px;
+    }
+    .section-title {
+      font-size: 26px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 8px;
+      letter-spacing: -0.02em;
+    }
+    .section-desc {
+      color: var(--text-secondary);
+      margin-bottom: 24px;
+      font-size: 15px;
+    }
+
+    /* ===== Endpoint Card ===== */
+    .endpoint-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      margin-bottom: 20px;
+      overflow: hidden;
+      box-shadow: var(--shadow);
+      transition: box-shadow 0.2s;
+    }
+    .endpoint-card:hover {
+      box-shadow: var(--shadow-lg);
+    }
+    .endpoint-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      user-select: none;
+    }
+    .endpoint-header .method {
+      font-size: 12px;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      white-space: nowrap;
+    }
+    .method.GET { background: rgba(34,197,94,0.1); color: #16a34a; }
+    .method.POST { background: rgba(59,130,246,0.1); color: #2563eb; }
+    .method.DELETE { background: rgba(239,68,68,0.1); color: #dc2626; }
+    .endpoint-header .path {
+      font-family: 'SF Mono', 'Fira Code', 'Fira Mono', Menlo, Consolas, monospace;
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text);
+      flex: 1;
+    }
+    .endpoint-header .summary {
+      font-size: 13px;
+      color: var(--text-secondary);
+      white-space: nowrap;
+    }
+    .endpoint-header .expand-icon {
+      font-size: 12px;
+      color: var(--text-secondary);
+      transition: transform 0.2s;
+    }
+    .endpoint-header .expand-icon.open { transform: rotate(180deg); }
+
+    .endpoint-body {
+      padding: 20px;
+    }
+    .endpoint-body h4 {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      margin: 16px 0 8px;
+    }
+    .endpoint-body h4:first-child { margin-top: 0; }
+
+    /* ===== Auth Badge ===== */
+    .auth-badge {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 10px;
+      border-radius: 12px;
+      margin-bottom: 12px;
+    }
+    .auth-badge.none { background: #f1f5f9; color: #64748b; }
+    .auth-badge.admin { background: #fef3c7; color: #92400e; }
+    .auth-badge.reviewer { background: #dbeafe; color: #1e40af; }
+
+    /* ===== Tables ===== */
+    .param-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      margin: 8px 0 16px;
+    }
+    .param-table th {
+      text-align: left;
+      padding: 8px 12px;
+      background: var(--code-bg);
+      font-weight: 600;
+      color: var(--text-secondary);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      border-bottom: 2px solid var(--border);
+    }
+    .param-table td {
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+    .param-table td:first-child {
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-weight: 600;
+    }
+    .param-table .required {
+      color: var(--danger);
+      font-weight: 700;
+    }
+    .param-table .optional {
+      color: var(--text-secondary);
+      font-style: italic;
+    }
+
+    /* ===== Code Block ===== */
+    .code-block {
+      background: #1e293b;
+      color: #e2e8f0;
+      padding: 14px 18px;
+      border-radius: var(--radius);
+      font-family: 'SF Mono', 'Fira Code', 'Fira Mono', Menlo, Consolas, monospace;
+      font-size: 13px;
+      line-height: 1.6;
+      overflow-x: auto;
+      margin: 8px 0 16px;
+      position: relative;
+    }
+    .code-block .copy-btn {
+      position: absolute;
+      top: 8px;
+      right: 12px;
+      background: rgba(255,255,255,0.1);
+      border: none;
+      color: #94a3b8;
+      padding: 4px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 11px;
+      transition: all 0.15s;
+    }
+    .code-block .copy-btn:hover { background: rgba(255,255,255,0.2); color: #e2e8f0; }
+    .code-block .copy-btn.copied { color: #4ade80; }
+
+    .json-key { color: #93c5fd; }
+    .json-string { color: #86efac; }
+    .json-number { color: #fde68a; }
+    .json-boolean { color: #c4b5fd; }
+    .json-null { color: #94a3b8; }
+
+    /* ===== Responsive ===== */
+    .mobile-menu-btn {
+      display: none;
+      position: fixed;
+      top: 12px;
+      left: 12px;
+      z-index: 200;
+      background: var(--sidebar-bg);
+      color: #fff;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+    .sidebar-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 99;
+    }
+
+    @media (max-width: 768px) {
+      .sidebar {
+        transform: translateX(-100%);
+        transition: transform 0.25s;
+      }
+      .sidebar.open { transform: translateX(0); }
+      .sidebar-overlay.open { display: block; }
+      .mobile-menu-btn { display: block; }
+      .main {
+        margin-left: 0;
+        padding: 20px 16px;
+      }
+    }
+
+    /* ===== Scrollbar ===== */
+    .sidebar::-webkit-scrollbar { width: 4px; }
+    .sidebar::-webkit-scrollbar-track { background: transparent; }
+    .sidebar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+
+    /* ===== Tag ===== */
+    .tag {
+      display: inline-block;
+      font-size: 11px;
+      padding: 1px 8px;
+      border-radius: 4px;
+      font-weight: 600;
+      margin-left: 6px;
+    }
+    .tag.info { background: #dbeafe; color: #1e40af; }
+    .tag.warn { background: #fef3c7; color: #92400e; }
+
+    /* ===== Intro Card ===== */
+    .intro-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+    .intro-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      box-shadow: var(--shadow);
+    }
+    .intro-card .icon {
+      font-size: 24px;
+      margin-bottom: 8px;
+    }
+    .intro-card h3 {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    .intro-card p {
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+
+    <!-- Mobile Menu Button -->
+    <button class="mobile-menu-btn" @click="sidebarOpen = !sidebarOpen">☰</button>
+    <div class="sidebar-overlay" :class="{ open: sidebarOpen }" @click="sidebarOpen = false"></div>
+
+    <!-- Sidebar -->
+    <aside class="sidebar" :class="{ open: sidebarOpen }">
+      <div class="sidebar-header">
+        <h1>Memories API</h1>
+        <div class="version">v1.0 · REST API 参考</div>
+      </div>
+      <nav class="sidebar-nav">
+        <div class="nav-group">
+          <div class="nav-group-title">概览</div>
+          <a class="nav-item" :class="{ active: activeSection === 'overview' }" @click="scrollTo('overview')">
+            架构概述
+          </a>
+          <a class="nav-item" :class="{ active: activeSection === 'auth' }" @click="scrollTo('auth')">
+            认证与授权
+          </a>
+        </div>
+        <div class="nav-group">
+          <div class="nav-group-title">端点</div>
+          <a v-for="ep in endpoints" :key="ep.id" class="nav-item"
+             :class="{ active: activeSection === ep.id }"
+             @click="scrollTo(ep.id)">
+            <span class="method-badge" :class="ep.method.toLowerCase()">{{ ep.method }}</span>
+            {{ ep.pathShort }}
+          </a>
+        </div>
+      </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main" ref="mainRef" @scroll="onScroll">
+
+      <!-- ===== Overview ===== -->
+      <section id="overview" class="section" ref="section_overview">
+        <h2 class="section-title">📋 架构概述</h2>
+        <p class="section-desc">
+          Memories 是一个运行在 Android 设备上的图片分享与管理平台，内嵌两个基于 NanoHTTPD 的 HTTP 服务器。
+        </p>
+        <div class="intro-grid">
+          <div class="intro-card">
+            <div class="icon">🖥️</div>
+            <h3>API 服务器</h3>
+            <p>端口 <code>8080</code>，处理所有 REST API 请求</p>
+          </div>
+          <div class="intro-card">
+            <div class="icon">📦</div>
+            <h3>管理面板</h3>
+            <p>端口 <code>8081</code>，提供 React 管理界面静态文件</p>
+          </div>
+          <div class="intro-card">
+            <div class="icon">🔒</div>
+            <h3>局域网安全</h3>
+            <p>只接受局域网请求，自动 CORS 支持</p>
+          </div>
+          <div class="intro-card">
+            <div class="icon">🗄️</div>
+            <h3>SQLite 存储</h3>
+            <p>4 张表：images、users、config、banned_users</p>
+          </div>
+        </div>
+
+        <div class="endpoint-card">
+          <div class="endpoint-body">
+            <h4>基础 URL</h4>
+            <div class="code-block">
+              http://<span style="color:#fde68a;">&lt;设备局域网IP&gt;</span>:8080
+            </div>
+            <h4>通用约定</h4>
+            <ul style="margin-left:20px; font-size:14px; color:var(--text-secondary);">
+              <li>POST 请求使用 <code>application/x-www-form-urlencoded</code> 编码</li>
+              <li>响应为 <code>application/json</code> 或 <code>text/plain</code></li>
+              <li>所有响应自动添加 CORS 头，允许跨端口调用</li>
+              <li>局域网用户自动获得管理员权限</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== Auth ===== -->
+      <section id="auth" class="section" ref="section_auth">
+        <h2 class="section-title">🔐 认证与授权</h2>
+        <div class="endpoint-card">
+          <div class="endpoint-body">
+            <h4>角色体系</h4>
+            <table class="param-table">
+              <thead>
+                <tr><th>角色值</th><th>名称</th><th>权限</th></tr>
+              </thead>
+              <tbody>
+                <tr><td><code>0</code></td><td>未注册用户</td><td>仅可上传图片</td></tr>
+                <tr><td><code>1</code></td><td>审核员 (Reviewer)</td><td>审核图片（通过/拒绝）</td></tr>
+                <tr><td><code>2</code></td><td>管理员 (Admin)</td><td>审核图片 + 管理用户 + 封禁管理 + 修改配置</td></tr>
+              </tbody>
+            </table>
+
+            <h4>认证方式</h4>
+            <ul style="margin-left:20px; font-size:14px; color:var(--text-secondary); margin-bottom:16px;">
+              <li><strong>局域网自动授权</strong>：来自局域网的请求自动获得管理员权限</li>
+              <li><strong>Header 认证</strong>：通过 <code>x-user-qq</code> 请求头传递 QQ 号，后端查用户表确定角色</li>
+            </ul>
+
+            <h4>权限矩阵</h4>
+            <table class="param-table">
+              <thead>
+                <tr><th>端点</th><th>方法</th><th>所需角色</th></tr>
+              </thead>
+              <tbody>
+                <tr><td><code>/images</code></td><td>POST</td><td>无限制</td></tr>
+                <tr><td><code>/images/{id}/audit</code></td><td>POST</td><td>审核员 (≥1)</td></tr>
+                <tr><td><code>/images/{id}</code></td><td>DELETE</td><td>管理员 (≥2)</td></tr>
+                <tr><td><code>/users/*</code></td><td>全部</td><td>管理员 (≥2)</td></tr>
+                <tr><td><code>/bans/*</code></td><td>全部</td><td>管理员 (≥2)</td></tr>
+                <tr><td><code>/config</code></td><td>POST</td><td>管理员 (≥2)</td></tr>
+                <tr><td><code>/frpc/config</code></td><td>POST</td><td>管理员 (≥2)</td></tr>
+                <tr><td><code>/oauth/config</code></td><td>POST</td><td>管理员 (≥2)</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== Endpoint Sections (rendered by Vue) ===== -->
+      <section v-for="group in endpointGroups" :key="group.title" :id="'group-' + group.title" class="section">
+        <h2 class="section-title">{{ group.icon }} {{ group.title }}</h2>
+        <p class="section-desc">{{ group.desc }}</p>
+
+        <div v-for="ep in group.endpoints" :key="ep.id" :id="ep.id" class="endpoint-card" :ref="'ep_' + ep.id">
+          <div class="endpoint-header" @click="ep.expanded = !ep.expanded">
+            <span class="method" :class="ep.method">{{ ep.method }}</span>
+            <span class="path">{{ ep.path }}</span>
+            <span class="summary">{{ ep.summary }}</span>
+            <span class="expand-icon" :class="{ open: ep.expanded }">▼</span>
+          </div>
+          <div class="endpoint-body" v-show="ep.expanded">
+            <span class="auth-badge" :class="ep.authClass">{{ ep.authLabel }}</span>
+            <p style="font-size:14px; color:var(--text-secondary); margin-bottom:12px;">{{ ep.description }}</p>
+
+            <!-- Path Params -->
+            <template v-if="ep.pathParams && ep.pathParams.length">
+              <h4>路径参数</h4>
+              <table class="param-table">
+                <thead>
+                  <tr><th>参数</th><th>类型</th><th>说明</th></tr>
+                </thead>
+                <tbody>
+                  <tr v-for="p in ep.pathParams" :key="p.name">
+                    <td><code>{{ p.name }}</code></td>
+                    <td><code>{{ p.type }}</code></td>
+                    <td>{{ p.desc }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </template>
+
+            <!-- Query Params -->
+            <template v-if="ep.queryParams && ep.queryParams.length">
+              <h4>查询参数</h4>
+              <table class="param-table">
+                <thead>
+                  <tr><th>参数</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                </thead>
+                <tbody>
+                  <tr v-for="p in ep.queryParams" :key="p.name">
+                    <td><code>{{ p.name }}</code></td>
+                    <td><code>{{ p.type }}</code></td>
+                    <td><span :class="p.required ? 'required' : 'optional'">{{ p.required ? '是' : '否' }}</span></td>
+                    <td>{{ p.desc }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </template>
+
+            <!-- Body Params -->
+            <template v-if="ep.bodyParams && ep.bodyParams.length">
+              <h4>请求体 (application/x-www-form-urlencoded)</h4>
+              <table class="param-table">
+                <thead>
+                  <tr><th>参数</th><th>类型</th><th>必填</th><th>默认值</th><th>说明</th></tr>
+                </thead>
+                <tbody>
+                  <tr v-for="p in ep.bodyParams" :key="p.name">
+                    <td><code>{{ p.name }}</code></td>
+                    <td><code>{{ p.type }}</code></td>
+                    <td><span :class="p.required ? 'required' : 'optional'">{{ p.required ? '是' : '否' }}</span></td>
+                    <td><code>{{ p.default || '-' }}</code></td>
+                    <td>{{ p.desc }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </template>
+
+            <!-- Response -->
+            <template v-if="ep.response">
+              <h4>响应 {{ ep.responseDesc ? '· ' + ep.responseDesc : '' }}</h4>
+              <div class="code-block">
+                <button class="copy-btn" @click.stop="copyCode(ep.id, $event)" :ref="'btn_' + ep.id">复制</button>
+                <pre style="margin:0; white-space: pre-wrap;" v-html="ep.response"></pre>
+              </div>
+            </template>
+
+            <!-- Response Fields -->
+            <template v-if="ep.responseFields && ep.responseFields.length">
+              <h4>响应字段说明</h4>
+              <table class="param-table">
+                <thead>
+                  <tr><th>字段</th><th>类型</th><th>说明</th></tr>
+                </thead>
+                <tbody>
+                  <tr v-for="f in ep.responseFields" :key="f.name">
+                    <td><code>{{ f.name }}</code></td>
+                    <td><code>{{ f.type }}</code></td>
+                    <td>{{ f.desc }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </template>
+
+            <!-- Notes -->
+            <template v-if="ep.notes">
+              <div style="margin-top:12px; padding:10px 14px; background:#fefce8; border-radius:6px; font-size:13px; color:#854d0e;">
+                ⚠️ {{ ep.notes }}
+              </div>
+            </template>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== Database Schema ===== -->
+      <section id="database" class="section">
+        <h2 class="section-title">🗄️ 数据库表结构</h2>
+        <p class="section-desc">Memories 使用 SQLite 数据库 <code>memories.db</code>，包含以下 4 张表。</p>
+
+        <div class="endpoint-card" v-for="tbl in tables" :key="tbl.name">
+          <div class="endpoint-header" @click="tbl.expanded = !tbl.expanded">
+            <span style="font-family:monospace; font-weight:700; font-size:15px;">{{ tbl.name }}</span>
+            <span style="color:var(--text-secondary); font-size:13px; flex:1;">{{ tbl.desc }}</span>
+            <span class="expand-icon" :class="{ open: tbl.expanded }">▼</span>
+          </div>
+          <div class="endpoint-body" v-show="tbl.expanded">
+            <div class="code-block">
+              <button class="copy-btn" @click.stop="copyText(tbl.sql, $event)">复制</button>
+              <pre style="margin:0; white-space: pre-wrap;">{{ tbl.sql }}</pre>
+            </div>
+            <h4>字段说明</h4>
+            <table class="param-table">
+              <thead>
+                <tr><th>列</th><th>类型</th><th>说明</th></tr>
+              </thead>
+              <tbody>
+                <tr v-for="col in tbl.columns" :key="col.name">
+                  <td><code>{{ col.name }}</code></td>
+                  <td><code>{{ col.type }}</code></td>
+                  <td>{{ col.desc }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <script>
+    const { createApp, ref, computed, onMounted, onUnmounted, nextTick } = Vue;
+
+    createApp({
+      setup() {
+        const sidebarOpen = ref(false);
+        const activeSection = ref('overview');
+        const mainRef = ref(null);
+
+        // ===== Endpoint Data =====
+        const endpoints = ref([
+          // Health
+          { id:'health', method:'GET', path:'/health', pathShort:'/health', summary:'健康检查',
+            expanded:true, authClass:'none', authLabel:'无需认证',
+            description:'检查服务是否正常运行。',
+            response:'OK' },
+
+          // Images
+          { id:'images-get', method:'GET', path:'/images', pathShort:'/images', summary:'获取图片列表',
+            expanded:false, authClass:'none', authLabel:'无需认证',
+            description:'获取所有图片列表，按创建时间倒序排列。',
+            responseFields:[
+              {name:'id',type:'number',desc:'图片唯一标识'},
+              {name:'url',type:'string',desc:'图片 URL 地址'},
+              {name:'status',type:'number',desc:'0=待审核, 1=已通过, 2=已拒绝'},
+              {name:'created_at',type:'number',desc:'创建时间（Unix 毫秒时间戳）'}
+            ],
+            response:'[\n  {\n    "id": 1,\n    "url": "https://example.com/photo.jpg",\n    "status": 0,\n    "created_at": 1721000000000\n  }\n]' },
+
+          { id:'images-post', method:'POST', path:'/images', pathShort:'/images', summary:'上传图片',
+            expanded:false, authClass:'none', authLabel:'无需认证',
+            description:'上传新图片。写入成功后自动触发 WebDAV 后台同步。',
+            bodyParams:[
+              {name:'url',type:'string',required:true,default:'-',desc:'图片 URL 地址'}
+            ],
+            response:'{"id": 42}',
+            notes:'写入成功后自动触发 WebDAV 后台同步（如已配置）。' },
+
+          { id:'images-audit', method:'POST', path:'/images/{id}/audit', pathShort:'/images/{id}/audit', summary:'审核图片',
+            expanded:false, authClass:'reviewer', authLabel:'审核员 (≥1) 或局域网',
+            description:'审核图片，将其标记为通过或拒绝。',
+            pathParams:[
+              {name:'id',type:'number',desc:'图片 ID'}
+            ],
+            bodyParams:[
+              {name:'status',type:'string',required:true,default:'-',desc:'&quot;1&quot;=通过，&quot;2&quot;=拒绝'}
+            ],
+            responseDesc:'成功: updated | 不存在: not found' },
+
+          { id:'images-delete', method:'DELETE', path:'/images/{id}', pathShort:'/images/{id}', summary:'删除图片',
+            expanded:false, authClass:'admin', authLabel:'管理员 (≥2) 或局域网',
+            description:'删除指定图片。',
+            pathParams:[
+              {name:'id',type:'number',desc:'图片 ID'}
+            ],
+            responseDesc:'成功: deleted | 不存在: not found' },
+
+          // Users
+          { id:'users-get', method:'GET', path:'/users', pathShort:'/users', summary:'获取用户列表',
+            expanded:false, authClass:'admin', authLabel:'管理员 (≥2) 或局域网',
+            description:'获取所有用户列表。',
+            response:'[\n  { "id": 1, "qq": "123456789", "role": 2 },\n  { "id": 2, "qq": "987654321", "role": 1 }\n]',
+            responseFields:[
+              {name:'id',type:'number',desc:'用户记录 ID'},
+              {name:'qq',type:'string',desc:'QQ 号'},
+              {name:'role',type:'number',desc:'1=审核员, 2=管理员'}
+            ] },
+
+          { id:'users-post', method:'POST', path:'/users', pathShort:'/users', summary:'添加用户',
+            expanded:false, authClass:'admin', authLabel:'管理员 (≥2) 或局域网',
+            description:'添加审核员或管理员。使用 INSERT OR REPLACE 策略，重复 QQ 号会覆盖原有角色。',
+            bodyParams:[
+              {name:'qq',type:'string',required:true,default:'-',desc:'QQ 号'},
+              {name:'role',type:'string',required:false,default:'&quot;1&quot;',desc:'&quot;1&quot;=审核员，&quot;2&quot;=管理员'}
+            ],
+            response:'{"qq":"123456789","role":2}',
+            notes:'使用 INSERT OR REPLACE 策略，重复 QQ 号会覆盖原有角色。' },
+
+          { id:'users-delete', method:'DELETE', path:'/users/{qq}', pathShort:'/users/{qq}', summary:'移除用户',
+            expanded:false, authClass:'admin', authLabel:'管理员 (≥2) 或局域网',
+            description:'根据 QQ 号移除用户。',
+            pathParams:[
+              {name:'qq',type:'string',desc:'要移除的 QQ 号'}
+            ],
+            responseDesc:'成功: deleted | 不存在: not found' },
+
+          // Bans
+          { id:'bans-get', method:'GET', path:'/bans', pathShort:'/bans', summary:'获取封禁列表',
+            expanded:false, authClass:'admin', authLabel:'管理员 (≥2) 或局域网',
+            description:'获取所有封禁用户列表，按封禁时间倒序排列。',
+            response:'[\n  { "qq": "987654321", "reason": "违规上传图片", "banned_at": 1721000000000 }\n]',
+            responseFields:[
+              {name:'qq',type:'string',desc:'被封禁的 QQ 号'},
+              {name:'reason',type:'string',desc:'封禁原因'},
+              {name:'banned_at',type:'number',desc:'封禁时间（Unix 毫秒时间戳）'}
+            ] },
+
+          { id:'bans-post', method:'POST', path:'/bans', pathShort:'/bans', summary:'封禁用户',
+            expanded:false, authClass:'admin', authLabel:'管理员 (≥2) 或局域网',
+            description:'封禁指定 QQ 号的用户。',
+            bodyParams:[
+              {name:'qq',type:'string',required:true,default:'-',desc:'要封禁的 QQ 号'},
+              {name:'reason',type:'string',required:false,default:'-',desc:'封禁原因'}
+            ],
+            response:'{"qq":"987654321","banned":true}' },
+
+          { id:'bans-delete', method:'DELETE', path:'/bans/{qq}', pathShort:'/bans/{qq}', summary:'解封用户',
+            expanded:false, authClass:'admin', authLabel:'管理员 (≥2) 或局域网',
+            description:'解封指定 QQ 号的用户。',
+            pathParams:[
+              {name:'qq',type:'string',desc:'要解封的 QQ 号'}
+            ],
+            responseDesc:'成功: unbanned | 不存在: not found' },
+
+          // Config
+          { id:'config-get', method:'GET', path:'/config', pathShort:'/config', summary:'获取所有配置',
+            expanded:false, authClass:'none', authLabel:'无需认证',
+            description:'获取所有配置项，以 JSON 对象返回所有键值对。',
+            response:'{\n  "server_port": "8080",\n  "admin_port": "8081",\n  "platform_name": "Memories",\n  "platform_logo": "https://...",\n  "webdav_url": "https://...",\n  "webdav_user": "admin",\n  "webdav_pass": "***",\n  "oauth_prefix": "my-campus",\n  "oauth_client_id": "client_xxx",\n  "oauth_client_secret": "secret_xxx",\n  "oauth_redirect_uri": "https://...",\n  "frpc_config": "[common]\\n..."\n}' },
+
+          { id:'config-post', method:'POST', path:'/config', pathShort:'/config', summary:'设置配置',
+            expanded:false, authClass:'admin', authLabel:'管理员 (≥2) 或局域网',
+            description:'设置单个配置项。空值表示清空该配置。',
+            bodyParams:[
+              {name:'k',type:'string',required:true,default:'-',desc:'配置键'},
+              {name:'v',type:'string',required:true,default:'-',desc:'配置值（空字符串表示清空）'}
+            ],
+            response:'ok' },
+
+          // Status
+          { id:'status', method:'GET', path:'/status', pathShort:'/status', summary:'服务状态',
+            expanded:false, authClass:'none', authLabel:'无需认证',
+            description:'获取服务运行状态摘要。',
+            response:'{\n  "image_count": 42,\n  "db_path": "/data/data/.../memories.db",\n  "uptime": 3600000\n}',
+            responseFields:[
+              {name:'image_count',type:'number',desc:'图片总数'},
+              {name:'db_path',type:'string',desc:'数据库文件路径'},
+              {name:'uptime',type:'number',desc:'服务运行时长（毫秒）'}
+            ] },
+
+          // SysInfo
+          { id:'sysinfo', method:'GET', path:'/sysinfo', pathShort:'/sysinfo', summary:'系统信息',
+            expanded:false, authClass:'none', authLabel:'无需认证',
+            description:'获取 Android 设备的完整系统信息，包括磁盘、CPU、内存、网络、电池和硬件信息。响应结构较大，详见下方字段说明。',
+            responseFields:[
+              {name:'disk.total',type:'number',desc:'磁盘总容量（字节）'},
+              {name:'disk.free',type:'number',desc:'磁盘可用容量（字节）'},
+              {name:'disk.used',type:'number',desc:'磁盘已用容量（字节）'},
+              {name:'db_size',type:'number',desc:'数据库文件大小（字节）'},
+              {name:'cpu.cores',type:'number',desc:'CPU 核心数'},
+              {name:'cpu.arch',type:'string',desc:'CPU 架构'},
+              {name:'cpu.model',type:'string',desc:'CPU 型号'},
+              {name:'cpu.load.avg1/5/15',type:'number',desc:'系统负载（1/5/15分钟）'},
+              {name:'memory.jvm_max',type:'number',desc:'JVM 最大内存（字节）'},
+              {name:'memory.sys_total',type:'number',desc:'系统总内存（字节）'},
+              {name:'network.lan_ip',type:'string',desc:'局域网 IP'},
+              {name:'network.rx_speed',type:'number',desc:'接收速率（字节/秒）'},
+              {name:'network.tx_speed',type:'number',desc:'发送速率（字节/秒）'},
+              {name:'battery.level',type:'number',desc:'电量百分比'},
+              {name:'battery.status',type:'string',desc:'充电状态'},
+              {name:'battery.temperature',type:'number',desc:'电池温度（摄氏度）'},
+              {name:'battery.device_model',type:'string',desc:'设备型号'},
+              {name:'battery.android_version',type:'string',desc:'Android 版本'},
+              {name:'hardware.storage_type',type:'string',desc:'存储类型（eMMC/UFS）'},
+              {name:'hardware.soc',type:'string',desc:'芯片平台'}
+            ] },
+
+          // WebDAV
+          { id:'webdav-config', method:'GET', path:'/webdav/config', pathShort:'/webdav/config', summary:'WebDAV 配置',
+            expanded:false, authClass:'none', authLabel:'无需认证',
+            description:'获取 WebDAV 备份配置状态。',
+            response:'{\n  "webdav_url": "https://webdav.example.com/backup",\n  "webdav_user": "admin",\n  "configured": true\n}',
+            responseFields:[
+              {name:'webdav_url',type:'string',desc:'WebDAV 地址（未配置时为 null）'},
+              {name:'webdav_user',type:'string',desc:'WebDAV 用户名（未配置时为 null）'},
+              {name:'configured',type:'boolean',desc:'是否已配置'}
+            ] },
+
+          // Platform
+          { id:'platform', method:'GET', path:'/platform', pathShort:'/platform', summary:'平台信息',
+            expanded:false, authClass:'none', authLabel:'无需认证',
+            description:'获取平台名称和 Logo URL。',
+            response:'{\n  "platform_name": "Memories",\n  "platform_logo": "https://example.com/logo.png"\n}',
+            responseFields:[
+              {name:'platform_name',type:'string',desc:'平台名称'},
+              {name:'platform_logo',type:'string',desc:'平台 Logo URL'}
+            ] },
+
+          // FRPC
+          { id:'frpc-config-get', method:'GET', path:'/frpc/config', pathShort:'/frpc/config', summary:'获取 FRPC 配置',
+            expanded:false, authClass:'none', authLabel:'无需认证',
+            description:'获取 FRPC 内网穿透配置内容。',
+            response:'{\n  "frpc_config": "[common]\\nserver_addr = ...",\n  "configured": true\n}',
+            responseFields:[
+              {name:'frpc_config',type:'string',desc:'INI 格式的 FRPC 配置'},
+              {name:'configured',type:'boolean',desc:'是否已配置'}
+            ] },
+
+          { id:'frpc-config-post', method:'POST', path:'/frpc/config', pathShort:'/frpc/config', summary:'设置 FRPC 配置',
+            expanded:false, authClass:'admin', authLabel:'管理员 (≥2) 或局域网',
+            description:'设置 FRPC 内网穿透配置。',
+            bodyParams:[
+              {name:'frpc_config',type:'string',required:true,default:'-',desc:'INI 格式的 FRPC 配置内容'}
+            ],
+            response:'ok' },
+
+          { id:'frpc-status', method:'GET', path:'/frpc/status', pathShort:'/frpc/status', summary:'FRPC 状态',
+            expanded:false, authClass:'none', authLabel:'无需认证',
+            description:'获取 FRPC 运行状态。',
+            response:'{ "configured": true }' },
+
+          // OAuth
+          { id:'oauth-config-get', method:'GET', path:'/oauth/config', pathShort:'/oauth/config', summary:'OAuth 配置状态',
+            expanded:false, authClass:'none', authLabel:'无需认证',
+            description:'获取 OAuth 配置状态。',
+            response:'{ "configured": true }' },
+
+          { id:'oauth-config-post', method:'POST', path:'/oauth/config', pathShort:'/oauth/config', summary:'配置 OAuth',
+            expanded:false, authClass:'admin', authLabel:'管理员 (≥2) 或局域网',
+            description:'配置 OAuth 认证参数。',
+            bodyParams:[
+              {name:'prefix',type:'string',required:false,default:'-',desc:'OAuth 校园墙前缀'},
+              {name:'client_id',type:'string',required:false,default:'-',desc:'OAuth Client ID'},
+              {name:'client_secret',type:'string',required:false,default:'-',desc:'OAuth Client Secret'},
+              {name:'redirect_uri',type:'string',required:false,default:'-',desc:'OAuth 回调地址'}
+            ],
+            response:'ok' },
+
+          { id:'oauth-start', method:'GET', path:'/oauth/start', pathShort:'/oauth/start', summary:'发起 OAuth 授权',
+            expanded:false, authClass:'none', authLabel:'无需认证',
+            description:'发起 OAuth 授权流程，返回授权跳转 URL。使用 PKCE S256 增强安全性。',
+            response:'{\n  "url": "https://my-campus.campux.top/oauth/authorize?response_type=code&client_id=...&redirect_uri=...&scope=profile+tenant&state=...&code_challenge=...&code_challenge_method=S256"\n}',
+            notes:'前置条件：必须先配置 oauth_prefix、oauth_client_id、oauth_redirect_uri。' },
+
+          { id:'oauth-callback', method:'GET', path:'/oauth/callback', pathShort:'/oauth/callback', summary:'OAuth 回调',
+            expanded:false, authClass:'none', authLabel:'无需认证',
+            description:'OAuth 授权回调处理。用授权码换取 token，再获取用户信息，返回综合登录结果。',
+            queryParams:[
+              {name:'code',type:'string',required:true,desc:'OAuth 授权码'},
+              {name:'state',type:'string',required:true,desc:'防 CSRF 状态值'}
+            ],
+            response:'{\n  "qq": "123456789",\n  "username": "张三",\n  "tenant_name": "南方科技大学",\n  "role": 2,\n  "access_token": "eyJhbGci...",\n  "refresh_token": "def50200...",\n  "is_reviewer": true,\n  "is_admin": true\n}',
+            responseFields:[
+              {name:'qq',type:'string',desc:'用户 QQ 号'},
+              {name:'username',type:'string',desc:'用户名'},
+              {name:'tenant_name',type:'string',desc:'所属学校/租户名称'},
+              {name:'role',type:'number',desc:'本地角色（0=普通,1=审核员,2=管理员）'},
+              {name:'access_token',type:'string',desc:'OAuth Access Token'},
+              {name:'refresh_token',type:'string',desc:'OAuth Refresh Token'},
+              {name:'is_reviewer',type:'boolean',desc:'是否为审核员'},
+              {name:'is_admin',type:'boolean',desc:'是否为管理员'}
+            ] },
+
+          { id:'oauth-refresh', method:'POST', path:'/oauth/refresh', pathShort:'/oauth/refresh', summary:'刷新 Token',
+            expanded:false, authClass:'none', authLabel:'无需认证',
+            description:'刷新过期的 Access Token。',
+            bodyParams:[
+              {name:'refresh_token',type:'string',required:true,default:'-',desc:'之前获取的 Refresh Token'}
+            ],
+            responseDesc:'由 OAuth 服务返回的 Token 响应 JSON' },
+        ]);
+
+        // Group endpoints
+        const endpointGroups = computed(() => [
+          { icon:'❤️', title:'健康检查', desc:'服务可用性检查', endpoints: endpoints.value.filter(e => e.id === 'health') },
+          { icon:'🖼️', title:'图片管理', desc:'图片的上传、审核、删除', endpoints: endpoints.value.filter(e => e.id.startsWith('images-')) },
+          { icon:'👤', title:'用户管理', desc:'审核员与管理员的增删查', endpoints: endpoints.value.filter(e => e.id.startsWith('users-')) },
+          { icon:'🚫', title:'封禁管理', desc:'用户封禁与解封', endpoints: endpoints.value.filter(e => e.id.startsWith('bans-')) },
+          { icon:'⚙️', title:'配置管理', desc:'全局配置的读取与修改', endpoints: endpoints.value.filter(e => e.id.startsWith('config-')) },
+          { icon:'📊', title:'服务状态', desc:'运行状态与系统信息', endpoints: endpoints.value.filter(e => e.id === 'status' || e.id === 'sysinfo') },
+          { icon:'☁️', title:'WebDAV 备份', desc:'WebDAV 配置状态', endpoints: endpoints.value.filter(e => e.id.startsWith('webdav-')) },
+          { icon:'🏷️', title:'平台信息', desc:'平台名称与 Logo', endpoints: endpoints.value.filter(e => e.id === 'platform') },
+          { icon:'🔗', title:'FRPC 内网穿透', desc:'FRPC 配置与状态', endpoints: endpoints.value.filter(e => e.id.startsWith('frpc-')) },
+          { icon:'🔑', title:'OAuth 认证', desc:'第三方 OAuth 登录', endpoints: endpoints.value.filter(e => e.id.startsWith('oauth-')) },
+        ]);
+
+        // Database tables
+        const tables = ref([
+          { name:'images', desc:'图片表', expanded:false,
+            sql:'CREATE TABLE images (\n    id INTEGER PRIMARY KEY AUTOINCREMENT,\n    url TEXT,\n    status INTEGER DEFAULT 0,\n    created_at INTEGER\n);',
+            columns:[
+              {name:'id',type:'INTEGER',desc:'自增主键'},
+              {name:'url',type:'TEXT',desc:'图片 URL'},
+              {name:'status',type:'INTEGER',desc:'0=待审核, 1=已通过, 2=已拒绝'},
+              {name:'created_at',type:'INTEGER',desc:'创建时间戳'}
+            ]},
+          { name:'users', desc:'用户表', expanded:false,
+            sql:'CREATE TABLE users (\n    id INTEGER PRIMARY KEY AUTOINCREMENT,\n    qq TEXT,\n    role INTEGER\n);',
+            columns:[
+              {name:'id',type:'INTEGER',desc:'自增主键'},
+              {name:'qq',type:'TEXT',desc:'QQ 号'},
+              {name:'role',type:'INTEGER',desc:'1=审核员, 2=管理员'}
+            ]},
+          { name:'config', desc:'配置表', expanded:false,
+            sql:'CREATE TABLE config (\n    k TEXT PRIMARY KEY,\n    v TEXT\n);',
+            columns:[
+              {name:'k',type:'TEXT',desc:'配置键（主键）'},
+              {name:'v',type:'TEXT',desc:'配置值'}
+            ]},
+          { name:'banned_users', desc:'封禁用户表', expanded:false,
+            sql:'CREATE TABLE banned_users (\n    qq TEXT PRIMARY KEY,\n    reason TEXT,\n    banned_at INTEGER\n);',
+            columns:[
+              {name:'qq',type:'TEXT',desc:'QQ 号（主键）'},
+              {name:'reason',type:'TEXT',desc:'封禁原因'},
+              {name:'banned_at',type:'INTEGER',desc:'封禁时间戳'}
+            ]},
+        ]);
+
+        // Scroll to section
+        function scrollTo(id) {
+          sidebarOpen.value = false;
+          activeSection.value = id;
+          nextTick(() => {
+            const el = document.getElementById(id);
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          });
+        }
+
+        // Copy code
+        function copyCode(epId, event) {
+          const ep = endpoints.value.find(e => e.id === epId);
+          if (!ep || !ep.response) return;
+          navigator.clipboard.writeText(ep.response).then(() => {
+            const btn = event.target;
+            btn.textContent = '已复制!';
+            btn.classList.add('copied');
+            setTimeout(() => { btn.textContent = '复制'; btn.classList.remove('copied'); }, 2000);
+          });
+        }
+
+        function copyText(text, event) {
+          navigator.clipboard.writeText(text).then(() => {
+            const btn = event.target;
+            btn.textContent = '已复制!';
+            btn.classList.add('copied');
+            setTimeout(() => { btn.textContent = '复制'; btn.classList.remove('copied'); }, 2000);
+          });
+        }
+
+        // Scroll spy
+        function onScroll() {
+          const sections = document.querySelectorAll('.section[id], section[id]');
+          let current = 'overview';
+          sections.forEach(sec => {
+            const rect = sec.getBoundingClientRect();
+            if (rect.top <= 120) current = sec.id;
+          });
+          activeSection.value = current;
+        }
+
+        onMounted(() => {
+          window.addEventListener('scroll', onScroll, { passive: true });
+        });
+        onUnmounted(() => {
+          window.removeEventListener('scroll', onScroll);
+        });
+
+        return {
+          sidebarOpen, activeSection, mainRef,
+          endpoints, endpointGroups, tables,
+          scrollTo, copyCode, copyText, onScroll
+        };
+      }
+    }).mount('#app');
+  </script>
+</body>
+</html>
