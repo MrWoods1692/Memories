@@ -318,10 +318,12 @@ input[type="number"]::-webkit-outer-spin-button {
    ================================================================ */
 .sysinfo-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
   gap: 16px;
   margin-bottom: 24px;
+  align-items: start;
 }
+.sysinfo-grid > .card { min-height: unset; height: auto; }
 
 /* ================================================================
    PROGRESS BARS

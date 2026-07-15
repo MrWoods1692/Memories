@@ -1,15 +1,25 @@
 package com.example.memories;
 
+import android.Manifest;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.PowerManager;
+import android.provider.Settings;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.widget.EditText;
 import android.widget.TextView;
+import android.widget.Toast;
 
 public class MainActivity extends android.app.Activity {
+    private static final int REQUEST_NOTIFICATIONS = 1001;
+    private static final int REQUEST_OVERLAY = 1002;
+
     private FrpcManager frpcManager;
     private DatabaseHelper dbHelper;
     private EditText editFrpcConfig;
@@ -27,6 +37,9 @@ public class MainActivity extends android.app.Activity {
         frpcManager = new FrpcManager(this);
         dbHelper = new DatabaseHelper(this);
 
+        // 请求权限
+        requestPermissions();
+
         // 绑定视图
         editFrpcConfig = findViewById(R.id.edit_frpc_config);
         textFrpcStatus = findViewById(R.id.text_frpc_status);
@@ -36,9 +49,11 @@ public class MainActivity extends android.app.Activity {
         // 加载已保存的 frpc 配置
         loadFrpcConfig();
 
-        // 启动服务器服务
-        Intent svc = new Intent(this, ServerService.class);
-        startForegroundService(svc);
+        // 启动服务器服务（自动开 WiFi）
+        startMemoriesService();
+
+        // 启动悬浮窗
+        startFloatingWindow();
 
         // 更新服务器信息
         updateServerInfo();
@@ -173,5 +188,89 @@ public class MainActivity extends android.app.Activity {
         super.onDestroy();
         frpcManager.stopFrpc();
         handler.removeCallbacksAndMessages(null);
+    }
+
+    // --- 权限请求 ---
+
+    private void requestPermissions() {
+        // Android 13+ 通知权限
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
+                    != PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(
+                    new String[]{Manifest.permission.POST_NOTIFICATIONS},
+                    REQUEST_NOTIFICATIONS
+                );
+            }
+        }
+        // 悬浮窗权限
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (!Settings.canDrawOverlays(this)) {
+                Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                    Uri.parse("package:" + getPackageName()));
+                startActivityForResult(intent, REQUEST_OVERLAY);
+            }
+        }
+        // 电池优化白名单
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            PowerManager pm = (PowerManager) getSystemService(POWER_SERVICE);
+            if (pm != null && !pm.isIgnoringBatteryOptimizations(getPackageName())) {
+                try {
+                    Intent intent = new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS);
+                    intent.setData(Uri.parse("package:" + getPackageName()));
+                    startActivity(intent);
+                } catch (Exception ignored) {}
+            }
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQUEST_OVERLAY) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && Settings.canDrawOverlays(this)) {
+                startFloatingWindow();
+            }
+        }
+    }
+
+    private void startFloatingWindow() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) return;
+        Intent fw = new Intent(this, FloatingWindow.class);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            startForegroundService(fw);
+        } else {
+            startService(fw);
+        }
+    }
+
+    private void startMemoriesService() {
+        // 自动打开 WiFi
+        try {
+            android.net.wifi.WifiManager wifi = (android.net.wifi.WifiManager)
+                getApplicationContext().getSystemService(WIFI_SERVICE);
+            if (wifi != null && !wifi.isWifiEnabled()) {
+                wifi.setWifiEnabled(true);
+            }
+        } catch (Exception ignored) {}
+
+        Intent svc = new Intent(this, ServerService.class);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            startForegroundService(svc);
+        } else {
+            startService(svc);
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == REQUEST_NOTIFICATIONS) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                Toast.makeText(this, "通知权限已授予", Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(this, "建议授予通知权限以保持服务运行", Toast.LENGTH_LONG).show();
+            }
+        }
     }
 }

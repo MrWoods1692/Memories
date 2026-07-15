@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { apiGet, apiPost } from '../api';
-import { IconImage, IconCpu, IconStatusOn, IconCloudUpload, IconRefresh, IconServer, IconInbox, IconCheckCircle } from '../components/Icons';
+import { apiGet } from '../api';
+import { IconImage, IconCpu, IconStatusOn, IconRefresh, IconServer, IconInbox, IconCheckCircle, IconHardDrive, IconChip, IconGlobe, IconSmartphone, IconBattery, IconWrench } from '../components/Icons';
 import type { ServerStatus, ImageItem, AppConfig, SysInfo } from '../types';
 
 interface DashboardProps {
@@ -12,6 +12,12 @@ function fmtBytes(bytes: number): string {
   if (bytes >= 1048576) return (bytes / 1048576).toFixed(1) + ' MB';
   if (bytes >= 1024) return (bytes / 1024).toFixed(0) + ' KB';
   return bytes + ' B';
+}
+
+function fmtSpeed(bytesPerSec?: number): string {
+  if (bytesPerSec === undefined || bytesPerSec === null) return '…';
+  if (bytesPerSec < 0) return '0 B/s';
+  return fmtBytes(bytesPerSec) + '/s';
 }
 
 function fmtUptime(elapsed: number): string {
@@ -27,7 +33,7 @@ function fmtUptime(elapsed: number): string {
   return `${secs}秒`;
 }
 
-export function Dashboard({ toast }: DashboardProps) {
+export function Dashboard({ toast: _toast }: DashboardProps) {
   const [status, setStatus] = useState<ServerStatus | null>(null);
   const [sysinfo, setSysinfo] = useState<SysInfo | null>(null);
   const [config, setConfig] = useState<AppConfig>({});
@@ -58,15 +64,6 @@ export function Dashboard({ toast }: DashboardProps) {
     const iv = setInterval(load, 1000);
     return () => clearInterval(iv);
   }, []);
-
-  const triggerBackup = async () => {
-    try {
-      const r = await apiPost('/backup');
-      toast(r as string);
-    } catch {
-      toast('备份失败', 'error');
-    }
-  };
 
   const statusLabels: Record<number, string> = { 0: '待审核', 1: '已通过', 2: '已拒绝' };
   const statusBadge: Record<number, string> = { 0: 'badge-0', 1: 'badge-1', 2: 'badge-2' };
@@ -153,7 +150,7 @@ export function Dashboard({ toast }: DashboardProps) {
         <div className="sysinfo-grid">
           {/* 磁盘 */}
           <div className="card">
-            <h2>💾 磁盘空间</h2>
+            <h2><IconHardDrive size={16} /> 磁盘空间</h2>
             <div className="progress-stack">
               <div className="progress-item">
                 <div className="progress-label"><span>已用</span><span>{fmtBytes(si.disk.used)}</span></div>
@@ -173,7 +170,7 @@ export function Dashboard({ toast }: DashboardProps) {
 
           {/* 内存 */}
           <div className="card">
-            <h2>🧠 内存</h2>
+            <h2><IconChip size={16} /> 内存</h2>
             {si.memory.sys_total > 0 ? (
               <div className="progress-stack">
                 <div className="progress-item">
@@ -202,20 +199,44 @@ export function Dashboard({ toast }: DashboardProps) {
             <div className="progress-total">JVM 最大 {fmtBytes(si.memory.jvm_max)}</div>
           </div>
 
-          {/* 网络 & 设备 */}
+          {/* 网络 */}
           <div className="card">
-            <h2>🌐 网络 & 设备</h2>
+            <h2><IconGlobe size={16} /> 网络</h2>
             <div className="info-rows">
               <div className="info-row"><span className="info-key">局域网 IP</span><code>{si.network.lan_ip}</code></div>
               {si.network.wifi_ssid && <div className="info-row"><span className="info-key">WiFi</span><span>{si.network.wifi_ssid}</span></div>}
-              <div className="info-row"><span className="info-key">设备</span><span>{si.battery.device_model}</span></div>
+              {si.network.dns && (si.network.dns.dns1 || si.network.dns.dns2) && (
+                <div className="info-row"><span className="info-key">DNS</span><code>{[si.network.dns.dns1, si.network.dns.dns2].filter(Boolean).join(' / ')}</code></div>
+              )}
+            </div>
+            {/* 实时网速 */}
+            <div style={{marginTop:12,display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+              <div style={{background:'var(--bg-input)',borderRadius:'var(--r-sm)',padding:'10px 12px',textAlign:'center'}}>
+                <div style={{fontSize:'0.62rem',color:'var(--text-tertiary)',marginBottom:3}}>↓ 下载</div>
+                <div style={{fontSize:'1.1rem',fontWeight:700,color:si.network.rx_speed !== undefined ? 'var(--success)' : 'var(--text-tertiary)'}}>{fmtSpeed(si.network.rx_speed)}</div>
+              </div>
+              <div style={{background:'var(--bg-input)',borderRadius:'var(--r-sm)',padding:'10px 12px',textAlign:'center'}}>
+                <div style={{fontSize:'0.62rem',color:'var(--text-tertiary)',marginBottom:3}}>↑ 上传</div>
+                <div style={{fontSize:'1.1rem',fontWeight:700,color:si.network.tx_speed !== undefined ? 'var(--info)' : 'var(--text-tertiary)'}}>{fmtSpeed(si.network.tx_speed)}</div>
+              </div>
+            </div>
+          </div>
+
+          {/* 设备 */}
+          <div className="card">
+            <h2><IconSmartphone size={16} /> 设备</h2>
+            <div className="info-rows">
+              <div className="info-row"><span className="info-key">型号</span><span>{si.battery.device_model}</span></div>
               <div className="info-row"><span className="info-key">Android</span><span>{si.battery.android_version}</span></div>
+              <div className="info-row"><span className="info-key">SoC</span><span style={{fontSize:'0.73rem'}}>{si.hardware.soc}</span></div>
+              {si.hardware.mem_total > 0 && <div className="info-row"><span className="info-key">总内存</span><span>{fmtBytes(si.hardware.mem_total)}</span></div>}
+              <div className="info-row"><span className="info-key">存储</span><span>{si.hardware.storage_type}</span></div>
             </div>
           </div>
 
           {/* CPU */}
           <div className="card">
-            <h2>⚙️ CPU</h2>
+            <h2><IconCpu size={16} /> CPU</h2>
             <div className="info-rows">
               <div className="info-row"><span className="info-key">型号</span><span>{si.cpu.model}</span></div>
               <div className="info-row"><span className="info-key">架构</span><span>{si.cpu.arch} · {si.cpu.cores} 核</span></div>
@@ -254,7 +275,7 @@ export function Dashboard({ toast }: DashboardProps) {
 
           {/* UPS / 电池 */}
           <div className="card">
-            <h2>🔋 UPS</h2>
+            <h2><IconBattery size={16} /> UPS</h2>
             {si.battery.level >= 0 ? (
               <>
                 <div className="progress-stack" style={{marginBottom:12}}>
@@ -321,11 +342,9 @@ export function Dashboard({ toast }: DashboardProps) {
       </div>
 
       <div className="card">
-        <h2>🔧 快捷操作</h2>
+        <h2><IconWrench size={16} /> 快捷操作</h2>
         <div className="form-actions">
-          <button className="btn btn-primary" onClick={triggerBackup}>
-            <IconCloudUpload size={15} /> 立即备份到 WebDAV
-          </button>
+
           <button className="btn btn-ghost" onClick={load}>
             <IconRefresh size={15} /> 刷新数据
           </button>

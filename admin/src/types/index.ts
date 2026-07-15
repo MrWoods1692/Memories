@@ -95,6 +95,17 @@ export interface MemoryInfo {
 export interface NetworkInfo {
   lan_ip: string;
   wifi_ssid?: string;
+  dns: Record<string, string>;
+  rx_bytes: number;
+  tx_bytes: number;
+  rx_speed?: number;
+  tx_speed?: number;
+}
+
+export interface HardwareInfo {
+  mem_total: number;
+  storage_type: string;
+  soc: string;
 }
 
 export interface BatteryInfo {
@@ -118,6 +129,7 @@ export interface SysInfo {
   memory: MemoryInfo;
   network: NetworkInfo;
   battery: BatteryInfo;
+  hardware: HardwareInfo;
 }
 
 export interface WebdavConfig {

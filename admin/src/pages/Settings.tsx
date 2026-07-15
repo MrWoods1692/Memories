@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { apiGet, apiPost } from '../api';
-import { IconSettings, IconCloud, IconKey, IconLink, IconCloudUpload, IconCopy } from '../components/Icons';
+import { IconSettings, IconCloud, IconKey, IconLink, IconCopy } from '../components/Icons';
 import { NumberInput } from '../components/NumberInput';
 import { copyToClipboard } from '../hooks';
 import type { AppConfig, FrpcStatus } from '../types';
@@ -77,15 +77,6 @@ export function Settings({ toast }: SettingsProps) {
     load();
   };
 
-  const triggerBackup = async () => {
-    try {
-      const r = await apiPost('/backup');
-      toast(r as string);
-    } catch {
-      toast('备份失败', 'error');
-    }
-  };
-
   const updateConfig = (key: keyof AppConfig, value: string) => {
     setConfig(prev => ({ ...prev, [key]: value }));
   };
@@ -154,7 +145,6 @@ export function Settings({ toast }: SettingsProps) {
         </div>
         <div className="form-actions">
           <button className="btn btn-primary" onClick={saveWebdavConfig}><IconCloud size={14} /> 保存 WebDAV</button>
-          <button className="btn btn-success" onClick={triggerBackup}><IconCloudUpload size={14} /> 测试备份</button>
         </div>
       </div>
 

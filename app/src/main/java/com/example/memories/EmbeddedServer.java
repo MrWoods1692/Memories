@@ -33,6 +33,11 @@ public class EmbeddedServer extends NanoHTTPD {
     private final Context context;
     private final long startTime;
 
+    // 网速计算
+    private long lastRxBytes = 0;
+    private long lastTxBytes = 0;
+    private long lastNetCheck = 0;
+
     public EmbeddedServer(int port, Context ctx) {
         super(port);
         this.context = ctx.getApplicationContext();
@@ -128,7 +133,8 @@ public class EmbeddedServer extends NanoHTTPD {
             }
 
             if (uri.equals("/backup") && Method.POST.equals(session.getMethod())) {
-                return handleBackup(session);
+                // 已改为自动同步，保留端点兼容但提示
+                return NanoHTTPD.newFixedLengthResponse(Status.OK, "text/plain", "已启用自动同步，每次写入自动备份到 WebDAV");
             }
 
             if (uri.equals("/config")) {
@@ -205,6 +211,10 @@ public class EmbeddedServer extends NanoHTTPD {
                     return NanoHTTPD.newFixedLengthResponse(Status.BAD_REQUEST, "text/plain", "missing url");
                 }
                 long id = db.addImage(url);
+
+                // 自动同步到 WebDAV（后台线程，不阻塞响应）
+                autoSyncToWebdav();
+
                 return NanoHTTPD.newFixedLengthResponse(Status.OK, "application/json", "{\"id\":"+id+"}");
             }
 
@@ -240,27 +250,28 @@ public class EmbeddedServer extends NanoHTTPD {
         return NanoHTTPD.newFixedLengthResponse(Status.NOT_IMPLEMENTED, "text/plain", "Not Implemented");
     }
 
-    private Response handleBackup(IHTTPSession session) {
-        DatabaseHelper db = new DatabaseHelper(context);
-        if (!isAdmin(session, db)) return NanoHTTPD.newFixedLengthResponse(Status.UNAUTHORIZED, "text/plain", "admin required");
+    /**
+     * 后台线程自动同步数据库到 WebDAV（覆盖式，固定文件名 memories.db）
+     */
+    private void autoSyncToWebdav() {
+        new Thread(() -> {
+            try {
+                DatabaseHelper db = new DatabaseHelper(context);
+                String cfg = db.getConfigJson();
+                JSONObject o = new JSONObject(cfg);
+                String webdavUrl = o.optString("webdav_url", null);
+                if (webdavUrl == null || webdavUrl.isEmpty()) return;
+                String webdavUser = o.optString("webdav_user", null);
+                String webdavPass = o.optString("webdav_pass", null);
 
-        try {
-            String cfg = db.getConfigJson();
-            JSONObject o = new JSONObject(cfg);
-            String webdavUrl = o.optString("webdav_url", null);
-            String webdavUser = o.optString("webdav_user", null);
-            String webdavPass = o.optString("webdav_pass", null);
-            if (webdavUrl == null || webdavUrl.isEmpty()) return NanoHTTPD.newFixedLengthResponse(Status.BAD_REQUEST, "text/plain", "webdav not configured");
-
-            String dbPath = db.getDatabasePathString();
-            java.io.File f = new java.io.File(dbPath);
-            String remoteName = "memories_backup_"+System.currentTimeMillis()+".db";
-            boolean ok = WebDavBackup.uploadFile(webdavUrl, webdavUser, webdavPass, f, remoteName);
-            return NanoHTTPD.newFixedLengthResponse(ok?Status.OK:Status.INTERNAL_ERROR, "text/plain", ok?"uploaded":"upload failed");
-        } catch (Exception e) {
-            Log.e(TAG, "backup error", e);
-            return NanoHTTPD.newFixedLengthResponse(Status.INTERNAL_ERROR, "text/plain", "error");
-        }
+                String dbPath = db.getDatabasePathString();
+                java.io.File f = new java.io.File(dbPath);
+                boolean ok = WebDavBackup.uploadFile(webdavUrl, webdavUser, webdavPass, f, "memories.db");
+                Log.i(TAG, ok ? "WebDAV auto-sync OK" : "WebDAV auto-sync FAILED");
+            } catch (Exception e) {
+                Log.e(TAG, "WebDAV auto-sync error", e);
+            }
+        }).start();
     }
 
     private Response handleGetConfig(IHTTPSession session) {
@@ -462,7 +473,7 @@ public class EmbeddedServer extends NanoHTTPD {
             // --- 网络信息 ---
             JSONObject network = new JSONObject();
             network.put("lan_ip", getLanIpAddress());
-            // 尝试获取 WiFi SSID (需要额外权限)
+            // WiFi SSID
             try {
                 android.net.wifi.WifiManager wifiMgr = (android.net.wifi.WifiManager)
                     context.getApplicationContext().getSystemService(Context.WIFI_SERVICE);
@@ -473,7 +484,81 @@ public class EmbeddedServer extends NanoHTTPD {
                     }
                 }
             } catch (Exception ignored) {}
+
+            // DNS 服务器
+            try {
+                JSONObject dns = new JSONObject();
+                // Android: getprop net.dns1, net.dns2
+                String dns1 = getSystemProperty("net.dns1");
+                String dns2 = getSystemProperty("net.dns2");
+                if (dns1 != null && !dns1.isEmpty()) dns.put("dns1", dns1);
+                if (dns2 != null && !dns2.isEmpty()) dns.put("dns2", dns2);
+                if (dns1 == null) {
+                    // Fallback: read /etc/resolv.conf
+                    try {
+                        BufferedReader br = new BufferedReader(new java.io.FileReader("/etc/resolv.conf"));
+                        String line;
+                        int idx = 1;
+                        while ((line = br.readLine()) != null && idx <= 2) {
+                            if (line.startsWith("nameserver")) {
+                                String[] parts = line.split("\\s+");
+                                if (parts.length >= 2) {
+                                    dns.put("dns" + idx, parts[1]);
+                                    idx++;
+                                }
+                            }
+                        }
+                        br.close();
+                    } catch (Exception ignored) {}
+                }
+                network.put("dns", dns);
+            } catch (Exception ignored) {}
+
+            // 实时网速 (通过 /proc/net/dev)
+            try {
+                long[] rxTx = readNetworkBytes();
+                long rx = rxTx[0];
+                long tx = rxTx[1];
+                network.put("rx_bytes", rx);
+                network.put("tx_bytes", tx);
+
+                // 计算速率 (需要两次采样)
+                long now = System.currentTimeMillis();
+                if (lastNetCheck > 0 && now > lastNetCheck) {
+                    double elapsedSec = (now - lastNetCheck) / 1000.0;
+                    if (elapsedSec > 0) {
+                        network.put("rx_speed", (long)((rx - lastRxBytes) / elapsedSec));
+                        network.put("tx_speed", (long)((tx - lastTxBytes) / elapsedSec));
+                    }
+                }
+                lastRxBytes = rx;
+                lastTxBytes = tx;
+                lastNetCheck = now;
+            } catch (Exception ignored) {}
             o.put("network", network);
+
+            // --- 硬件信息 ---
+            JSONObject hardware = new JSONObject();
+            // 系统内存总量
+            try {
+                BufferedReader br = new BufferedReader(new java.io.FileReader("/proc/meminfo"));
+                String line;
+                while ((line = br.readLine()) != null) {
+                    if (line.startsWith("MemTotal:")) {
+                        hardware.put("mem_total", parseKb(line) * 1024);
+                        break;
+                    }
+                }
+                br.close();
+            } catch (Exception ignored) {}
+            // 存储类型 (从 /sys/block 判断)
+            try {
+                java.io.File mmcDir = new java.io.File("/sys/block/mmcblk0");
+                hardware.put("storage_type", mmcDir.exists() ? "eMMC" : "UFS/Other");
+            } catch (Exception ignored) {}
+            // SOC / 芯片平台
+            hardware.put("soc", cpuModel.isEmpty() ? "unknown" : cpuModel);
+            o.put("hardware", hardware);
 
             // --- 电池 & UPS 信息 ---
             JSONObject battery = new JSONObject();
@@ -572,6 +657,61 @@ public class EmbeddedServer extends NanoHTTPD {
             String line = br.readLine();
             br.close();
             return line != null ? line.trim() : null;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /** 从 /proc/net/dev 或 /sys/class/net 读取总接收/发送字节数 */
+    private long[] readNetworkBytes() {
+        long[] result = new long[]{0, 0};
+        // 优先读取 /sys/class/net (更可靠)
+        try {
+            java.io.File netDir = new java.io.File("/sys/class/net");
+            String[] ifaces = netDir.list();
+            if (ifaces != null) {
+                for (String iface : ifaces) {
+                    if ("lo".equals(iface)) continue;
+                    try {
+                        String rxStr = readFirstLine("/sys/class/net/" + iface + "/statistics/rx_bytes");
+                        String txStr = readFirstLine("/sys/class/net/" + iface + "/statistics/tx_bytes");
+                        if (rxStr != null) result[0] += Long.parseLong(rxStr.trim());
+                        if (txStr != null) result[1] += Long.parseLong(txStr.trim());
+                    } catch (Exception ignored) {}
+                }
+                if (result[0] > 0 || result[1] > 0) return result;
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "readNetworkBytes sysfs failed: " + e.getMessage());
+        }
+        // Fallback: /proc/net/dev
+        try {
+            BufferedReader br = new BufferedReader(new java.io.FileReader("/proc/net/dev"));
+            String line;
+            while ((line = br.readLine()) != null) {
+                int colon = line.indexOf(':');
+                if (colon < 0) continue;
+                String iface = line.substring(0, colon).trim();
+                if ("lo".equals(iface)) continue;
+                String[] parts = line.substring(colon + 1).trim().split("\\s+");
+                if (parts.length >= 10) {
+                    result[0] += Long.parseLong(parts[0]);
+                    result[1] += Long.parseLong(parts[8]);
+                }
+            }
+            br.close();
+        } catch (Exception e) {
+            Log.w(TAG, "readNetworkBytes procfs failed: " + e.getMessage());
+        }
+        return result;
+    }
+
+    /** 读取 Android 系统属性 */
+    private String getSystemProperty(String key) {
+        try {
+            Class<?> c = Class.forName("android.os.SystemProperties");
+            java.lang.reflect.Method m = c.getMethod("get", String.class);
+            return (String) m.invoke(null, key);
         } catch (Exception e) {
             return null;
         }

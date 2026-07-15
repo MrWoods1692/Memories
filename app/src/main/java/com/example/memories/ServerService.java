@@ -3,6 +3,7 @@ package com.example.memories;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Intent;
 import android.os.Build;
@@ -13,6 +14,7 @@ public class ServerService extends Service {
     private EmbeddedServer server;
     private AdminServer adminServer;
     private static final String CHANNEL_ID = "memories_service_channel";
+    private static final int NOTIFICATION_ID = 1;
 
     @Override
     public void onCreate() {
@@ -42,7 +44,7 @@ public class ServerService extends Service {
             Log.e("ServerService", "Failed to start API server", e);
         }
 
-        // 启动管理面板服务器（单独端口，仅局域网）
+        // 启动管理面板服务器
         adminServer = new AdminServer(adminPort, apiPort, this);
         try {
             adminServer.start();
@@ -52,13 +54,23 @@ public class ServerService extends Service {
         }
 
         String lanIp = EmbeddedServer.getLanIpAddress();
+
+        // 点击通知打开管理页面
+        Intent openIntent = new Intent(this, MainActivity.class);
+        PendingIntent pendingIntent = PendingIntent.getActivity(
+            this, 0, openIntent,
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? PendingIntent.FLAG_IMMUTABLE : 0
+        );
+
         Notification n = new Notification.Builder(this, CHANNEL_ID)
-                .setContentTitle("Memories Server")
+                .setContentTitle("Memories 服务运行中")
                 .setContentText("API:" + apiPort + " | 管理:" + adminPort + " | " + lanIp)
-                .setSmallIcon(android.R.drawable.ic_menu_upload)
+                .setSmallIcon(android.R.drawable.ic_menu_manage)
                 .setOngoing(true)
+                .setContentIntent(pendingIntent)
+                .setPriority(Notification.PRIORITY_LOW)
                 .build();
-        startForeground(1, n);
+        startForeground(NOTIFICATION_ID, n);
     }
 
     @Override
@@ -80,7 +92,13 @@ public class ServerService extends Service {
 
     private void createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            NotificationChannel channel = new NotificationChannel(CHANNEL_ID, "Memories Service", NotificationManager.IMPORTANCE_LOW);
+            NotificationChannel channel = new NotificationChannel(
+                CHANNEL_ID,
+                "Memories 服务",
+                NotificationManager.IMPORTANCE_DEFAULT
+            );
+            channel.setDescription("Memories 服务器运行状态");
+            channel.setShowBadge(false);
             NotificationManager nm = getSystemService(NotificationManager.class);
             if (nm != null) nm.createNotificationChannel(channel);
         }
