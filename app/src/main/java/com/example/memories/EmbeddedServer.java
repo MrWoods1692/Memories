@@ -46,8 +46,24 @@ public class EmbeddedServer extends NanoHTTPD {
                 return handleStatus(session);
             }
 
+            if (uri.startsWith("/bans")) {
+                return handleBans(session);
+            }
+
             if (uri.startsWith("/users")) {
                 return handleUsers(session);
+            }
+
+            if (uri.equals("/webdav/config") && Method.GET.equals(session.getMethod())) {
+                return handleWebdavConfig(session);
+            }
+
+            if (uri.equals("/platform") && Method.GET.equals(session.getMethod())) {
+                return handlePlatform(session);
+            }
+
+            if (uri.startsWith("/frpc")) {
+                return handleFrpc(session);
             }
 
             if (uri.startsWith("/oauth")) {
@@ -233,6 +249,134 @@ public class EmbeddedServer extends NanoHTTPD {
             }
         } catch (Exception e) {
             Log.e(TAG, "handleUsers error", e);
+            return Response.newFixedLengthResponse(Status.INTERNAL_ERROR, "text/plain", "error");
+        }
+
+        return Response.newFixedLengthResponse(Status.NOT_IMPLEMENTED, "text/plain", "Not Implemented");
+    }
+
+    // --- 封禁用户管理 ---
+
+    private Response handleBans(IHTTPSession session) {
+        DatabaseHelper db = new DatabaseHelper(context);
+        String uri = session.getUri();
+        Method method = session.getMethod();
+
+        String qq = session.getHeaders().get("x-user-qq");
+        int role = db.getUserRole(qq);
+        if (role < 2) return Response.newFixedLengthResponse(Status.UNAUTHORIZED, "text/plain", "admin required");
+
+        try {
+            // GET /bans - 列出所有封禁用户
+            if ("/bans".equals(uri) && Method.GET.equals(method)) {
+                String json = db.listBannedUsersJson();
+                return Response.newFixedLengthResponse(Status.OK, "application/json", json);
+            }
+
+            // POST /bans - 封禁用户 (qq, reason)
+            if ("/bans".equals(uri) && Method.POST.equals(method)) {
+                Map<String, String> files = new java.util.HashMap<>();
+                session.parseBody(files);
+                Map<String, String> params = session.getParms();
+                String targetQq = params.get("qq");
+                String reason = params.get("reason");
+                if (targetQq == null || targetQq.isEmpty()) {
+                    return Response.newFixedLengthResponse(Status.BAD_REQUEST, "text/plain", "missing qq");
+                }
+                db.banUser(targetQq, reason);
+                return Response.newFixedLengthResponse(Status.OK, "application/json", "{\"qq\":\""+targetQq+"\",\"banned\":true}");
+            }
+
+            // DELETE /bans/{qq} - 解封用户
+            String[] parts = uri.split("/");
+            if (parts.length >= 3 && Method.DELETE.equals(method)) {
+                String targetQq = parts[2];
+                boolean ok = db.unbanUser(targetQq);
+                return Response.newFixedLengthResponse(ok ? Status.OK : Status.NOT_FOUND, "text/plain", ok ? "unbanned" : "not found");
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "handleBans error", e);
+            return Response.newFixedLengthResponse(Status.INTERNAL_ERROR, "text/plain", "error");
+        }
+
+        return Response.newFixedLengthResponse(Status.NOT_IMPLEMENTED, "text/plain", "Not Implemented");
+    }
+
+    // --- WebDAV 备份配置获取 ---
+
+    private Response handleWebdavConfig(IHTTPSession session) {
+        DatabaseHelper db = new DatabaseHelper(context);
+        try {
+            JSONObject o = new JSONObject();
+            o.put("webdav_url", db.getConfig("webdav_url"));
+            o.put("webdav_user", db.getConfig("webdav_user"));
+            o.put("configured", db.getConfig("webdav_url") != null);
+            return Response.newFixedLengthResponse(Status.OK, "application/json", o.toString());
+        } catch (Exception e) {
+            Log.e(TAG, "webdavConfig error", e);
+            return Response.newFixedLengthResponse(Status.INTERNAL_ERROR, "text/plain", "error");
+        }
+    }
+
+    // --- 平台信息 (logo / 名称) ---
+
+    private Response handlePlatform(IHTTPSession session) {
+        DatabaseHelper db = new DatabaseHelper(context);
+        try {
+            JSONObject o = new JSONObject();
+            o.put("platform_name", db.getConfig("platform_name"));
+            o.put("platform_logo", db.getConfig("platform_logo"));
+            return Response.newFixedLengthResponse(Status.OK, "application/json", o.toString());
+        } catch (Exception e) {
+            Log.e(TAG, "platform error", e);
+            return Response.newFixedLengthResponse(Status.INTERNAL_ERROR, "text/plain", "error");
+        }
+    }
+
+    // --- FRPC 内网穿透管理 ---
+
+    private Response handleFrpc(IHTTPSession session) {
+        DatabaseHelper db = new DatabaseHelper(context);
+        String uri = session.getUri();
+        Method method = session.getMethod();
+
+        // 配置操作需要管理员权限
+        String qq = session.getHeaders().get("x-user-qq");
+        int role = db.getUserRole(qq);
+
+        try {
+            // GET /frpc/config - 获取 frpc 配置
+            if ("/frpc/config".equals(uri) && Method.GET.equals(method)) {
+                JSONObject o = new JSONObject();
+                o.put("frpc_path", db.getConfig("frpc_path"));
+                o.put("frpc_config", db.getConfig("frpc_config"));
+                o.put("configured", db.getConfig("frpc_path") != null && db.getConfig("frpc_config") != null);
+                return Response.newFixedLengthResponse(Status.OK, "application/json", o.toString());
+            }
+
+            // POST /frpc/config - 设置 frpc 配置 (管理员)
+            if ("/frpc/config".equals(uri) && Method.POST.equals(method)) {
+                if (role < 2) return Response.newFixedLengthResponse(Status.UNAUTHORIZED, "text/plain", "admin required");
+                Map<String, String> files = new java.util.HashMap<>();
+                session.parseBody(files);
+                Map<String, String> params = session.getParms();
+                String path = params.get("frpc_path");
+                String config = params.get("frpc_config");
+                if (path != null) db.setConfig("frpc_path", path);
+                if (config != null) db.setConfig("frpc_config", config);
+                return Response.newFixedLengthResponse(Status.OK, "text/plain", "ok");
+            }
+
+            // GET /frpc/status - 获取 frpc 运行状态
+            if ("/frpc/status".equals(uri) && Method.GET.equals(method)) {
+                JSONObject o = new JSONObject();
+                // 状态由 ServerService 维护，这里返回配置状态
+                o.put("configured", db.getConfig("frpc_path") != null && db.getConfig("frpc_config") != null);
+                o.put("frpc_path", db.getConfig("frpc_path"));
+                return Response.newFixedLengthResponse(Status.OK, "application/json", o.toString());
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "handleFrpc error", e);
             return Response.newFixedLengthResponse(Status.INTERNAL_ERROR, "text/plain", "error");
         }
 

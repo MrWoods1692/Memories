@@ -22,6 +22,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         db.execSQL("CREATE TABLE images (id INTEGER PRIMARY KEY AUTOINCREMENT, url TEXT, status INTEGER DEFAULT 0, created_at INTEGER)");
         db.execSQL("CREATE TABLE users (id INTEGER PRIMARY KEY AUTOINCREMENT, qq TEXT, role INTEGER)");
         db.execSQL("CREATE TABLE config (k TEXT PRIMARY KEY, v TEXT)");
+        db.execSQL("CREATE TABLE banned_users (qq TEXT PRIMARY KEY, reason TEXT, banned_at INTEGER)");
     }
 
     @Override
@@ -145,6 +146,49 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         SQLiteDatabase db = getWritableDatabase();
         int rows = db.delete("users", "qq=?", new String[]{qq});
         return rows > 0;
+    }
+
+    // --- 封禁用户管理 ---
+
+    public void banUser(String qq, String reason) {
+        SQLiteDatabase db = getWritableDatabase();
+        ContentValues cv = new ContentValues();
+        cv.put("qq", qq);
+        cv.put("reason", reason != null ? reason : "");
+        cv.put("banned_at", System.currentTimeMillis());
+        db.insertWithOnConflict("banned_users", null, cv, SQLiteDatabase.CONFLICT_REPLACE);
+    }
+
+    public boolean unbanUser(String qq) {
+        SQLiteDatabase db = getWritableDatabase();
+        int rows = db.delete("banned_users", "qq=?", new String[]{qq});
+        return rows > 0;
+    }
+
+    public boolean isUserBanned(String qq) {
+        if (qq == null) return false;
+        SQLiteDatabase db = getReadableDatabase();
+        Cursor c = db.rawQuery("SELECT 1 FROM banned_users WHERE qq=?", new String[]{qq});
+        boolean banned = c.moveToFirst();
+        c.close();
+        return banned;
+    }
+
+    public String listBannedUsersJson() {
+        SQLiteDatabase db = getReadableDatabase();
+        Cursor c = db.rawQuery("SELECT qq, reason, banned_at FROM banned_users ORDER BY banned_at DESC", null);
+        JSONArray arr = new JSONArray();
+        while (c.moveToNext()) {
+            JSONObject o = new JSONObject();
+            try {
+                o.put("qq", c.getString(0));
+                o.put("reason", c.getString(1));
+                o.put("banned_at", c.getLong(2));
+                arr.put(o);
+            } catch (Exception ignored) {}
+        }
+        c.close();
+        return arr.toString();
     }
 
     public String getDatabasePathString() {
