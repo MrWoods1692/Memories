@@ -7,40 +7,61 @@ import android.app.Service;
 import android.content.Intent;
 import android.os.Build;
 import android.os.IBinder;
+import android.util.Log;
 
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 
 public class ServerService extends Service {
     private EmbeddedServer server;
+    private AdminServer adminServer;
     private static final String CHANNEL_ID = "memories_service_channel";
 
     @Override
     public void onCreate() {
         super.onCreate();
         createNotificationChannel();
+
+        // 从配置读取端口
+        DatabaseHelper db = new DatabaseHelper(this);
+        String portStr = db.getConfig("server_port");
+        int apiPort = 8080;
+        if (portStr != null) {
+            try { apiPort = Integer.parseInt(portStr); } catch (NumberFormatException ignored) {}
+        }
+
+        String adminPortStr = db.getConfig("admin_port");
+        int adminPort = 8081;
+        if (adminPortStr != null) {
+            try { adminPort = Integer.parseInt(adminPortStr); } catch (NumberFormatException ignored) {}
+        }
+
+        // 启动主 API 服务器
+        server = new EmbeddedServer(apiPort, this);
+        try {
+            server.start();
+            Log.i("ServerService", "API server started on port " + apiPort);
+        } catch (Exception e) {
+            Log.e("ServerService", "Failed to start API server", e);
+        }
+
+        // 启动管理面板服务器（单独端口，仅局域网）
+        adminServer = new AdminServer(adminPort, apiPort, this);
+        try {
+            adminServer.start();
+            Log.i("ServerService", "Admin server started on port " + adminPort);
+        } catch (Exception e) {
+            Log.e("ServerService", "Failed to start admin server", e);
+        }
+
+        String lanIp = EmbeddedServer.getLanIpAddress();
         Notification n = new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setContentTitle("Memories Server")
-                .setContentText("运行中 - 将设备作为服务器")
+                .setContentText("API:" + apiPort + " | 管理:" + adminPort + " | " + lanIp)
                 .setSmallIcon(android.R.drawable.ic_menu_upload)
                 .setOngoing(true)
                 .build();
         startForeground(1, n);
-
-        // 从配置读取端口，默认 8080
-        DatabaseHelper db = new DatabaseHelper(this);
-        String portStr = db.getConfig("server_port");
-        int port = 8080;
-        if (portStr != null) {
-            try { port = Integer.parseInt(portStr); } catch (NumberFormatException ignored) {}
-        }
-
-        server = new EmbeddedServer(port, this);
-        try {
-            server.start();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
     }
 
     @Override
@@ -52,6 +73,7 @@ public class ServerService extends Service {
     public void onDestroy() {
         super.onDestroy();
         if (server != null) server.stop();
+        if (adminServer != null) adminServer.stop();
     }
 
     @Nullable

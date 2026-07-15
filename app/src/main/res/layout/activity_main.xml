@@ -80,8 +80,20 @@
             android:id="@+id/text_server_info"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="端口: 8080 | 图片数: 0"
+            android:text="API端口: 8080 | 图片数: 0"
             android:textSize="14sp" />
+
+        <TextView
+            android:id="@+id/text_admin_url"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="管理页面: http://127.0.0.1:8081/admin"
+            android:textSize="15sp"
+            android:textColor="#7c8aff"
+            android:layout_marginTop="8dp"
+            android:padding="10dp"
+            android:background="#1a1a2e"
+            android:fontFamily="monospace" />
 
     </LinearLayout>
 

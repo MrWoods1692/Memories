@@ -20,6 +20,7 @@ public class MainActivity extends AppCompatActivity {
     private EditText editFrpcConfig;
     private TextView textFrpcStatus;
     private TextView textServerInfo;
+    private TextView textAdminUrl;
     private Handler handler = new Handler(Looper.getMainLooper());
     private boolean autoStartPending = false;
 
@@ -36,6 +37,7 @@ public class MainActivity extends AppCompatActivity {
         editFrpcConfig = findViewById(R.id.edit_frpc_config);
         textFrpcStatus = findViewById(R.id.text_frpc_status);
         textServerInfo = findViewById(R.id.text_server_info);
+        textAdminUrl = findViewById(R.id.text_admin_url);
 
         // 加载已保存的 frpc 配置
         loadFrpcConfig();
@@ -159,7 +161,15 @@ public class MainActivity extends AppCompatActivity {
         if (portStr != null) {
             try { port = Integer.parseInt(portStr); } catch (NumberFormatException ignored) {}
         }
-        textServerInfo.setText("端口: " + port + " | 图片数: " + count);
+        String adminPortStr = dbHelper.getConfig("admin_port");
+        int adminPort = 8081;
+        if (adminPortStr != null) {
+            try { adminPort = Integer.parseInt(adminPortStr); } catch (NumberFormatException ignored) {}
+        }
+        String lanIp = EmbeddedServer.getLanIpAddress();
+        String adminUrl = "http://" + lanIp + ":" + adminPort + "/admin";
+        textServerInfo.setText("API端口: " + port + " | 图片数: " + count);
+        textAdminUrl.setText("管理页面: " + adminUrl);
     }
 
     @Override
