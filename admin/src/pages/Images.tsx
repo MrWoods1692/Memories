@@ -6,13 +6,26 @@ import { useDebounce, copyToClipboard, relativeTime } from '../hooks';
 import { fmtTs } from './Dashboard';
 import type { ImageItem, ImageStatus } from '../types';
 
+const PAGE_SIZE = 20;
+
 interface ImagesProps {
   toast: (msg: string, type?: 'success' | 'error') => void;
   refreshKey: number;
 }
 
+interface PaginatedImages {
+  items: ImageItem[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
 export function Images({ toast, refreshKey }: ImagesProps) {
   const [rawImages, setRawImages] = useState<ImageItem[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
   const [filter, setFilter] = useState('');
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 300);
@@ -22,10 +35,14 @@ export function Images({ toast, refreshKey }: ImagesProps) {
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState<Set<number>>(new Set());
 
-  const loadRaw = useCallback(async () => {
+  const loadPage = useCallback(async (p: number) => {
+    setLoading(true);
     try {
-      const imgs = await apiGet<ImageItem[]>('/images');
-      setRawImages(Array.isArray(imgs) ? imgs : []);
+      const data = await apiGet<PaginatedImages>(`/images?page=${p}&limit=${PAGE_SIZE}`);
+      setRawImages(Array.isArray(data.items) ? data.items : []);
+      setTotal(data.total || 0);
+      setPage(data.page || p);
+      setTotalPages(data.totalPages || 1);
     } catch (e) {
       console.error(e);
     } finally {
@@ -33,7 +50,13 @@ export function Images({ toast, refreshKey }: ImagesProps) {
     }
   }, []);
 
-  useEffect(() => { loadRaw(); }, [loadRaw, refreshKey]);
+  useEffect(() => { loadPage(1); }, [loadPage, refreshKey]);
+
+  const goToPage = (p: number) => {
+    if (p < 1 || p > totalPages || p === page) return;
+    setSelected(new Set());
+    loadPage(p);
+  };
 
   const images = useMemo(() => {
     let result = rawImages;
@@ -64,7 +87,7 @@ export function Images({ toast, refreshKey }: ImagesProps) {
     try {
       await apiPost(`/images/${id}/audit`, { status: String(status) });
       toast(status === 1 ? '已通过' : '已拒绝');
-      loadRaw();
+      loadPage(page);
     } catch {
       toast('操作失败', 'error');
     } finally {
@@ -78,7 +101,7 @@ export function Images({ toast, refreshKey }: ImagesProps) {
       try {
         await apiDelete(`/images/${id}`);
         toast('已删除');
-        loadRaw();
+        loadPage(page);
       } catch {
         toast('删除失败', 'error');
       }
@@ -95,7 +118,7 @@ export function Images({ toast, refreshKey }: ImagesProps) {
       }
       setSelected(new Set());
       toast('批量删除完成');
-      loadRaw();
+      loadPage(page);
       setConfirmAction(null);
     });
   };
@@ -109,9 +132,23 @@ export function Images({ toast, refreshKey }: ImagesProps) {
   const statusLabels: Record<number, string> = { 0: '待审核', 1: '已通过', 2: '已拒绝' };
   const statusBadge: Record<number, string> = { 0: 'badge-0', 1: 'badge-1', 2: 'badge-2' };
 
+  // 分页按钮生成
+  const pageButtons = useMemo(() => {
+    const buttons: (number | string)[] = [];
+    const maxVisible = 5;
+    let start = Math.max(1, page - Math.floor(maxVisible / 2));
+    let end = Math.min(totalPages, start + maxVisible - 1);
+    if (end - start + 1 < maxVisible) start = Math.max(1, end - maxVisible + 1);
+
+    if (start > 1) { buttons.push(1); if (start > 2) buttons.push('...'); }
+    for (let i = start; i <= end; i++) buttons.push(i);
+    if (end < totalPages) { if (end < totalPages - 1) buttons.push('...'); buttons.push(totalPages); }
+    return buttons;
+  }, [page, totalPages]);
+
   return (
     <div className="card">
-      <h2><IconImage size={16} /> 图片列表 <span className="card-count">共 {images.length} 张{isSearching ? '…' : ''}</span></h2>
+      <h2><IconImage size={16} /> 图片列表 <span className="card-count">共 {total} 张{isSearching ? '…' : ''}</span></h2>
 
       <div className="filter-bar">
         <select value={filter} onChange={e => setFilter(e.target.value)}>
@@ -151,6 +188,7 @@ export function Images({ toast, refreshKey }: ImagesProps) {
           <p>{rawImages.length === 0 ? '还没有图片，通过 API 上传第一张吧' : '没有匹配的图片'}</p>
         </div>
       ) : (
+        <>
         <div className="table-wrapper">
           <table>
             <thead>
@@ -190,6 +228,23 @@ export function Images({ toast, refreshKey }: ImagesProps) {
             </tbody>
           </table>
         </div>
+
+        {/* 分页控件 */}
+        {totalPages > 1 && (
+          <div className="pagination">
+            <button className="btn btn-sm" disabled={page <= 1} onClick={() => goToPage(page - 1)}>上一页</button>
+            {pageButtons.map((btn, idx) =>
+              typeof btn === 'number' ? (
+                <button key={idx} className={`btn btn-sm ${btn === page ? 'btn-primary' : ''}`} onClick={() => goToPage(btn)}>{btn}</button>
+              ) : (
+                <span key={idx} className="pagination-ellipsis">…</span>
+              )
+            )}
+            <button className="btn btn-sm" disabled={page >= totalPages} onClick={() => goToPage(page + 1)}>下一页</button>
+            <span className="pagination-info">第 {page}/{totalPages} 页，每页 {PAGE_SIZE} 条</span>
+          </div>
+        )}
+        </>
       )}
 
       {confirmAction && (

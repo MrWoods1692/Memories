@@ -198,7 +198,17 @@ public class EmbeddedServer extends NanoHTTPD {
 
         try {
             if ("/images".equals(uri) && Method.GET.equals(method)) {
-                String json = db.listImagesJson();
+                // 分页参数：page（页码，默认1），limit（每页条数，默认20）
+                Map<String, String> params = session.getParms();
+                int page = 1;
+                int limit = 20;
+                try {
+                    String pageStr = params.get("page");
+                    if (pageStr != null && !pageStr.isEmpty()) page = Integer.parseInt(pageStr);
+                    String limitStr = params.get("limit");
+                    if (limitStr != null && !limitStr.isEmpty()) limit = Integer.parseInt(limitStr);
+                } catch (NumberFormatException ignored) {}
+                String json = db.listImagesPaginatedJson(page, limit);
                 return NanoHTTPD.newFixedLengthResponse(Status.OK, "application/json", json);
             }
 

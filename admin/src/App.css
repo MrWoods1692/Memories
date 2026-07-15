@@ -101,6 +101,11 @@ td.url{max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap
 .btn-ghost:hover{background:var(--bg-overlay);color:var(--text-primary);border-color:var(--border-light)}
 .btn-sm{padding:5px 11px;font-size:.7rem;border-radius:var(--r-xs)}
 .btn-xs{padding:3px 7px;font-size:.65rem;border-radius:var(--r-xs)}
+.btn:disabled{opacity:0.4;cursor:not-allowed;transform:none !important;box-shadow:none !important}
+.pagination{display:flex;align-items:center;gap:4px;padding:14px 0 4px;flex-wrap:wrap}
+.pagination .btn{padding:6px 12px;font-size:.72rem}
+.pagination-ellipsis{color:var(--text-tertiary);padding:0 4px;font-size:.75rem}
+.pagination-info{margin-left:auto;font-size:.72rem;color:var(--text-tertiary)}
 .form-group{margin-bottom:14px}
 .form-group label{display:block;font-size:.72rem;font-weight:600;color:var(--text-secondary);margin-bottom:5px;letter-spacing:.2px}
 input,select,textarea{width:100%;background:var(--bg-input);border:1px solid var(--border);color:var(--text-primary);padding:9px 12px;border-radius:var(--r-sm);font-size:.8rem;font-family:inherit;transition:border-color .15s var(--ease),box-shadow .15s var(--ease)}

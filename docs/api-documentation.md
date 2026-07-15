@@ -132,29 +132,53 @@ OK
 
 #### `GET /images`
 
-获取所有图片列表，按创建时间倒序排列。
+分页获取图片列表，按创建时间倒序排列。
 
 **认证**：无需认证
+
+**查询参数**：
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|------|------|------|--------|------|
+| `page` | `number` | 否 | `1` | 页码，从 1 开始 |
+| `limit` | `number` | 否 | `20` | 每页返回的图片数量 |
 
 **响应**：
 
 ```json
-[
-  {
-    "id": 1,
-    "url": "https://example.com/photo.jpg",
-    "status": 0,
-    "created_at": 1721000000000
-  }
-]
+{
+  "items": [
+    {
+      "id": 1,
+      "url": "https://example.com/photo.jpg",
+      "status": 0,
+      "created_at": 1721000000000
+    }
+  ],
+  "total": 42,
+  "page": 1,
+  "limit": 20,
+  "totalPages": 3
+}
 ```
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
-| `id` | `number` | 图片唯一标识 |
-| `url` | `string` | 图片 URL 地址 |
-| `status` | `number` | 审核状态：`0`=待审核，`1`=已通过，`2`=已拒绝 |
-| `created_at` | `number` | 创建时间（Unix 毫秒时间戳） |
+| `items` | `array` | 当前页图片列表 |
+| `items[].id` | `number` | 图片唯一标识 |
+| `items[].url` | `string` | 图片 URL 地址 |
+| `items[].status` | `number` | 审核状态：`0`=待审核，`1`=已通过，`2`=已拒绝 |
+| `items[].created_at` | `number` | 创建时间（Unix 毫秒时间戳） |
+| `total` | `number` | 图片总数 |
+| `page` | `number` | 当前页码 |
+| `limit` | `number` | 每页条数 |
+| `totalPages` | `number` | 总页数 |
+
+**请求示例**：
+```
+GET /images?page=1&limit=20
+GET /images?page=2&limit=50
+```
 
 ---
 

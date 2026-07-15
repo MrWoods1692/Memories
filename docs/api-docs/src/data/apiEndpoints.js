@@ -40,25 +40,39 @@ export const endpointGroups = [
         id: 'images-get',
         method: 'GET',
         path: '/images',
-        summary: '获取图片列表',
+        summary: '获取图片列表（分页）',
         auth: 'none',
-        description: '获取所有图片列表，按创建时间倒序排列。',
+        description: '分页获取图片列表，按创建时间倒序排列。默认每页 20 条。',
+        queryParams: [
+          { name: 'page', type: 'number', required: false, desc: '页码，从 1 开始（默认 1）' },
+          { name: 'limit', type: 'number', required: false, desc: '每页条数（默认 20）' },
+        ],
         response: {
           type: 'json',
-          content: `[
-  {
-    "id": 1,
-    "url": "https://example.com/photo.jpg",
-    "status": 0,
-    "created_at": 1721000000000
-  }
-]`,
+          content: `{
+  "items": [
+    {
+      "id": 1,
+      "url": "https://example.com/photo.jpg",
+      "status": 0,
+      "created_at": 1721000000000
+    }
+  ],
+  "total": 42,
+  "page": 1,
+  "limit": 20,
+  "totalPages": 3
+}`,
         },
         responseFields: [
-          { name: 'id', type: 'number', desc: '图片唯一标识' },
-          { name: 'url', type: 'string', desc: '图片 URL 地址' },
-          { name: 'status', type: 'number', desc: '0=待审核, 1=已通过, 2=已拒绝' },
-          { name: 'created_at', type: 'number', desc: '创建时间（Unix 毫秒时间戳）' },
+          { name: 'items[].id', type: 'number', desc: '图片唯一标识' },
+          { name: 'items[].url', type: 'string', desc: '图片 URL 地址' },
+          { name: 'items[].status', type: 'number', desc: '0=待审核, 1=已通过, 2=已拒绝' },
+          { name: 'items[].created_at', type: 'number', desc: '创建时间（Unix 毫秒时间戳）' },
+          { name: 'total', type: 'number', desc: '图片总数' },
+          { name: 'page', type: 'number', desc: '当前页码' },
+          { name: 'limit', type: 'number', desc: '每页条数' },
+          { name: 'totalPages', type: 'number', desc: '总页数' },
         ],
       },
       {

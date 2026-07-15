@@ -56,6 +56,58 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         return arr.toString();
     }
 
+    /**
+     * 分页查询图片列表
+     * @param page 页码，从 1 开始
+     * @param limit 每页条数，默认 20
+     * @return JSON: {"items":[...], "total":N, "page":1, "limit":20, "totalPages":N}
+     */
+    public String listImagesPaginatedJson(int page, int limit) {
+        if (page < 1) page = 1;
+        if (limit < 1) limit = 20;
+        int offset = (page - 1) * limit;
+
+        SQLiteDatabase db = getReadableDatabase();
+
+        // 查总数
+        Cursor countCur = db.rawQuery("SELECT COUNT(*) FROM images", null);
+        long total = 0;
+        if (countCur.moveToFirst()) total = countCur.getLong(0);
+        countCur.close();
+
+        int totalPages = (int) Math.ceil((double) total / limit);
+
+        // 查分页数据
+        Cursor c = db.rawQuery(
+            "SELECT id, url, status, created_at FROM images ORDER BY created_at DESC LIMIT ? OFFSET ?",
+            new String[]{String.valueOf(limit), String.valueOf(offset)}
+        );
+        JSONArray items = new JSONArray();
+        while (c.moveToNext()) {
+            JSONObject o = new JSONObject();
+            try {
+                o.put("id", c.getLong(0));
+                o.put("url", c.getString(1));
+                o.put("status", c.getInt(2));
+                o.put("created_at", c.getLong(3));
+                items.put(o);
+            } catch (Exception ignored) {}
+        }
+        c.close();
+
+        // 组装分页响应
+        JSONObject result = new JSONObject();
+        try {
+            result.put("items", items);
+            result.put("total", total);
+            result.put("page", page);
+            result.put("limit", limit);
+            result.put("totalPages", totalPages);
+        } catch (Exception ignored) {}
+
+        return result.toString();
+    }
+
     public boolean deleteImage(long id) {
         SQLiteDatabase db = getWritableDatabase();
         int rows = db.delete("images", "id=?", new String[]{String.valueOf(id)});
