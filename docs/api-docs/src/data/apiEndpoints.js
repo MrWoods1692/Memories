@@ -11,7 +11,7 @@ export const authMatrix = [
   { endpoint: '/bans/*', method: '全部', role: '管理员 (≥2)' },
   { endpoint: '/config', method: 'POST', role: '管理员 (≥2)' },
   { endpoint: '/frpc/config', method: 'POST', role: '管理员 (≥2)' },
-  { endpoint: '/oauth/config', method: 'POST', role: '管理员 (≥2)' },
+  { endpoint: '/db/*', method: '全部', role: '管理员 (≥2)' },
 ]
 
 export const endpointGroups = [
@@ -423,81 +423,75 @@ export const endpointGroups = [
   {
     icon: 'IconKey',
     title: 'OAuth 认证',
-    desc: '第三方 OAuth 登录（PKCE S256）',
+    desc: 'Campux 校园墙 OAuth2（PKCE S256）',
     endpoints: [
       {
-        id: 'oauth-config-get',
+        id: 'oauth-login',
         method: 'GET',
-        path: '/oauth/config',
-        summary: 'OAuth 配置状态',
+        path: '/oauth/login?redirect={前端URL}',
+        summary: '发起 OAuth 授权（浏览器重定向）',
         auth: 'none',
-        description: '获取 OAuth 配置状态。',
-        response: { type: 'json', content: '{ "configured": true }' },
-      },
-      {
-        id: 'oauth-config-post',
-        method: 'POST',
-        path: '/oauth/config',
-        summary: '配置 OAuth',
-        auth: 'admin',
-        description: '配置 OAuth 认证参数。',
-        bodyParams: [
-          { name: 'prefix', type: 'string', required: false, desc: 'OAuth 校园墙前缀' },
-          { name: 'client_id', type: 'string', required: false, desc: 'OAuth Client ID' },
-          { name: 'client_secret', type: 'string', required: false, desc: 'OAuth Client Secret' },
-          { name: 'redirect_uri', type: 'string', required: false, desc: 'OAuth 回调地址' },
+        description: '浏览器直接访问，302 重定向到 Campux 授权页。OAuth 完成后回调到后端，再重定向回前端。',
+        queryParams: [
+          { name: 'redirect', type: 'string', required: false, desc: 'OAuth 完成后重定向回的前端 URL' },
         ],
-        response: { type: 'text', content: 'ok' },
+        response: { type: 'redirect', content: '302 Found → Campux 授权页' },
+        notes: 'state 和 code_verifier 存入数据库，进程重启不丢失。',
       },
       {
         id: 'oauth-start',
         method: 'GET',
-        path: '/oauth/start',
-        summary: '发起 OAuth 授权',
+        path: '/oauth/start?redirect={前端URL}',
+        summary: '发起 OAuth 授权（API 方式）',
         auth: 'none',
-        description: '发起 OAuth 授权流程，返回授权跳转 URL。使用 PKCE S256 增强安全性。',
-        response: {
-          type: 'json',
-          content: `{
-  "url": "https://my-campus.campux.top/oauth/authorize?response_type=code&client_id=...&redirect_uri=...&scope=profile+tenant&state=...&code_challenge=...&code_challenge_method=S256"
-}`,
-        },
-        notes: '前置条件：必须先配置 oauth_prefix、oauth_client_id、oauth_redirect_uri。',
-      },
-      {
-        id: 'oauth-callback',
-        method: 'GET',
-        path: '/oauth/callback',
-        summary: 'OAuth 回调',
-        auth: 'none',
-        description:
-          'OAuth 授权回调处理。用授权码换取 token，再获取用户信息，返回综合登录结果。',
+        description: '返回授权 URL（JSON），由客户端跳转。',
         queryParams: [
-          { name: 'code', type: 'string', required: true, desc: 'OAuth 授权码' },
-          { name: 'state', type: 'string', required: true, desc: '防 CSRF 状态值' },
+          { name: 'redirect', type: 'string', required: false, desc: 'OAuth 完成后重定向回的前端 URL' },
         ],
         response: {
           type: 'json',
           content: `{
-  "qq": "123456789",
-  "username": "张三",
-  "tenant_name": "南方科技大学",
+  "url": "https://kg.campux.top/oauth/authorize?response_type=code&client_id=...&redirect_uri=...&scope=profile&state=...&code_challenge=...&code_challenge_method=S256"
+}`,
+        },
+        notes: 'scope 固定为 profile。state 有效期为 10 分钟。',
+      },
+      {
+        id: 'oauth-callback',
+        method: 'GET',
+        path: '/oauth/callback?code=...&state=...',
+        summary: 'OAuth 回调',
+        auth: 'none',
+        description:
+          'Campux 授权后回调此端点。后端完成 code→token→用户信息→查角色后，若有前端 redirect 则 302 重定向，否则返回 JSON。',
+        queryParams: [
+          { name: 'code', type: 'string', required: true, desc: 'OAuth 授权码（一次性，10分钟有效）' },
+          { name: 'state', type: 'string', required: true, desc: '防 CSRF 状态值' },
+        ],
+        response: {
+          type: 'json',
+          content: `/* 有前端重定向时：302 → 前端?token=...&qq=...&role=2 */
+/* 无前端重定向时返回 JSON： */
+{
+  "qq": "1692138502",
+  "username": "喵喵~喵~",
+  "tenant_name": "奎光墙",
   "role": 2,
-  "access_token": "eyJhbGci...",
-  "refresh_token": "def50200...",
+  "access_token": "cIWGoNp...",
+  "refresh_token": "OFRFHo...",
   "is_reviewer": true,
   "is_admin": true
 }`,
         },
         responseFields: [
-          { name: 'qq', type: 'string', desc: '用户 QQ 号' },
-          { name: 'username', type: 'string', desc: '用户名' },
-          { name: 'tenant_name', type: 'string', desc: '所属学校/租户名称' },
+          { name: 'qq', type: 'string', desc: '用户 QQ 号（来自 Campux name 字段）' },
+          { name: 'username', type: 'string', desc: '用户显示名' },
+          { name: 'tenant_name', type: 'string', desc: '所属校园墙名称' },
           { name: 'role', type: 'number', desc: '本地角色（0=普通,1=审核员,2=管理员）' },
-          { name: 'access_token', type: 'string', desc: 'OAuth Access Token' },
-          { name: 'refresh_token', type: 'string', desc: 'OAuth Refresh Token' },
-          { name: 'is_reviewer', type: 'boolean', desc: '是否为审核员' },
-          { name: 'is_admin', type: 'boolean', desc: '是否为管理员' },
+          { name: 'access_token', type: 'string', desc: 'Campux Access Token（24h有效）' },
+          { name: 'refresh_token', type: 'string', desc: 'Campux Refresh Token（30天有效）' },
+          { name: 'is_reviewer', type: 'boolean', desc: 'role ≥ 1' },
+          { name: 'is_admin', type: 'boolean', desc: 'role ≥ 2' },
         ],
       },
       {
@@ -506,11 +500,11 @@ export const endpointGroups = [
         path: '/oauth/refresh',
         summary: '刷新 Token',
         auth: 'none',
-        description: '刷新过期的 Access Token。',
+        description: '刷新过期的 Access Token。使用 client_secret_basic 认证。',
         bodyParams: [
           { name: 'refresh_token', type: 'string', required: true, desc: '之前获取的 Refresh Token' },
         ],
-        responseDesc: '由 OAuth 服务返回的 Token 响应 JSON',
+        responseDesc: 'Campux 返回的 Token JSON',
       },
     ],
   },
@@ -555,8 +549,8 @@ export const databaseTables = [
     v TEXT
 );`,
     columns: [
-      { name: 'k', type: 'TEXT', desc: '配置键（主键）' },
-      { name: 'v', type: 'TEXT', desc: '配置值' },
+      { name: 'k', type: 'TEXT', desc: '配置键（主键）。OAuth state 键以 oauth_state_ 为前缀' },
+      { name: 'v', type: 'TEXT', desc: '配置值。OAuth state 值为 JSON（含 code_verifier 等）' },
     ],
   },
   {
