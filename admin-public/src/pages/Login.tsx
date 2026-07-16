@@ -10,16 +10,17 @@ export function LoginPage() {
   const [devRole, setDevRole] = useState<1 | 2>(2);
 
   useEffect(() => {
-    const code = new URLSearchParams(window.location.search).get('code');
-    if (code) {
+    // 检查 URL 参数中是否有 OAuth 回调的 token/qq/role
+    const params = new URLSearchParams(window.location.search);
+    const hasToken = params.get('token');
+    const hasQq = params.get('qq');
+
+    if (hasToken || hasQq) {
       setPhase('checking');
-      handleCallback(code).then(ok => {
-        if (!ok) setPhase('denied');
-        window.history.replaceState({}, '', window.location.pathname);
-      }).catch(() => {
-        setPhase('error');
-        window.history.replaceState({}, '', window.location.pathname);
-      });
+      const ok = handleCallback();
+      if (!ok) setPhase('denied');
+      // 清理 URL 参数
+      window.history.replaceState({}, '', window.location.pathname);
     }
 
     // no-cors 模式规避跨域限制：能建立连接即为在线

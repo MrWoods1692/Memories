@@ -30,6 +30,7 @@ public class OAuthHelper {
     static class OAuthState {
         String codeVerifier;
         String redirectUri;
+        String frontendRedirect;  // OAuth 完成后重定向回前端的 URL
         long createdAt;
     }
 
@@ -69,8 +70,9 @@ public class OAuthHelper {
 
     /**
      * 构建授权 URL，存储 state 对应的 verifier
+     * @param frontendRedirect 可选：OAuth 完成后重定向到前端的 URL
      */
-    public static String buildAuthUrl(String prefix, String clientId, String redirectUri, String scope) {
+    public static String buildAuthUrl(String prefix, String clientId, String redirectUri, String scope, String frontendRedirect) {
         String state = generateState();
         String codeVerifier = generateCodeVerifier();
         String codeChallenge = generateCodeChallenge(codeVerifier);
@@ -79,6 +81,7 @@ public class OAuthHelper {
         OAuthState oaState = new OAuthState();
         oaState.codeVerifier = codeVerifier;
         oaState.redirectUri = redirectUri;
+        oaState.frontendRedirect = frontendRedirect;
         oaState.createdAt = System.currentTimeMillis();
         pendingStates.put(state, oaState);
 
@@ -235,5 +238,16 @@ public class OAuthHelper {
     private static void cleanExpiredStates() {
         long now = System.currentTimeMillis();
         pendingStates.entrySet().removeIf(e -> (now - e.getValue().createdAt) > 600_000); // 10 min
+    }
+
+    /**
+     * 获取 OAuth 完成后重定向到前端的 URL（如果有的话）
+     */
+    public static String getFrontendRedirect(String state) {
+        OAuthState oaState = pendingStates.remove(state);
+        if (oaState != null) {
+            return oaState.frontendRedirect;
+        }
+        return null;
     }
 }

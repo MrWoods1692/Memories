@@ -35,35 +35,28 @@ export async function apiDelete(path: string): Promise<string> {
   return r.text();
 }
 
+/** 发起 OAuth 登录：获取授权 URL 并跳转到 Campux 校园墙 */
 export async function oauthLogin(): Promise<void> {
-  const redirectUri = window.location.origin + '/oauth/callback';
-  window.location.href = `${API_BASE_URL}/oauth/authorize?redirect_uri=${encodeURIComponent(redirectUri)}`;
+  const frontendOrigin = window.location.origin;
+  const r = await fetch(`${API_BASE_URL}/oauth/start?redirect=${encodeURIComponent(frontendOrigin)}`);
+  const data = await r.json();
+  if (data.url) {
+    window.location.href = data.url;
+  } else {
+    throw new Error('OAuth 未配置');
+  }
 }
 
-export async function oauthExchange(code: string): Promise<{ token: string; qq: string; role: 1 | 2; nickname?: string } | null> {
-  const r = await fetch(`${API_BASE_URL}/oauth/token`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({ code, redirect_uri: window.location.origin + '/oauth/callback' }),
-  });
-  if (!r.ok) return null;
-  const data = await r.json();
-  const t = data.access_token || data.token;
-  if (!t) return null;
-
-  // 获取用户信息
-  const meR = await fetch(`${API_BASE_URL}/oauth/me`, {
-    headers: { Authorization: `Bearer ${t}` },
-  });
-  if (!meR.ok) return null;
-  const me = await meR.json();
-
-  return {
-    token: t,
-    qq: String(me.qq || ''),
-    role: me.role || 0,
-    nickname: me.nickname,
-  };
+/** 从 URL 参数解析 OAuth 回调结果 */
+export function parseOAuthCallback(): { token: string; qq: string; role: 1 | 2; nickname: string } | null {
+  const p = new URLSearchParams(window.location.search);
+  const token = p.get('token');
+  const qq = p.get('qq');
+  const role = parseInt(p.get('role') || '0') as 1 | 2;
+  if (token && qq && (role === 1 || role === 2)) {
+    return { token, qq, role, nickname: p.get('nickname') || '' };
+  }
+  return null;
 }
 
 export function saveAuth(token: string, user: { qq: string; role: 1 | 2; nickname?: string }) {

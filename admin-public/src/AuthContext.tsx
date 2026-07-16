@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
-import { oauthExchange, oauthLogin, saveAuth, clearAuth, getSavedUser } from './api';
+import { oauthLogin, parseOAuthCallback, saveAuth, clearAuth, getSavedUser } from './api';
 import { DEV_MODE } from './config';
 import type { AuthUser } from './types';
 
@@ -10,7 +10,7 @@ interface AuthCtx {
   devMode: boolean;
   login: () => void;
   devLogin: (qq: string, role: 1 | 2) => void;
-  handleCallback: (code: string) => Promise<boolean>;
+  handleCallback: () => boolean;
   logout: () => void;
 }
 
@@ -42,10 +42,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(devUser);
   };
 
-  const handleCallback = async (code: string): Promise<boolean> => {
-    const result = await oauthExchange(code);
+  /** 处理 OAuth 回调：从 URL 参数中解析 token/qq/role */
+  const handleCallback = (): boolean => {
+    const result = parseOAuthCallback();
     if (!result) return false;
-    if (result.role !== 1 && result.role !== 2) return false;
     saveAuth(result.token, { qq: result.qq, role: result.role, nickname: result.nickname });
     setToken(result.token);
     setUser({ qq: result.qq, role: result.role, nickname: result.nickname });

@@ -994,6 +994,7 @@ public class EmbeddedServer extends NanoHTTPD {
             }
 
             // GET /oauth/start - 发起授权，返回跳转 URL
+            // 可选参数 redirect: OAuth 完成后重定向到的前端 URL
             if ("/oauth/start".equals(uri) && Method.GET.equals(method)) {
                 String prefix = db.getConfig("oauth_prefix");
                 String clientId = db.getConfig("oauth_client_id");
@@ -1002,7 +1003,9 @@ public class EmbeddedServer extends NanoHTTPD {
                     return NanoHTTPD.newFixedLengthResponse(Status.BAD_REQUEST, "text/plain", "oauth not configured");
                 }
                 String scope = "profile tenant";
-                String authUrl = OAuthHelper.buildAuthUrl(prefix, clientId, redirectUri, scope);
+                Map<String, String> params = session.getParms();
+                String frontendRedirect = params.get("redirect");
+                String authUrl = OAuthHelper.buildAuthUrl(prefix, clientId, redirectUri, scope, frontendRedirect);
                 JSONObject o = new JSONObject();
                 o.put("url", authUrl);
                 return NanoHTTPD.newFixedLengthResponse(Status.OK, "application/json", o.toString());
@@ -1059,6 +1062,21 @@ public class EmbeddedServer extends NanoHTTPD {
                 result.put("refresh_token", refreshToken);
                 result.put("is_reviewer", role >= 1);
                 result.put("is_admin", role >= 2);
+
+                // 如果有前端重定向 URL，则重定向到前端（而非返回 JSON）
+                String frontendRedirect = OAuthHelper.getFrontendRedirect(state);
+                if (frontendRedirect != null && !frontendRedirect.isEmpty()) {
+                    String sep = frontendRedirect.contains("?") ? "&" : "?";
+                    String loc = frontendRedirect + sep
+                        + "token=" + urlEncode(accessToken)
+                        + "&qq=" + urlEncode(userQq)
+                        + "&role=" + role
+                        + "&nickname=" + urlEncode(userName != null ? userName : "");
+                    Response r = NanoHTTPD.newFixedLengthResponse(Status.REDIRECT, "text/html",
+                        "<html><body>登录成功，正在跳转...<script>location.replace('" + loc + "');</script></body></html>");
+                    r.addHeader("Location", loc);
+                    return r;
+                }
 
                 return NanoHTTPD.newFixedLengthResponse(Status.OK, "application/json", result.toString());
             }
@@ -1148,5 +1166,13 @@ public class EmbeddedServer extends NanoHTTPD {
         }
 
         return NanoHTTPD.newFixedLengthResponse(Status.NOT_IMPLEMENTED, "text/plain", "Not Implemented");
+    }
+
+    private static String urlEncode(String s) {
+        try {
+            return java.net.URLEncoder.encode(s, "UTF-8");
+        } catch (Exception e) {
+            return s;
+        }
     }
 }
