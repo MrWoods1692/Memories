@@ -17,6 +17,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     private static final String DB_NAME = "memories.db";
     private static final int DB_VERSION = 1;
     private static String dbPath = null;
+    private static SQLiteDatabase sharedDb = null;
 
     /**
      * 获取数据库路径：优先外部存储（卸载不丢失），回退内部存储
@@ -45,9 +46,17 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         super(ctx, resolveDatabasePath(ctx), null, DB_VERSION);
     }
 
+    /** 共享连接，确保 WriteQueue 写入对所有实例可见 */
+    private SQLiteDatabase getSharedDb() {
+        if (sharedDb == null || !sharedDb.isOpen()) {
+            sharedDb = super.getWritableDatabase();
+        }
+        return sharedDb;
+    }
+
     /** 获取数据库文件路径（用于备份等） */
     public String getDatabasePathString() {
-        return getWritableDatabase().getPath();
+        return getSharedDb().getPath();
     }
 
     @Override
@@ -66,7 +75,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     public long addImage(String url) {
         try {
             return WriteQueue.submit(() -> {
-                SQLiteDatabase db = getWritableDatabase();
+                SQLiteDatabase db = getSharedDb();
                 ContentValues cv = new ContentValues();
                 cv.put("url", url);
                 cv.put("created_at", System.currentTimeMillis());
@@ -79,7 +88,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     }
 
     public String listImagesJson() {
-        SQLiteDatabase db = getReadableDatabase();
+        SQLiteDatabase db = getSharedDb();
         Cursor c = db.rawQuery("SELECT id, url, status, created_at FROM images ORDER BY created_at DESC", null);
         JSONArray arr = new JSONArray();
         while (c.moveToNext()) {
@@ -107,7 +116,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         if (limit < 1) limit = 20;
         int offset = (page - 1) * limit;
 
-        SQLiteDatabase db = getReadableDatabase();
+        SQLiteDatabase db = getSharedDb();
 
         // 查总数
         Cursor countCur = db.rawQuery("SELECT COUNT(*) FROM images", null);
@@ -151,7 +160,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     public boolean deleteImage(long id) {
         try {
             return WriteQueue.submit(() -> {
-                SQLiteDatabase db = getWritableDatabase();
+                SQLiteDatabase db = getSharedDb();
                 int rows = db.delete("images", "id=?", new String[]{String.valueOf(id)});
                 return rows > 0;
             }).get();
@@ -164,7 +173,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     public boolean updateImageStatus(long id, int status) {
         try {
             return WriteQueue.submit(() -> {
-                SQLiteDatabase db = getWritableDatabase();
+                SQLiteDatabase db = getSharedDb();
                 ContentValues cv = new ContentValues();
                 cv.put("status", status);
                 int rows = db.update("images", cv, "id=?", new String[]{String.valueOf(id)});
@@ -177,7 +186,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     }
 
     public long getImageCount() {
-        SQLiteDatabase db = getReadableDatabase();
+        SQLiteDatabase db = getSharedDb();
         Cursor c = db.rawQuery("SELECT COUNT(*) FROM images", null);
         long cnt = 0;
         if (c.moveToFirst()) cnt = c.getLong(0);
@@ -188,7 +197,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     public void addUser(String qq, int role) {
         try {
             WriteQueue.submit(() -> {
-                SQLiteDatabase db = getWritableDatabase();
+                SQLiteDatabase db = getSharedDb();
                 ContentValues cv = new ContentValues();
                 cv.put("qq", qq);
                 cv.put("role", role);
@@ -202,7 +211,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
     public int getUserRole(String qq) {
         if (qq == null) return 0;
-        SQLiteDatabase db = getReadableDatabase();
+        SQLiteDatabase db = getSharedDb();
         Cursor c = db.rawQuery("SELECT role FROM users WHERE qq=?", new String[]{qq});
         int role = 0;
         if (c.moveToFirst()) role = c.getInt(0);
@@ -211,7 +220,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     }
 
     public String getConfigJson() {
-        SQLiteDatabase db = getReadableDatabase();
+        SQLiteDatabase db = getSharedDb();
         Cursor c = db.rawQuery("SELECT k, v FROM config", null);
         JSONObject o = new JSONObject();
         while (c.moveToNext()) {
@@ -224,7 +233,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     public void setConfig(String k, String v) {
         try {
             WriteQueue.submit(() -> {
-                SQLiteDatabase db = getWritableDatabase();
+                SQLiteDatabase db = getSharedDb();
                 ContentValues cv = new ContentValues();
                 cv.put("k", k);
                 cv.put("v", v);
@@ -237,7 +246,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     }
 
     public String getConfig(String k) {
-        SQLiteDatabase db = getReadableDatabase();
+        SQLiteDatabase db = getSharedDb();
         Cursor c = db.rawQuery("SELECT v FROM config WHERE k=?", new String[]{k});
         String v = null;
         if (c.moveToFirst()) v = c.getString(0);
@@ -246,7 +255,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     }
 
     public String listUsersJson() {
-        SQLiteDatabase db = getReadableDatabase();
+        SQLiteDatabase db = getSharedDb();
         Cursor c = db.rawQuery("SELECT id, qq, role FROM users ORDER BY id", null);
         JSONArray arr = new JSONArray();
         while (c.moveToNext()) {
@@ -265,7 +274,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     public boolean deleteUser(String qq) {
         try {
             return WriteQueue.submit(() -> {
-                SQLiteDatabase db = getWritableDatabase();
+                SQLiteDatabase db = getSharedDb();
                 int rows = db.delete("users", "qq=?", new String[]{qq});
                 return rows > 0;
             }).get();
@@ -280,7 +289,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     public void banUser(String qq, String reason) {
         try {
             WriteQueue.submit(() -> {
-                SQLiteDatabase db = getWritableDatabase();
+                SQLiteDatabase db = getSharedDb();
                 ContentValues cv = new ContentValues();
                 cv.put("qq", qq);
                 cv.put("reason", reason != null ? reason : "");
@@ -296,7 +305,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     public boolean unbanUser(String qq) {
         try {
             return WriteQueue.submit(() -> {
-                SQLiteDatabase db = getWritableDatabase();
+                SQLiteDatabase db = getSharedDb();
                 int rows = db.delete("banned_users", "qq=?", new String[]{qq});
                 return rows > 0;
             }).get();
@@ -308,7 +317,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
     public boolean isUserBanned(String qq) {
         if (qq == null) return false;
-        SQLiteDatabase db = getReadableDatabase();
+        SQLiteDatabase db = getSharedDb();
         Cursor c = db.rawQuery("SELECT 1 FROM banned_users WHERE qq=?", new String[]{qq});
         boolean banned = c.moveToFirst();
         c.close();
@@ -316,7 +325,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     }
 
     public String listBannedUsersJson() {
-        SQLiteDatabase db = getReadableDatabase();
+        SQLiteDatabase db = getSharedDb();
         Cursor c = db.rawQuery("SELECT qq, reason, banned_at FROM banned_users ORDER BY banned_at DESC", null);
         JSONArray arr = new JSONArray();
         while (c.moveToNext()) {
@@ -338,7 +347,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
      * 列出所有用户表及其结构信息
      */
     public String listTablesJson() {
-        SQLiteDatabase db = getReadableDatabase();
+        SQLiteDatabase db = getSharedDb();
         Cursor c = db.rawQuery(
             "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE 'android_%' ORDER BY name",
             null);
@@ -385,7 +394,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         if (limit < 1) limit = 50;
         int offset = (page - 1) * limit;
 
-        SQLiteDatabase db = getReadableDatabase();
+        SQLiteDatabase db = getSharedDb();
 
         // 验证表名（防注入）
         Cursor check = db.rawQuery(
@@ -511,7 +520,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             return "{\"error\":\"无法识别操作的表名\"}";
         }
 
-        SQLiteDatabase db = getReadableDatabase();
+        SQLiteDatabase db = getSharedDb();
         for (String tableName : tableHints) {
             Cursor c = db.rawQuery(
                 "SELECT name FROM sqlite_master WHERE type='table' AND name=? AND name NOT LIKE 'sqlite_%' AND name NOT LIKE 'android_%'",
@@ -553,7 +562,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
     /** 执行读查询 */
     private String executeReadQuery(String sql) {
-        SQLiteDatabase db = getReadableDatabase();
+        SQLiteDatabase db = getSharedDb();
         try {
             Cursor c = db.rawQuery(sql, null);
 
@@ -609,7 +618,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     private String executeWriteStatement(String sql) {
         try {
             return WriteQueue.submit(() -> {
-                SQLiteDatabase db = getWritableDatabase();
+                SQLiteDatabase db = getSharedDb();
                 try {
                     db.beginTransaction();
                     db.execSQL(sql);
@@ -667,7 +676,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     public int cleanupRejectedImages() {
         try {
             return WriteQueue.submit(() -> {
-                SQLiteDatabase db = getWritableDatabase();
+                SQLiteDatabase db = getSharedDb();
                 return db.delete("images", "status=?", new String[]{"2"});
             }).get();
         } catch (Exception e) {
