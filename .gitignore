@@ -1,0 +1,12 @@
+# Sensitive signing files
+keystore.properties
+*.keystore
+*.jks
+
+# Build outputs
+app/build/
+.gradle/
+*.apk
+
+# Local properties
+local.properties
