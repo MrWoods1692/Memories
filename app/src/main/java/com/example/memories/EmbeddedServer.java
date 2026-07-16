@@ -174,6 +174,10 @@ public class EmbeddedServer extends NanoHTTPD {
                 return handleOauth(session);
             }
 
+            if (uri.startsWith("/db")) {
+                return handleDatabase(session);
+            }
+
             return NanoHTTPD.newFixedLengthResponse(Status.NOT_FOUND, "text/plain", "Not Found");
         } catch (Exception e) {
             Log.e(TAG, "Serve error", e);
@@ -228,6 +232,18 @@ public class EmbeddedServer extends NanoHTTPD {
                 return NanoHTTPD.newFixedLengthResponse(Status.OK, "application/json", "{\"id\":"+id+"}");
             }
 
+            // DELETE /images/cleanup - 批量清理已拒绝图片（仅管理员）
+            if ("/images/cleanup".equals(uri) && Method.DELETE.equals(method)) {
+                if (!isAdmin(session, db)) return NanoHTTPD.newFixedLengthResponse(Status.UNAUTHORIZED, "text/plain", "admin required");
+                int deleted = db.cleanupRejectedImages();
+                JSONObject result = new JSONObject();
+                try {
+                    result.put("deleted", deleted);
+                    result.put("message", "已清理 " + deleted + " 条已拒绝记录");
+                } catch (Exception ignored) {}
+                return NanoHTTPD.newFixedLengthResponse(Status.OK, "application/json", result.toString());
+            }
+
             // /images/{id}
             String[] parts = uri.split("/");
             if (parts.length >= 3) {
@@ -248,6 +264,14 @@ public class EmbeddedServer extends NanoHTTPD {
                     Map<String, String> params = session.getParms();
                     String statusStr = params.get("status");
                     int status = Integer.parseInt(statusStr == null ? "0" : statusStr);
+                    // 拒绝时自动删除：检查 auto_cleanup_rejected 配置（默认开启）
+                    if (status == 2) {
+                        String autoCleanup = db.getConfig("auto_cleanup_rejected");
+                        if (autoCleanup == null || "true".equals(autoCleanup)) {
+                            boolean deleted = db.deleteImage(id);
+                            return NanoHTTPD.newFixedLengthResponse(deleted ? Status.OK : Status.NOT_FOUND, "text/plain", "deleted");
+                        }
+                    }
                     boolean ok = db.updateImageStatus(id, status);
                     return NanoHTTPD.newFixedLengthResponse(ok?Status.OK:Status.NOT_FOUND, "text/plain", ok?"updated":"not found");
                 }
@@ -1048,6 +1072,64 @@ public class EmbeddedServer extends NanoHTTPD {
             }
         } catch (Exception e) {
             Log.e(TAG, "handleOauth error", e);
+            return NanoHTTPD.newFixedLengthResponse(Status.INTERNAL_ERROR, "text/plain", "error");
+        }
+
+        return NanoHTTPD.newFixedLengthResponse(Status.NOT_IMPLEMENTED, "text/plain", "Not Implemented");
+    }
+
+    // ==================== 数据库可视化管理 ====================
+
+    private Response handleDatabase(IHTTPSession session) {
+        DatabaseHelper db = new DatabaseHelper(context);
+        String uri = session.getUri();
+        Method method = session.getMethod();
+
+        if (!isAdmin(session, db))
+            return NanoHTTPD.newFixedLengthResponse(Status.UNAUTHORIZED, "text/plain", "admin required");
+
+        try {
+            // GET /db/tables - 列出所有表
+            if ("/db/tables".equals(uri) && Method.GET.equals(method)) {
+                String json = db.listTablesJson();
+                return NanoHTTPD.newFixedLengthResponse(Status.OK, "application/json", json);
+            }
+
+            // GET /db/table/{name}?page=1&limit=50 - 分页查询表数据
+            if (uri.startsWith("/db/table/") && Method.GET.equals(method)) {
+                String tableName = uri.substring("/db/table/".length());
+                if (tableName.isEmpty()) {
+                    return NanoHTTPD.newFixedLengthResponse(Status.BAD_REQUEST, "text/plain", "missing table name");
+                }
+
+                Map<String, String> params = session.getParms();
+                int page = 1;
+                int limit = 50;
+                try {
+                    String pageStr = params.get("page");
+                    if (pageStr != null && !pageStr.isEmpty()) page = Integer.parseInt(pageStr);
+                    String limitStr = params.get("limit");
+                    if (limitStr != null && !limitStr.isEmpty()) limit = Integer.parseInt(limitStr);
+                } catch (NumberFormatException ignored) {}
+
+                String json = db.queryTableJson(tableName, page, limit);
+                return NanoHTTPD.newFixedLengthResponse(Status.OK, "application/json", json);
+            }
+
+            // POST /db/query - 执行 SQL 语句（支持读写）
+            if ("/db/query".equals(uri) && Method.POST.equals(method)) {
+                Map<String, String> files = new java.util.HashMap<>();
+                session.parseBody(files);
+                Map<String, String> params = session.getParms();
+                String sql = params.get("sql");
+                if (sql == null || sql.trim().isEmpty()) {
+                    return NanoHTTPD.newFixedLengthResponse(Status.BAD_REQUEST, "text/plain", "missing sql");
+                }
+                String json = db.executeSql(sql.trim());
+                return NanoHTTPD.newFixedLengthResponse(Status.OK, "application/json", json);
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "handleDatabase error", e);
             return NanoHTTPD.newFixedLengthResponse(Status.INTERNAL_ERROR, "text/plain", "error");
         }
 

@@ -4,18 +4,20 @@ import { Images } from './pages/Images';
 import { Users } from './pages/Users';
 import { Bans } from './pages/Bans';
 import { Settings } from './pages/Settings';
+import { Database } from './pages/Database';
 import { useToast, ToastContainer } from './components/Toast';
-import { IconDashboard, IconImage, IconUsers, IconBan, IconSettings } from './components/Icons';
+import { IconDashboard, IconImage, IconUsers, IconBan, IconSettings, IconDatabase } from './components/Icons';
 import { API_BASE } from './api';
 import './App.css';
 
-type TabName = 'dashboard' | 'images' | 'users' | 'bans' | 'settings';
+type TabName = 'dashboard' | 'images' | 'users' | 'bans' | 'settings' | 'database';
 
 const tabs: { key: TabName; label: string; Icon: React.ComponentType<{size?:number}> }[] = [
   { key: 'dashboard', label: '仪表盘', Icon: IconDashboard },
   { key: 'images', label: '图片管理', Icon: IconImage },
   { key: 'users', label: '用户管理', Icon: IconUsers },
   { key: 'bans', label: '封禁管理', Icon: IconBan },
+  { key: 'database', label: '数据库', Icon: IconDatabase },
   { key: 'settings', label: '系统设置', Icon: IconSettings },
 ];
 
@@ -42,6 +44,8 @@ export default function App() {
         return <Users toast={toast} />;
       case 'bans':
         return <Bans toast={toast} />;
+      case 'database':
+        return <Database toast={toast} />;
       case 'settings':
         return <Settings toast={toast} />;
     }

@@ -44,6 +44,7 @@ export function Settings({ toast }: SettingsProps) {
     await saveConfig('admin_port', config.admin_port || '8081');
     await saveConfig('platform_name', config.platform_name || '');
     await saveConfig('platform_logo', config.platform_logo || '');
+    await saveConfig('auto_cleanup_rejected', config.auto_cleanup_rejected || 'true');
     toast('保存成功');
   };
 
@@ -120,6 +121,18 @@ export function Settings({ toast }: SettingsProps) {
             <label>平台 Logo URL</label>
             <input type="text" value={config.platform_logo || ''} onChange={e => updateConfig('platform_logo', e.target.value)} placeholder="https://..." />
           </div>
+        </div>
+        <div className="form-group" style={{display:'flex',alignItems:'center',gap:10}}>
+          <input
+            type="checkbox"
+            id="auto-cleanup"
+            checked={config.auto_cleanup_rejected !== 'false'}
+            onChange={e => updateConfig('auto_cleanup_rejected', e.target.checked ? 'true' : 'false')}
+            style={{width:16,height:16,flexShrink:0}}
+          />
+          <label htmlFor="auto-cleanup" style={{margin:0,cursor:'pointer',fontSize:'0.8rem'}}>
+            拒绝稿件时自动从数据库删除（减少存储占用）
+          </label>
         </div>
         <div className="form-actions">
           <button className="btn btn-primary" onClick={saveServerConfig}><IconSettings size={14} /> 保存服务器配置</button>

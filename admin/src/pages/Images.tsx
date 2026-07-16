@@ -170,6 +170,22 @@ export function Images({ toast, refreshKey }: ImagesProps) {
             <IconTrash size={13} /> 删除选中 ({selected.size})
           </button>
         )}
+        <button className="btn btn-warn btn-sm" onClick={() => {
+          setConfirmMsg('确定清理所有已拒绝的图片记录？此操作不可撤销。');
+          setConfirmAction(() => async () => {
+            try {
+              const resp = await apiDelete('/images/cleanup');
+              const data = JSON.parse(resp);
+              toast(data.message || '清理完成', 'success');
+              loadPage(page);
+            } catch {
+              toast('清理失败', 'error');
+            }
+            setConfirmAction(null);
+          });
+        }}>
+          <IconTrash size={13} /> 清理已拒绝
+        </button>
       </div>
 
       {loading ? (

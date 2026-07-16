@@ -39,6 +39,8 @@ export const IconGlobe       = (p: IconProps) => <S {...p}><circle cx="12" cy="1
 export const IconSmartphone  = (p: IconProps) => <S {...p}><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></S>;
 export const IconBattery     = (p: IconProps) => <S {...p}><rect x="1" y="6" width="18" height="12" rx="2"/><line x1="23" y1="10" x2="23" y2="14"/><line x1="7" y1="10" x2="7" y2="14"/><line x1="11" y1="10" x2="11" y2="14"/><line x1="15" y1="10" x2="15" y2="14"/></S>;
 export const IconWrench      = (p: IconProps) => <S {...p}><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></S>;
+export const IconDatabase    = (p: IconProps) => <S {...p}><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></S>;
+export const IconPlay        = (p: IconProps) => <S {...p}><polygon points="5 3 19 12 5 21 5 3" fill="currentColor" stroke="none"/></S>;
 
 // Colored status icon
 export const IconStatusOn    = (p: IconProps) => <S {...p} stroke="#22c55e"><circle cx="12" cy="12" r="10"/><polyline points="9 12 11 14 15 10"/></S>;

@@ -42,6 +42,7 @@ export interface AppConfig {
   oauth_client_secret?: string;
   oauth_domain?: string;
   frpc_config?: string;
+  auto_cleanup_rejected?: string;
 }
 
 export interface FrpcStatus {
@@ -138,4 +139,43 @@ export interface WebdavConfig {
   webdav_url?: string;
   webdav_user?: string;
   configured: boolean;
+}
+
+// ==================== 数据库可视化管理 ====================
+
+export interface DbColumn {
+  cid: number;
+  name: string;
+  type: string;
+  notnull: boolean;
+  dflt_value: string | null;
+  pk: boolean;
+}
+
+export interface DbTable {
+  name: string;
+  columns: DbColumn[];
+  rowCount: number;
+}
+
+export interface DbTableData {
+  columns: string[];
+  rows: Record<string, unknown>[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+export interface DbQueryResult {
+  type?: 'query' | 'write' | 'error';
+  columns: string[];
+  rows: Record<string, unknown>[];
+  returned: number;
+  truncated?: boolean;
+  message?: string;
+  error?: string;
+  /** 写入操作时返回 */
+  success?: boolean;
+  affected?: number;
 }
