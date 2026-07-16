@@ -35,10 +35,19 @@ export async function apiDelete(path: string): Promise<string> {
   return r.text();
 }
 
-/** 发起 OAuth 登录：直接重定向到后端，后端再重定向到 Campux */
-export function oauthLogin(): void {
+/** 发起 OAuth 登录：先调后端存储 state，再跳转到 Campux 授权页 */
+export async function oauthLogin(): Promise<void> {
   const frontendOrigin = window.location.origin;
-  window.location.href = `${API_BASE_URL}/oauth/login?redirect=${encodeURIComponent(frontendOrigin)}`;
+  try {
+    const r = await fetch(`${API_BASE_URL}/oauth/start?redirect=${encodeURIComponent(frontendOrigin)}`);
+    const data = await r.json();
+    if (data.url) {
+      window.location.href = data.url;  // 跳转到 Campux (HTTPS)，不会触发 mixed content
+    }
+  } catch {
+    // fetch 失败时回退到直接跳转 /oauth/login
+    window.location.href = `${API_BASE_URL}/oauth/login?redirect=${encodeURIComponent(frontendOrigin)}`;
+  }
 }
 
 /** 从 URL 参数解析 OAuth 回调结果 */
