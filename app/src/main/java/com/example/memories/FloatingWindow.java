@@ -1,5 +1,6 @@
 package com.example.memories;
 
+import android.app.AlarmManager;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -9,7 +10,9 @@ import android.content.Intent;
 import android.graphics.PixelFormat;
 import android.net.wifi.WifiManager;
 import android.os.Build;
+import android.os.Handler;
 import android.os.IBinder;
+import android.os.Looper;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.WindowManager;
@@ -29,6 +32,8 @@ public class FloatingWindow extends Service {
     private ImageView floatView;
     private static final String CHANNEL_ID = "floating_channel";
     private static final int NOTIFICATION_ID = 100;
+    private final Handler handler = new Handler(Looper.getMainLooper());
+    private boolean floatViewCreated = false;
 
     @Override
     public void onCreate() {
@@ -47,20 +52,29 @@ public class FloatingWindow extends Service {
                 .setSmallIcon(android.R.drawable.ic_menu_manage)
                 .setOngoing(true)
                 .setContentIntent(pi)
+                .setForegroundServiceBehavior(Notification.FOREGROUND_SERVICE_IMMEDIATE)
                 .build();
         startForeground(NOTIFICATION_ID, n);
 
         // 创建悬浮窗（需要 SYSTEM_ALERT_WINDOW 权限）
+        tryCreateFloatView();
+    }
+
+    private void tryCreateFloatView() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
                 && !android.provider.Settings.canDrawOverlays(this)) {
             Log.w("FloatingWindow", "No overlay permission, skipping float view");
             return;
         }
-        createFloatView();
+        // 延迟创建，等待 WindowManager 就绪
+        handler.postDelayed(this::createFloatView, 300);
     }
 
     private void createFloatView() {
+        if (floatViewCreated) return;
+
         windowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
+        if (windowManager == null) return;
 
         floatView = new ImageView(this);
         floatView.setImageResource(android.R.drawable.ic_menu_manage);
@@ -74,7 +88,8 @@ public class FloatingWindow extends Service {
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
                 ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
                 : WindowManager.LayoutParams.TYPE_PHONE,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+                    | WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
             PixelFormat.TRANSLUCENT
         );
         params.gravity = Gravity.END | Gravity.CENTER_VERTICAL;
@@ -83,7 +98,7 @@ public class FloatingWindow extends Service {
 
         floatView.setOnClickListener(v -> {
             Intent intent = new Intent(this, MainActivity.class);
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
             startActivity(intent);
         });
 
@@ -95,15 +110,31 @@ public class FloatingWindow extends Service {
 
         try {
             windowManager.addView(floatView, params);
+            floatViewCreated = true;
+            Log.i("FloatingWindow", "Float view created");
         } catch (Exception e) {
-            Log.w("FloatingWindow", "Failed to add float view", e);
+            Log.w("FloatingWindow", "Failed to add float view, retrying...", e);
+            // 失败后重试
+            handler.postDelayed(() -> {
+                try {
+                    if (floatView != null && windowManager != null) {
+                        windowManager.addView(floatView, params);
+                        floatViewCreated = true;
+                        Log.i("FloatingWindow", "Float view created on retry");
+                    }
+                } catch (Exception ex) {
+                    Log.e("FloatingWindow", "Float view creation failed after retry", ex);
+                }
+            }, 2000);
         }
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         // 如果悬浮窗被系统移除，且权限允许，重新创建
-        if (floatView == null || (windowManager != null && !floatView.isAttachedToWindow())) {
+        if (!floatViewCreated || (floatView != null && windowManager != null
+                && !floatView.isAttachedToWindow())) {
+            floatViewCreated = false;
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
                     && !android.provider.Settings.canDrawOverlays(this)) {
                 Log.w("FloatingWindow", "No overlay permission, cannot recreate float view");
@@ -113,7 +144,7 @@ public class FloatingWindow extends Service {
                         windowManager.removeView(floatView);
                     }
                 } catch (Exception ignored) {}
-                createFloatView();
+                tryCreateFloatView();
             }
         }
         // 自动打开 WiFi
@@ -129,37 +160,58 @@ public class FloatingWindow extends Service {
     @Override
     public void onTaskRemoved(Intent rootIntent) {
         super.onTaskRemoved(rootIntent);
-        // App 被划掉后自动重启
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            // Android 12+：通过 WorkManager 合规重启，避免 ForegroundServiceStartNotAllowedException
+        Log.i("FloatingWindow", "onTaskRemoved - scheduling restart");
+
+        // 方案 1: WorkManager
+        try {
             OneTimeWorkRequest work = new OneTimeWorkRequest.Builder(BootStartupWorker.class)
-                    .setInitialDelay(1, TimeUnit.SECONDS)
+                    .setInitialDelay(500, TimeUnit.MILLISECONDS)
                     .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
                     .addTag("memories_restart")
                     .build();
             WorkManager.getInstance(this)
                     .enqueueUniqueWork("memories_restart", ExistingWorkPolicy.REPLACE, work);
-            Log.i("FloatingWindow", "Restart scheduled via WorkManager");
-        } else {
-            // Android 11 及以下：AlarmManager 直接重启
+        } catch (Exception e) {
+            Log.e("FloatingWindow", "WorkManager restart failed", e);
+        }
+
+        // 方案 2: AlarmManager 兜底
+        scheduleAlarmRestart(1000);
+        scheduleAlarmRestart(5000);
+    }
+
+    private void scheduleAlarmRestart(long delayMs) {
+        try {
             Intent restartIntent = new Intent(getApplicationContext(), FloatingWindow.class);
             PendingIntent pi = PendingIntent.getService(
-                getApplicationContext(), 0, restartIntent,
-                Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? PendingIntent.FLAG_IMMUTABLE : 0
+                getApplicationContext(), (int) (delayMs / 1000 + 1000), restartIntent,
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
+                    ? PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT
+                    : PendingIntent.FLAG_UPDATE_CURRENT
             );
-            android.app.AlarmManager am = (android.app.AlarmManager) getSystemService(ALARM_SERVICE);
+            AlarmManager am = (AlarmManager) getSystemService(ALARM_SERVICE);
             if (am != null) {
-                am.set(android.app.AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + 1000, pi);
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && am.canScheduleExactAlarms()) {
+                    am.setExact(AlarmManager.RTC_WAKEUP,
+                        System.currentTimeMillis() + delayMs, pi);
+                } else {
+                    am.set(AlarmManager.RTC_WAKEUP,
+                        System.currentTimeMillis() + delayMs, pi);
+                }
             }
+        } catch (Exception e) {
+            Log.e("FloatingWindow", "Failed to schedule alarm restart", e);
         }
     }
 
     @Override
     public void onDestroy() {
         super.onDestroy();
+        handler.removeCallbacksAndMessages(null);
         if (floatView != null && windowManager != null) {
             try { windowManager.removeView(floatView); } catch (Exception ignored) {}
         }
+        floatViewCreated = false;
     }
 
     @Override

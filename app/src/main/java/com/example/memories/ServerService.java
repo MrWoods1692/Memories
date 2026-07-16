@@ -6,9 +6,11 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
+import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
 import android.os.IBinder;
+import android.os.PowerManager;
 import android.util.Log;
 
 import androidx.work.ExistingWorkPolicy;
@@ -25,6 +27,7 @@ public class ServerService extends Service {
     private static final int NOTIFICATION_ID = 1;
     private int apiPort = 8080;
     private int adminPort = 8081;
+    private boolean serversStarted = false;
 
     @Override
     public void onCreate() {
@@ -60,6 +63,9 @@ public class ServerService extends Service {
 
         // 前台通知已就绪，在后台线程启动服务器（避免阻塞主线程）
         new Thread(this::startServers).start();
+
+        // 获取 WakeLock 防止 CPU 休眠导致服务中断
+        acquireWakeLock();
     }
 
     private void startServers() {
@@ -67,6 +73,7 @@ public class ServerService extends Service {
         server = new EmbeddedServer(apiPort, this);
         try {
             server.start();
+            serversStarted = true;
             Log.i("ServerService", "API server started on port " + apiPort);
         } catch (Exception e) {
             Log.e("ServerService", "Failed to start API server", e);
@@ -82,6 +89,10 @@ public class ServerService extends Service {
         }
 
         // 更新通知为实际端口信息
+        updateNotification();
+    }
+
+    private void updateNotification() {
         String lanIp = EmbeddedServer.getLanIpAddress();
         Intent openIntent = new Intent(this, MainActivity.class);
         PendingIntent pendingIntent = PendingIntent.getActivity(
@@ -95,6 +106,7 @@ public class ServerService extends Service {
                 .setOngoing(true)
                 .setContentIntent(pendingIntent)
                 .setPriority(Notification.PRIORITY_LOW)
+                .setForegroundServiceBehavior(Notification.FOREGROUND_SERVICE_IMMEDIATE)
                 .build();
         NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
         if (nm != null) {
@@ -102,44 +114,110 @@ public class ServerService extends Service {
         }
     }
 
+    /** 获取 WakeLock 防止 CPU 深度休眠 */
+    private void acquireWakeLock() {
+        try {
+            PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
+            if (pm != null) {
+                PowerManager.WakeLock wl = pm.newWakeLock(
+                    PowerManager.PARTIAL_WAKE_LOCK,
+                    "Memories:ServerWakeLock"
+                );
+                if (wl != null && !wl.isHeld()) {
+                    wl.setReferenceCounted(false);
+                    wl.acquire(30 * 60 * 1000L); // 30 分钟超时
+                }
+            }
+        } catch (Exception e) {
+            Log.w("ServerService", "Failed to acquire wake lock", e);
+        }
+    }
+
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        // 如果服务器挂了但服务还活着，尝试重启服务器
+        if (!serversStarted) {
+            new Thread(this::startServers).start();
+        }
+        // START_REDELIVER_INTENT：如果服务在被杀后重启，系统会重新传递 Intent
         return START_STICKY;
     }
 
     @Override
     public void onTaskRemoved(Intent rootIntent) {
         super.onTaskRemoved(rootIntent);
-        // App 被划掉后自动重启
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            // Android 12+：通过 WorkManager 合规重启，避免 ForegroundServiceStartNotAllowedException
+        Log.i("ServerService", "onTaskRemoved - scheduling restart");
+
+        // 方案 1: WorkManager（Android 12+ 合规方式）
+        try {
             OneTimeWorkRequest work = new OneTimeWorkRequest.Builder(BootStartupWorker.class)
-                    .setInitialDelay(1, TimeUnit.SECONDS)
+                    .setInitialDelay(500, TimeUnit.MILLISECONDS)
                     .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
                     .addTag("memories_restart")
                     .build();
             WorkManager.getInstance(this)
                     .enqueueUniqueWork("memories_restart", ExistingWorkPolicy.REPLACE, work);
             Log.i("ServerService", "Restart scheduled via WorkManager");
-        } else {
-            // Android 11 及以下：AlarmManager 直接重启
+        } catch (Exception e) {
+            Log.e("ServerService", "WorkManager restart failed", e);
+        }
+
+        // 方案 2: AlarmManager 兜底（1 秒后精确唤醒）
+        scheduleAlarmRestart(1000);
+
+        // 方案 3: AlarmManager 二次兜底（5 秒后再次唤醒，防止第一次被系统丢弃）
+        scheduleAlarmRestart(5000);
+
+        // 方案 4: 设置周期性保活检查（每 15 分钟）
+        KeepAliveService.scheduleKeepAlive(this);
+    }
+
+    private void scheduleAlarmRestart(long delayMs) {
+        try {
             Intent restartIntent = new Intent(getApplicationContext(), ServerService.class);
             PendingIntent pi = PendingIntent.getService(
-                getApplicationContext(), 0, restartIntent,
-                Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? PendingIntent.FLAG_IMMUTABLE : 0
+                getApplicationContext(), (int) (delayMs / 1000), restartIntent,
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
+                    ? PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT
+                    : PendingIntent.FLAG_UPDATE_CURRENT
             );
             AlarmManager am = (AlarmManager) getSystemService(ALARM_SERVICE);
             if (am != null) {
-                am.set(AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + 1000, pi);
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    // Android 12+：如果权限不足，用 setAndAllowWhileIdle
+                    if (am.canScheduleExactAlarms()) {
+                        am.setExact(AlarmManager.RTC_WAKEUP,
+                            System.currentTimeMillis() + delayMs, pi);
+                    } else {
+                        am.set(AlarmManager.RTC_WAKEUP,
+                            System.currentTimeMillis() + delayMs, pi);
+                    }
+                } else {
+                    am.setExact(AlarmManager.RTC_WAKEUP,
+                        System.currentTimeMillis() + delayMs, pi);
+                }
+                Log.i("ServerService", "Alarm restart scheduled in " + delayMs + "ms");
             }
+        } catch (Exception e) {
+            Log.e("ServerService", "Failed to schedule alarm restart", e);
         }
     }
 
     @Override
     public void onDestroy() {
+        // 在销毁前尝试最后一次重启
+        if (!isFinishing()) {
+            scheduleAlarmRestart(1000);
+        }
         super.onDestroy();
         if (server != null) server.stop();
         if (adminServer != null) adminServer.stop();
+    }
+
+    /** 判断服务是否正在被系统主动终止（非用户操作） */
+    private boolean isFinishing() {
+        // 简单判断：如果服务器之前已成功启动，可能是异常终止
+        return !serversStarted;
     }
 
     @Override
@@ -152,7 +230,7 @@ public class ServerService extends Service {
             NotificationChannel channel = new NotificationChannel(
                 CHANNEL_ID,
                 "Memories 服务",
-                NotificationManager.IMPORTANCE_DEFAULT
+                NotificationManager.IMPORTANCE_LOW  // LOW 避免发出声音，但仍显示在通知栏
             );
             channel.setDescription("Memories 服务器运行状态");
             channel.setShowBadge(false);

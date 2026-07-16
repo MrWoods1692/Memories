@@ -22,22 +22,23 @@ public class BootReceiver extends BroadcastReceiver {
         if (action == null) return;
 
         // 开机自启：BOOT_COMPLETED, LOCKED_BOOT_COMPLETED, QUICKBOOT_POWERON
+        // 应用更新：MY_PACKAGE_REPLACED（覆盖安装后自动重启服务）
         if (Intent.ACTION_BOOT_COMPLETED.equals(action)
                 || Intent.ACTION_LOCKED_BOOT_COMPLETED.equals(action)
                 || "android.intent.action.QUICKBOOT_POWERON".equals(action)
-                || "com.htc.intent.action.QUICKBOOT_POWERON".equals(action)) {
+                || "com.htc.intent.action.QUICKBOOT_POWERON".equals(action)
+                || Intent.ACTION_MY_PACKAGE_REPLACED.equals(action)) {
 
-            Log.i(TAG, "Boot event received: " + action);
+            Log.i(TAG, "Boot/update event received: " + action);
 
             // 自动打开 WiFi
             tryEnableWifi(context);
 
-            // Android 12+ 必须通过 WorkManager 启动前台服务，否则会抛
-            // ForegroundServiceStartNotAllowedException
+            // Android 12+ 必须通过 WorkManager 启动前台服务
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 scheduleBootWork(context);
             } else {
-                startServicesDirectly(context);
+                startAllServices(context);
             }
         }
     }
@@ -54,33 +55,49 @@ public class BootReceiver extends BroadcastReceiver {
             Log.i(TAG, "Boot work scheduled via WorkManager");
         } catch (Exception e) {
             Log.e(TAG, "Failed to schedule boot work, fallback to direct start", e);
-            // WorkManager 不可用时降级为直接启动（部分旧设备可能仍可用）
-            startServicesDirectly(context);
+            startAllServices(context);
         }
     }
 
-    /** Android 11 及以下：直接启动前台服务 */
-    private void startServicesDirectly(Context context) {
+    /** 启动所有服务（Android 11 及以下直接调用） */
+    private void startAllServices(Context context) {
+        // 启动主服务
         try {
-            // 启动主服务
             Intent svc = new Intent(context, ServerService.class);
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 context.startForegroundService(svc);
             } else {
                 context.startService(svc);
             }
-            Log.i(TAG, "ServerService started directly");
+            Log.i(TAG, "ServerService started");
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to start ServerService", e);
+        }
 
-            // 启动悬浮窗
+        // 启动悬浮窗
+        try {
             Intent fw = new Intent(context, FloatingWindow.class);
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 context.startForegroundService(fw);
             } else {
                 context.startService(fw);
             }
-            Log.i(TAG, "FloatingWindow started directly");
+            Log.i(TAG, "FloatingWindow started");
         } catch (Exception e) {
-            Log.e(TAG, "Failed to start services directly", e);
+            Log.e(TAG, "Failed to start FloatingWindow", e);
+        }
+
+        // 启动保活看门狗
+        try {
+            Intent ka = new Intent(context, KeepAliveService.class);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                context.startForegroundService(ka);
+            } else {
+                context.startService(ka);
+            }
+            Log.i(TAG, "KeepAliveService started");
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to start KeepAliveService", e);
         }
     }
 

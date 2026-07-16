@@ -42,12 +42,52 @@ public class MainActivity extends android.app.Activity {
         ws.setDomStorageEnabled(true);
         ws.setAllowFileAccess(false);
         ws.setCacheMode(WebSettings.LOAD_NO_CACHE);
-        webView.setWebViewClient(new WebViewClient());
+        webView.setWebViewClient(new WebViewClient() {
+            @Override
+            public void onReceivedError(android.webkit.WebView view, android.webkit.WebResourceRequest request,
+                                        android.webkit.WebResourceError error) {
+                // 网页加载失败，可能是服务没启动 → 重新确保服务运行并重试
+                handler.post(() -> {
+                    startMemoriesService();
+                    startKeepAliveService();
+                });
+                // 2 秒后重新加载
+                handler.postDelayed(() -> {
+                    String adminPortStr = dbHelper.getConfig("admin_port");
+                    int adminPort = 8081;
+                    if (adminPortStr != null) {
+                        try { adminPort = Integer.parseInt(adminPortStr); } catch (NumberFormatException ignored) {}
+                    }
+                    String lanIp = EmbeddedServer.getLanIpAddress();
+                    view.loadUrl("http://" + lanIp + ":" + adminPort + "/admin");
+                }, 2000);
+            }
+
+            @Override
+            public void onReceivedError(android.webkit.WebView view, int errorCode,
+                                        String description, String failingUrl) {
+                // 旧版 API 兼容
+                handler.post(() -> {
+                    startMemoriesService();
+                    startKeepAliveService();
+                });
+                handler.postDelayed(() -> {
+                    String adminPortStr = dbHelper.getConfig("admin_port");
+                    int adminPort = 8081;
+                    if (adminPortStr != null) {
+                        try { adminPort = Integer.parseInt(adminPortStr); } catch (NumberFormatException ignored) {}
+                    }
+                    String lanIp = EmbeddedServer.getLanIpAddress();
+                    view.loadUrl("http://" + lanIp + ":" + adminPort + "/admin");
+                }, 2000);
+            }
+        });
 
         // ⚠️ 先启动服务（必须在 requestPermissions 之前，否则跳转设置页后
         //    Activity 进入后台，Android 12+ 会禁止 startForegroundService）
         startMemoriesService();
         startFloatingWindow();
+        startKeepAliveService();
 
         // 自动加载 FRPC 配置
         tryAutoStartFrpc();
@@ -69,7 +109,7 @@ public class MainActivity extends android.app.Activity {
         loadAdminPageWithRetry();
     }
 
-    /** 带重试的管理页面加载：等 WiFi 获取 LAN IP 后再加载 */
+    /** 带重试的管理页面加载：先等 LAN IP，再等服务端口就绪 */
     private void loadAdminPageWithRetry() {
         String adminPortStr = dbHelper.getConfig("admin_port");
         int adminPort = 8081;
@@ -77,6 +117,7 @@ public class MainActivity extends android.app.Activity {
             try { adminPort = Integer.parseInt(adminPortStr); } catch (NumberFormatException ignored) {}
         }
         final int port = adminPort;
+        // 第一步：等 LAN IP（WiFi 可能正在连接）
         handler.postDelayed(new Runnable() {
             private int attempts = 0;
             @Override
@@ -84,14 +125,47 @@ public class MainActivity extends android.app.Activity {
                 attempts++;
                 String lanIp = EmbeddedServer.getLanIpAddress();
                 if (!"127.0.0.1".equals(lanIp) || attempts >= 10) {
-                    String url = "http://" + lanIp + ":" + port + "/admin";
-                    webView.loadUrl(url);
+                    // 第二步：等服务器端口就绪
+                    waitForServer(lanIp, port, 0);
                     return;
                 }
-                // WiFi 还没连上，500ms 后重试
                 handler.postDelayed(this, 500);
             }
         }, 1000);
+    }
+
+    /** 后台探测端口是否在监听，就绪后加载页面 */
+    private void waitForServer(String lanIp, int port, int attempts) {
+        if (attempts >= 20) {
+            // 10 秒超时 → 尝试重启服务，再给一次机会
+            startMemoriesService();
+            startKeepAliveService();
+            // 再等 3 秒后强制加载
+            handler.postDelayed(() -> {
+                final String url = "http://" + lanIp + ":" + port + "/admin";
+                webView.loadUrl(url);
+            }, 3000);
+            return;
+        }
+        new Thread(() -> {
+            try {
+                java.net.Socket s = new java.net.Socket();
+                s.connect(new java.net.InetSocketAddress(lanIp, port), 800);
+                s.close();
+                // 端口已监听 → 加载管理页面
+                final String url = "http://" + lanIp + ":" + port + "/admin";
+                handler.post(() -> webView.loadUrl(url));
+            } catch (Exception e) {
+                // 服务器还没就绪 → 尝试拉活服务 + 重试
+                if (attempts == 5 || attempts == 10 || attempts == 15) {
+                    handler.post(() -> {
+                        startMemoriesService();
+                        startKeepAliveService();
+                    });
+                }
+                handler.postDelayed(() -> waitForServer(lanIp, port, attempts + 1), 500);
+            }
+        }).start();
     }
 
     private void tryAutoStartFrpc() {
@@ -175,6 +249,16 @@ public class MainActivity extends android.app.Activity {
             startForegroundService(svc);
         } else {
             startService(svc);
+        }
+    }
+
+    /** 启动保活看门狗服务（确保被杀后能自动恢复） */
+    private void startKeepAliveService() {
+        Intent ka = new Intent(this, KeepAliveService.class);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            startForegroundService(ka);
+        } else {
+            startService(ka);
         }
     }
 

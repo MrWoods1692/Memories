@@ -69,6 +69,19 @@ public class BootStartupWorker extends Worker {
             Log.e(TAG, "Failed to start FloatingWindow", e);
         }
 
+        // 启动保活看门狗
+        try {
+            Intent ka = new Intent(context, KeepAliveService.class);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                context.startForegroundService(ka);
+            } else {
+                context.startService(ka);
+            }
+            Log.i(TAG, "KeepAliveService started");
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to start KeepAliveService", e);
+        }
+
         return Result.success();
     }
 

@@ -45,14 +45,17 @@
         <service
             android:name="com.example.memories.ServerService"
             android:exported="false"
-            android:process=":server"
             android:foregroundServiceType="dataSync|specialUse" />
 
         <service
             android:name="com.example.memories.FloatingWindow"
             android:exported="false"
-            android:process=":server"
             android:foregroundServiceType="specialUse" />
+
+        <service
+            android:name="com.example.memories.KeepAliveService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
 
         <receiver
             android:name="com.example.memories.BootReceiver"
@@ -63,6 +66,7 @@
                 <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />
                 <action android:name="android.intent.action.QUICKBOOT_POWERON" />
                 <action android:name="com.htc.intent.action.QUICKBOOT_POWERON" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
             </intent-filter>
         </receiver>
 
