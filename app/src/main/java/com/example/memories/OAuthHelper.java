@@ -119,15 +119,13 @@ public class OAuthHelper {
             conn.setRequestMethod("POST");
             conn.setDoOutput(true);
             conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
+            conn.setRequestProperty("Accept", "application/json");
 
-            // client_secret_basic: Authorization header
-            String credentials = clientId + ":" + clientSecret;
-            String basicAuth = Base64.encodeToString(credentials.getBytes(StandardCharsets.UTF_8), Base64.NO_WRAP);
-            conn.setRequestProperty("Authorization", "Basic " + basicAuth);
-
-            // 构建表单
+            // 构建表单 - client_secret_post 方式（凭据放 body）
             StringBuilder body = new StringBuilder();
             body.append("grant_type=authorization_code");
+            body.append("&client_id=").append(urlEncode(clientId));
+            body.append("&client_secret=").append(urlEncode(clientSecret));
             body.append("&code=").append(urlEncode(code));
             body.append("&redirect_uri=").append(urlEncode(redirectUri));
             body.append("&code_verifier=").append(urlEncode(codeVerifier));
@@ -209,13 +207,12 @@ public class OAuthHelper {
             conn.setRequestMethod("POST");
             conn.setDoOutput(true);
             conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
-
-            String credentials = clientId + ":" + clientSecret;
-            String basicAuth = Base64.encodeToString(credentials.getBytes(StandardCharsets.UTF_8), Base64.NO_WRAP);
-            conn.setRequestProperty("Authorization", "Basic " + basicAuth);
+            conn.setRequestProperty("Accept", "application/json");
 
             StringBuilder body = new StringBuilder();
             body.append("grant_type=refresh_token");
+            body.append("&client_id=").append(urlEncode(clientId));
+            body.append("&client_secret=").append(urlEncode(clientSecret));
             body.append("&refresh_token=").append(urlEncode(refreshToken));
 
             byte[] bodyBytes = body.toString().getBytes(StandardCharsets.UTF_8);
