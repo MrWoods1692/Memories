@@ -70,7 +70,7 @@ const zh: Translation = {
     ],
   },
   platforms: { title: '全平台客户端', subtitle: '无论你使用什么设备，都能随时记录校园记忆', downloadCta: '选择你的平台下载' },
-  school: { title: '一校一包，专属定制', desc: '每所学校拥有独立的客户端，数据隔离、安全可靠。', name: '桂林市奎光学校', status: '已开通 Memories 服务' },
+  school: { title: '一校一包，专属定制', desc: '每所学校拥有独立的客户端，数据隔离、安全可靠。', name: '桂林市桂林中学', status: '已开通 Memories 服务' },
   featuresPage: {
     badge: '功能介绍', title: '全方位的校园记忆管理体验', subtitle: '从照片浏览到上传管理，从个性化设置到智能识别，Memories 提供完整的功能体系',
     browseTitle: '照片浏览与操作', browseSubtitle: '丰富的操作工具，让每一张照片都能完美呈现',
@@ -88,7 +88,7 @@ const zh: Translation = {
   downloadPage: {
     badge: '客户端下载', title: '下载 Memories 客户端', subtitle: '先选择你的学校，再下载对应学校的专属客户端',
     selectSchoolTitle: '第一步：选择学校', selectSchoolDesc: '每所学校拥有独立的客户端，请先选择你的学校',
-    selectedSchool: '已选择学校', schoolName: '桂林市奎光学校', schoolDesc: '当前已开通 Memories 专属服务，以下客户端均为该校定制版本', opened: '已开通',
+    selectedSchool: '已选择学校', schoolName: '桂林市桂林中学', schoolDesc: '当前已开通 Memories 专属服务，以下客户端均为该校定制版本', opened: '已开通',
     mobile: '移动端', desktop: '电脑端', downloadVersion: '下载版本',
     oneSchool: '一校一包', oneSchoolDesc: '每所学校拥有独立的客户端包，数据完全隔离',
     secure: '安全可靠', secureDesc: '采用 OAuth + PKCE 安全授权，保护账号安全',
@@ -148,7 +148,7 @@ const en: Translation = {
     ],
   },
   platforms: { title: 'Cross-Platform Client', subtitle: 'No matter what device you use, capture campus memories anytime', downloadCta: 'Choose Your Platform' },
-  school: { title: 'One School, One Package', desc: 'Each school has its own independent client with isolated data.', name: 'Guilin Kuiguang School', status: 'Memories Service Activated' },
+  school: { title: 'One School, One Package', desc: 'Each school has its own independent client with isolated data.', name: 'Guilin Guilin Middle School', status: 'Memories Service Activated' },
   featuresPage: {
     badge: 'Features', title: 'Comprehensive Campus Memory Management', subtitle: 'From photo browsing to upload management, from personalization to smart recognition — Memories provides a complete feature set',
     browseTitle: 'Photo Browsing & Operations', browseSubtitle: 'Rich tools to present every photo perfectly',
@@ -166,7 +166,7 @@ const en: Translation = {
   downloadPage: {
     badge: 'Client Download', title: 'Download Memories Client', subtitle: 'Select your school first, then download the dedicated client for that school',
     selectSchoolTitle: 'Step 1: Select School', selectSchoolDesc: 'Each school has its own client. Please select your school first.',
-    selectedSchool: 'Selected School', schoolName: 'Guilin Kuiguang School', schoolDesc: 'Memories exclusive service is active. All clients below are customized for this school.', opened: 'Active',
+    selectedSchool: 'Selected School', schoolName: 'Guilin Guilin Middle School', schoolDesc: 'Memories exclusive service is active. All clients below are customized for this school.', opened: 'Active',
     mobile: 'Mobile', desktop: 'Desktop', downloadVersion: 'Download',
     oneSchool: 'One School, One Package', oneSchoolDesc: 'Each school has its own independent client package with fully isolated data',
     secure: 'Secure & Reliable', secureDesc: 'OAuth + PKCE secure authorization protects your account',
@@ -226,7 +226,7 @@ const zhTW: Translation = {
     ],
   },
   platforms: { title: '全平台客戶端', subtitle: '無論你使用什麼裝置，都能隨時記錄校園記憶', downloadCta: '選擇你的平台下載' },
-  school: { title: '一校一包，專屬定制', desc: '每所學校擁有獨立的客戶端，資料隔離、安全可靠。', name: '桂林市奎光學校', status: '已開通 Memories 服務' },
+  school: { title: '一校一包，專屬定制', desc: '每所學校擁有獨立的客戶端，資料隔離、安全可靠。', name: '桂林市桂林中學', status: '已開通 Memories 服務' },
   featuresPage: {
     badge: '功能介紹', title: '全方位的校園記憶管理體驗', subtitle: '從照片瀏覽到上傳管理，從個性化設定到智慧識別，Memories 提供完整的功能體系',
     browseTitle: '照片瀏覽與操作', browseSubtitle: '豐富的操作工具，讓每一張照片都能完美呈現',
@@ -244,7 +244,7 @@ const zhTW: Translation = {
   downloadPage: {
     badge: '客戶端下載', title: '下載 Memories 客戶端', subtitle: '先選擇你的學校，再下載對應學校的專屬客戶端',
     selectSchoolTitle: '第一步：選擇學校', selectSchoolDesc: '每所學校擁有獨立的客戶端，請先選擇你的學校',
-    selectedSchool: '已選擇學校', schoolName: '桂林市奎光學校', schoolDesc: '當前已開通 Memories 專屬服務，以下客戶端均為該校定制版本', opened: '已開通',
+    selectedSchool: '已選擇學校', schoolName: '桂林市桂林中學', schoolDesc: '當前已開通 Memories 專屬服務，以下客戶端均為該校定制版本', opened: '已開通',
     mobile: '行動端', desktop: '桌面端', downloadVersion: '下載版本',
     oneSchool: '一校一包', oneSchoolDesc: '每所學校擁有獨立的客戶端包，資料完全隔離',
     secure: '安全可靠', secureDesc: '採用 OAuth + PKCE 安全授權，保護帳號安全',
@@ -304,7 +304,7 @@ const ja: Translation = {
     ],
   },
   platforms: { title: '全プラットフォーム対応', subtitle: 'どんなデバイスでも、いつでもキャンパスの思い出を記録', downloadCta: 'プラットフォームを選択' },
-  school: { title: '一校一パッケージ、専用カスタマイズ', desc: '各学校が独立したクライアントを持ち、データは完全に分離されています。', name: '桂林市奎光学校', status: 'Memories サービス提供中' },
+  school: { title: '一校一パッケージ、専用カスタマイズ', desc: '各学校が独立したクライアントを持ち、データは完全に分離されています。', name: '桂林市桂林中学', status: 'Memories サービス提供中' },
   featuresPage: {
     badge: '機能紹介', title: '包括的なキャンパスメモリー管理', subtitle: '写真閲覧からアップロード管理、パーソナライズからスマート認識まで、Memories は完全な機能体系を提供します',
     browseTitle: '写真の閲覧と操作', browseSubtitle: '豊富な操作ツールで、すべての写真を完璧に表示',
@@ -322,7 +322,7 @@ const ja: Translation = {
   downloadPage: {
     badge: 'クライアントダウンロード', title: 'Memories クライアントをダウンロード', subtitle: 'まず学校を選択し、その学校専用のクライアントをダウンロードしてください',
     selectSchoolTitle: 'ステップ1：学校を選択', selectSchoolDesc: '各学校には独立したクライアントがあります。まず学校を選択してください。',
-    selectedSchool: '選択済みの学校', schoolName: '桂林市奎光学校', schoolDesc: 'Memories 専用サービスが有効です。以下のクライアントはすべて同校向けのカスタム版です。', opened: '提供中',
+    selectedSchool: '選択済みの学校', schoolName: '桂林市桂林中学', schoolDesc: 'Memories 専用サービスが有効です。以下のクライアントはすべて同校向けのカスタム版です。', opened: '提供中',
     mobile: 'モバイル', desktop: 'デスクトップ', downloadVersion: 'ダウンロード',
     oneSchool: '一校一パッケージ', oneSchoolDesc: '各学校が独立したクライアントパッケージを持ち、データは完全に分離',
     secure: '安全・信頼性', secureDesc: 'OAuth + PKCE の安全な認証でアカウントを保護',

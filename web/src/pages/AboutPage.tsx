@@ -112,9 +112,11 @@ const AboutPage: React.FC = () => {
               {t.aboutPage.schoolText}
             </p>
             <div className="inline-flex items-center gap-3 bg-primary/5 border border-primary/20 rounded-xl px-8 py-5">
-              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[hsl(175,55%,45%)] to-[hsl(160,50%,40%)] flex items-center justify-center shadow-md">
-                <School className="h-7 w-7 text-white" />
-              </div>
+              <img
+                src="https://img.cdn1.vip/i/69635b99b1e51_1768119193.webp"
+                alt={t.school.name}
+                className="w-14 h-14 rounded-2xl object-cover shadow-md"
+              />
               <div className="text-left">
                 <p className="font-semibold text-lg">{t.school.name}</p>
                 <p className="text-sm text-muted-foreground">{t.aboutPage.schoolStatus}</p>
