@@ -1,12 +1,15 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import { oauthExchange, oauthLogin, saveAuth, clearAuth, getSavedUser } from './api';
+import { DEV_MODE } from './config';
 import type { AuthUser } from './types';
 
 interface AuthCtx {
   loading: boolean;
   user: AuthUser | null;
   token: string | null;
+  devMode: boolean;
   login: () => void;
+  devLogin: (qq: string, role: 1 | 2) => void;
   handleCallback: (code: string) => Promise<boolean>;
   logout: () => void;
 }
@@ -30,6 +33,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = () => { oauthLogin(); };
 
+  /** 开发模式：跳过 OAuth 直接以指定身份登录 */
+  const devLogin = (qq: string, role: 1 | 2) => {
+    const devToken = 'dev-token-' + Date.now();
+    const devUser: AuthUser = { qq, role, nickname: '开发测试' };
+    saveAuth(devToken, devUser);
+    setToken(devToken);
+    setUser(devUser);
+  };
+
   const handleCallback = async (code: string): Promise<boolean> => {
     const result = await oauthExchange(code);
     if (!result) return false;
@@ -47,7 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <Ctx.Provider value={{ loading, user, token, login, handleCallback, logout }}>
+    <Ctx.Provider value={{ loading, user, token, devMode: DEV_MODE, login, devLogin, handleCallback, logout }}>
       {children}
     </Ctx.Provider>
   );
