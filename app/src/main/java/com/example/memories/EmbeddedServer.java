@@ -1002,7 +1002,7 @@ public class EmbeddedServer extends NanoHTTPD {
                 if (prefix == null || clientId == null || redirectUri == null) {
                     return NanoHTTPD.newFixedLengthResponse(Status.BAD_REQUEST, "text/plain", "oauth not configured");
                 }
-                String scope = "profile tenant";
+                String scope = "profile";
                 Map<String, String> params = session.getParms();
                 String frontendRedirect = params.get("redirect");
                 String authUrl = OAuthHelper.buildAuthUrl(prefix, clientId, redirectUri, scope, frontendRedirect);
