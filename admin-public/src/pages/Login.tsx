@@ -3,14 +3,11 @@ import { useAuth } from '../AuthContext';
 import { HEALTH_CHECK_URL } from '../config';
 
 export function LoginPage() {
-  const { login, devLogin, devMode, handleCallback } = useAuth();
-  const [phase, setPhase] = useState<'idle' | 'checking' | 'denied' | 'error'>('idle');
+  const { login, handleCallback } = useAuth();
+  const [phase, setPhase] = useState<'idle' | 'checking' | 'denied'>('idle');
   const [serverOnline, setServerOnline] = useState<boolean | null>(null);
-  const [devQq, setDevQq] = useState('');
-  const [devRole, setDevRole] = useState<1 | 2>(2);
 
   useEffect(() => {
-    // 检查 URL 参数中是否有 OAuth 回调的 token/qq/role
     const params = new URLSearchParams(window.location.search);
     const hasToken = params.get('token');
     const hasQq = params.get('qq');
@@ -19,11 +16,9 @@ export function LoginPage() {
       setPhase('checking');
       const ok = handleCallback();
       if (!ok) setPhase('denied');
-      // 清理 URL 参数
       window.history.replaceState({}, '', window.location.pathname);
     }
 
-    // no-cors 模式规避跨域限制：能建立连接即为在线
     fetch(HEALTH_CHECK_URL, { mode: 'no-cors' })
       .then(() => setServerOnline(true))
       .catch(() => setServerOnline(false));
@@ -57,54 +52,17 @@ export function LoginPage() {
     );
   }
 
-  const handleDevLogin = () => {
-    const qq = devQq.trim();
-    if (!qq) return;
-    devLogin(qq, devRole);
-  };
-
-  const handleDevKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') handleDevLogin();
-  };
-
   return (
     <div className="login-page">
       <div className="login-card">
         <div className="login-logo"><Logo /></div>
         <h1 className="login-title">Memories</h1>
         <p className="login-sub">校园墙管理面板</p>
-
-        {/* ===== OAuth 正式登录 ===== */}
         <p className="login-desc">请使用校园墙 OAuth 授权登录<br />系统将自动验证您的管理员/审核员身份</p>
         <button className="btn primary login-btn" onClick={login}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
           校园墙 OAuth 登录
         </button>
-
-        {/* ===== 开发模式快捷登录 ===== */}
-        {devMode && (
-          <div className="dev-login">
-            <div className="dev-divider"><span>开发模式</span></div>
-            <div className="dev-form">
-              <input
-                className="dev-input"
-                value={devQq}
-                onChange={e => setDevQq(e.target.value)}
-                onKeyDown={handleDevKeyDown}
-                placeholder="输入 QQ 号"
-              />
-              <select className="dev-select" value={devRole} onChange={e => setDevRole(parseInt(e.target.value) as 1 | 2)}>
-                <option value={2}>管理员</option>
-                <option value={1}>审核员</option>
-              </select>
-            </div>
-            <button className="btn warn login-btn" onClick={handleDevLogin} disabled={!devQq.trim()}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>
-              开发模式直接登录
-            </button>
-          </div>
-        )}
-
         <div className="login-footer">
           <div className={`login-status ${serverOnline === true ? 'on' : serverOnline === false ? 'off' : ''}`}>
             <span className={`dot ${serverOnline === true ? 'green' : serverOnline === false ? 'red' : ''}`} />

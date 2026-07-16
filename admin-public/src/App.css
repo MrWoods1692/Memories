@@ -83,7 +83,6 @@ tbody tr:last-child td{border-bottom:none}
 .b2{background:var(--danger-bg);color:var(--danger)}
 .b-admin{background:var(--accent-bg);color:var(--accent)}
 .b-reviewer{background:var(--info-bg);color:var(--info)}
-.b-dev{background:var(--warning-bg);color:var(--warning)}
 
 /* ===== BUTTONS ===== */
 .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border:none;border-radius:8px;cursor:pointer;font-size:.78rem;font-weight:600;font-family:inherit;transition:all .15s}
@@ -166,40 +165,4 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);
   .settings-grid{grid-template-columns:1fr}
   .user-qq{display:none}
   .url{max-width:150px}
-}
-
-/* ===== 开发模式快捷登录 ===== */
-.dev-login {
-  margin-top: 20px;
-  padding-top: 16px;
-  border-top: 1px dashed var(--border);
-}
-.dev-divider {
-  text-align: center;
-  margin-bottom: 14px;
-}
-.dev-divider span {
-  background: var(--bg3);
-  padding: 2px 14px;
-  font-size: 0.7rem;
-  color: var(--warning);
-  font-weight: 600;
-  border: 1px dashed rgba(251,191,36,0.3);
-  border-radius: 20px;
-}
-.dev-form {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-.dev-input {
-  flex: 1;
-  text-align: center;
-  font-size: 1rem !important;
-  font-family: var(--mono);
-  letter-spacing: 2px;
-}
-.dev-select {
-  width: 100px;
-  flex-shrink: 0;
 }

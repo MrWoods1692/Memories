@@ -30,7 +30,7 @@ export default function App() {
 }
 
 function AppShell() {
-  const { loading, user, devMode, logout } = useAuth();
+  const { loading, user, logout } = useAuth();
   const [tab, setTab] = useState<Tab>('home');
   const { list, toast } = useToast();
 
@@ -73,7 +73,6 @@ function AppShell() {
             <span className="user-qq">QQ: {user.qq}</span>
           </span>
           <span className="api-url">{API_BASE_URL}</span>
-          {devMode && <span className="badge b-dev">DEV</span>}
           <button className="btn ghost sm" onClick={logout} title="退出"><IconLogout size={14} /></button>
         </div>
       </header>
