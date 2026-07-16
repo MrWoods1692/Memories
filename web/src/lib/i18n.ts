@@ -27,7 +27,7 @@ export interface Translation {
   downloadPage: {
     badge: string; title: string; subtitle: string;
     selectSchoolTitle: string; selectSchoolDesc: string; selectedSchool: string; schoolName: string; schoolDesc: string; opened: string;
-    mobile: string; desktop: string; downloadVersion: string; oneSchool: string; oneSchoolDesc: string;
+    mobile: string; desktop: string; web: string; downloadVersion: string; oneSchool: string; oneSchoolDesc: string;
     secure: string; secureDesc: string; updates: string; updatesDesc: string;
   };
   aboutPage: {
@@ -89,7 +89,7 @@ const zh: Translation = {
     badge: '客户端下载', title: '下载 Memories 客户端', subtitle: '先选择你的学校，再下载对应学校的专属客户端',
     selectSchoolTitle: '第一步：选择学校', selectSchoolDesc: '每所学校拥有独立的客户端，请先选择你的学校',
     selectedSchool: '已选择学校', schoolName: '桂林市桂林中学', schoolDesc: '当前已开通 Memories 专属服务，以下客户端均为该校定制版本', opened: '已开通',
-    mobile: '移动端', desktop: '电脑端', downloadVersion: '下载版本',
+    mobile: '移动端', desktop: '电脑端', web: '网页版', downloadVersion: '下载版本',
     oneSchool: '一校一包', oneSchoolDesc: '每所学校拥有独立的客户端包，数据完全隔离',
     secure: '安全可靠', secureDesc: '采用 OAuth + PKCE 安全授权，保护账号安全',
     updates: '持续更新', updatesDesc: '定期推送功能更新与安全补丁',
@@ -167,7 +167,7 @@ const en: Translation = {
     badge: 'Client Download', title: 'Download Memories Client', subtitle: 'Select your school first, then download the dedicated client for that school',
     selectSchoolTitle: 'Step 1: Select School', selectSchoolDesc: 'Each school has its own client. Please select your school first.',
     selectedSchool: 'Selected School', schoolName: 'Guilin Guilin Middle School', schoolDesc: 'Memories exclusive service is active. All clients below are customized for this school.', opened: 'Active',
-    mobile: 'Mobile', desktop: 'Desktop', downloadVersion: 'Download',
+    mobile: 'Mobile', desktop: 'Desktop', web: 'Web', downloadVersion: 'Download',
     oneSchool: 'One School, One Package', oneSchoolDesc: 'Each school has its own independent client package with fully isolated data',
     secure: 'Secure & Reliable', secureDesc: 'OAuth + PKCE secure authorization protects your account',
     updates: 'Continuous Updates', updatesDesc: 'Regular feature updates and security patches',
@@ -245,7 +245,7 @@ const zhTW: Translation = {
     badge: '客戶端下載', title: '下載 Memories 客戶端', subtitle: '先選擇你的學校，再下載對應學校的專屬客戶端',
     selectSchoolTitle: '第一步：選擇學校', selectSchoolDesc: '每所學校擁有獨立的客戶端，請先選擇你的學校',
     selectedSchool: '已選擇學校', schoolName: '桂林市桂林中學', schoolDesc: '當前已開通 Memories 專屬服務，以下客戶端均為該校定制版本', opened: '已開通',
-    mobile: '行動端', desktop: '桌面端', downloadVersion: '下載版本',
+    mobile: '行動端', desktop: '桌面端', web: '網頁版', downloadVersion: '下載版本',
     oneSchool: '一校一包', oneSchoolDesc: '每所學校擁有獨立的客戶端包，資料完全隔離',
     secure: '安全可靠', secureDesc: '採用 OAuth + PKCE 安全授權，保護帳號安全',
     updates: '持續更新', updatesDesc: '定期推送功能更新與安全修補',
@@ -323,7 +323,7 @@ const ja: Translation = {
     badge: 'クライアントダウンロード', title: 'Memories クライアントをダウンロード', subtitle: 'まず学校を選択し、その学校専用のクライアントをダウンロードしてください',
     selectSchoolTitle: 'ステップ1：学校を選択', selectSchoolDesc: '各学校には独立したクライアントがあります。まず学校を選択してください。',
     selectedSchool: '選択済みの学校', schoolName: '桂林市桂林中学', schoolDesc: 'Memories 専用サービスが有効です。以下のクライアントはすべて同校向けのカスタム版です。', opened: '提供中',
-    mobile: 'モバイル', desktop: 'デスクトップ', downloadVersion: 'ダウンロード',
+    mobile: 'モバイル', desktop: 'デスクトップ', web: 'Web', downloadVersion: 'ダウンロード',
     oneSchool: '一校一パッケージ', oneSchoolDesc: '各学校が独立したクライアントパッケージを持ち、データは完全に分離',
     secure: '安全・信頼性', secureDesc: 'OAuth + PKCE の安全な認証でアカウントを保護',
     updates: '継続的なアップデート', updatesDesc: '定期的な機能追加とセキュリティパッチを提供',

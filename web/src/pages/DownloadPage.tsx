@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import {
   Download, CheckCircle2,
-  Shield, Package, School, ChevronRight, FileText, HardDrive, CalendarDays
+  Shield, Package, School, ChevronRight, FileText, HardDrive, CalendarDays, Globe
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,11 +12,11 @@ import MainLayout from '@/components/layouts/MainLayout';
 import { AndroidIcon, AppleIcon, WindowsIcon, MacOsIcon, LinuxIcon } from '@/components/common/SystemIcons';
 import { useLanguage } from '@/contexts/LanguageContext';
 
-const SCHOOL_LOGO = 'https://cloudflarecnimg.scdn.io/i/6a34e75125111_1781851985.png';
+const SCHOOL_LOGO = 'https://img.cdn1.vip/i/69635b99b1e51_1768119193.webp';
 
 // 👇 新增下载链接映射（请替换为你的真实地址）
 const DOWNLOAD_URLS: Record<string, Record<string, Record<string, string>>> = {
-  'guilin-kuiguang': {
+  'guilin-guilin': {
     android: {
       apk: 'https://github.com/idoknow/Memories-Client/releases/download/v1.1.0/Memories-v1.1.0.apk',
     },
@@ -51,12 +51,16 @@ const DownloadPage: React.FC = () => {
   const [selectedSchool, setSelectedSchool] = useState<string | null>(null);
 
   const schools = [
-    { id: 'guilin-kuiguang', name: t.downloadPage.schoolName, desc: t.downloadPage.schoolDesc, status: t.downloadPage.opened },
+    { id: 'guilin-guilin', name: t.downloadPage.schoolName, desc: t.downloadPage.schoolDesc, status: t.downloadPage.opened },
   ];
 
   const mobilePlatforms: Platform[] = [
     { icon: AndroidIcon, name: 'Android', desc: '支持 Android 8.0 及以上', version: 'v1.1.0', size: '135 KB', updated: '2026-07-03', downloads: [{ label: 'apk', format: 'apk' }] },
     { icon: AppleIcon, name: 'iOS', desc: '支持 iOS 14.0 及以上', version: 'v1.1.3', size: '10 KB', updated: '2026-07-08', downloads: [{ label: 'PWA', format: 'PWA' }] },
+  ];
+
+  const webPlatforms: Platform[] = [
+    { icon: Globe, name: 'Web', desc: '浏览器直接访问，无需安装', version: '最新', size: '—', updated: '持续更新', downloads: [{ label: '网页版', format: 'web' }] },
   ];
 
   const desktopPlatforms: Platform[] = [
@@ -114,7 +118,7 @@ const DownloadPage: React.FC = () => {
                     <div className="flex items-center gap-4">
                       <img
                         src={SCHOOL_LOGO}
-                        alt="奎光校徽"
+                        alt={s.name}
                         className={`w-12 h-12 rounded-xl object-contain shrink-0 transition-all ${active ? 'ring-2 ring-primary shadow-hover' : 'opacity-80'}`}
                       />
                       <div className="flex-1 min-w-0">
@@ -144,9 +148,10 @@ const DownloadPage: React.FC = () => {
                 <h2 className="text-xl font-bold">{t.downloadPage.selectedSchool}: {schools.find((s) => s.id === selectedSchool)?.name}</h2>
               </div>
               <Tabs defaultValue="mobile" className="w-full">
-                <TabsList className="grid w-full max-w-md mx-auto grid-cols-2 mb-8">
+                <TabsList className="grid w-full max-w-md mx-auto grid-cols-3 mb-8">
                   <TabsTrigger value="mobile">{t.downloadPage.mobile}</TabsTrigger>
                   <TabsTrigger value="desktop">{t.downloadPage.desktop}</TabsTrigger>
+                  <TabsTrigger value="web">{t.downloadPage.web}</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="mobile">
@@ -269,6 +274,54 @@ const DownloadPage: React.FC = () => {
                                   {d.label}
                                 </Button>
                               ))}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </motion.div>
+                    ))}
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="web">
+                  <div className="grid grid-cols-1 md:grid-cols-1 gap-6 max-w-md mx-auto">
+                    {webPlatforms.map((p, i) => (
+                      <motion.div
+                        key={p.name}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: i * 0.1 }}
+                      >
+                        <Card className="h-full group">
+                          <CardHeader className="pb-4">
+                            <div className="flex items-center gap-3">
+                              <div className="w-12 h-12 rounded-2xl bg-white/60 border border-white/50 flex items-center justify-center group-hover:scale-110 transition-transform duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)]">
+                                <p.icon className="h-8 w-8" />
+                              </div>
+                              <div>
+                                <CardTitle className="text-lg">{p.name}</CardTitle>
+                                <p className="text-xs text-muted-foreground">{p.desc}</p>
+                              </div>
+                            </div>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="flex flex-wrap gap-2 mb-3">
+                              {p.downloads.map((d) => (
+                                <Badge key={d.format} variant="outline" className="text-xs lowercase">{d.label}</Badge>
+                              ))}
+                            </div>
+                            <div className="rounded-xl bg-primary/5 border border-primary/20 p-4 mb-4 text-center">
+                              <p className="text-sm text-muted-foreground mb-1">访问地址</p>
+                              <p className="font-bold text-lg tracking-tight">gz.memories.com</p>
+                            </div>
+                            <div className="flex gap-2">
+                              <Button
+                                className="flex-1"
+                                size="sm"
+                                onClick={() => window.open('https://gz.memories.com', '_blank', 'noopener,noreferrer')}
+                              >
+                                <Globe className="mr-2 h-4 w-4" />
+                                立即访问
+                              </Button>
                             </div>
                           </CardContent>
                         </Card>
