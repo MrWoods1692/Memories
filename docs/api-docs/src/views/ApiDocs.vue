@@ -2,7 +2,7 @@
   <div>
     <!-- 架构概述 -->
     <section id="overview" class="section">
-      <h2 class="section-title">📋 架构概述</h2>
+      <h2 class="section-title"><IconLayout :size="28" /> 架构概述</h2>
       <p class="section-desc">
         Memories 是一个运行在 Android 设备上的图片分享与管理平台，内嵌两个基于
         <strong>NanoHTTPD</strong> 的 HTTP 服务器。
@@ -10,22 +10,22 @@
 
       <div class="intro-grid">
         <div class="intro-card">
-          <div class="icon">🖥️</div>
+          <div class="icon"><IconServer :size="28" /></div>
           <h3>API 服务器</h3>
           <p>端口 <code>8080</code>，REST API，<strong>允许外网访问 + 跨域</strong></p>
         </div>
         <div class="intro-card">
-          <div class="icon">📦</div>
+          <div class="icon"><IconBox :size="28" /></div>
           <h3>管理面板</h3>
           <p>端口 <code>8081</code>，React 管理界面，<strong>仅限局域网访问</strong></p>
         </div>
         <div class="intro-card">
-          <div class="icon">🌐</div>
+          <div class="icon"><IconGlobe :size="28" /></div>
           <h3>CORS 跨域支持</h3>
           <p>API 服务器对所有响应自动添加 CORS 头，允许任意来源调用</p>
         </div>
         <div class="intro-card">
-          <div class="icon">🗄️</div>
+          <div class="icon"><IconDatabase :size="28" /></div>
           <h3>SQLite 存储</h3>
           <p>4 张表：images、users、config、banned_users</p>
         </div>
@@ -33,7 +33,7 @@
 
       <div class="info-card">
         <h3>基础 URL</h3>
-        <CodeBlock text="http://<设备局域网IP>:8080">http://<span style="color:#fde68a">&lt;设备局域网IP&gt;</span>:8080</CodeBlock>
+        <CodeBlock text="http://<设备局域网IP>:8080" lang="plain" />
 
         <h3>通用约定</h3>
         <ul class="convention-list">
@@ -48,7 +48,7 @@
 
     <!-- 认证与授权 -->
     <section id="auth" class="section">
-      <h2 class="section-title">🔐 认证与授权</h2>
+      <h2 class="section-title"><IconLock :size="28" /> 认证与授权</h2>
 
       <div class="info-card">
         <h3>角色体系</h3>
@@ -69,8 +69,8 @@
             <tr><th>服务</th><th>端口</th><th>跨域 (CORS)</th><th>外网访问</th><th>局域网访问</th></tr>
           </thead>
           <tbody>
-            <tr><td>API 服务器</td><td><code>8080</code></td><td>✅ 允许</td><td>✅ 允许</td><td>✅ 允许</td></tr>
-            <tr><td>管理面板</td><td><code>8081</code></td><td>—</td><td>❌ 禁止</td><td>✅ 允许</td></tr>
+            <tr><td>API 服务器</td><td><code>8080</code></td><td><span class="check-mark">✓</span> 允许</td><td><span class="check-mark">✓</span> 允许</td><td><span class="check-mark">✓</span> 允许</td></tr>
+            <tr><td>管理面板</td><td><code>8081</code></td><td>—</td><td><span class="cross-mark">✗</span> 禁止</td><td><span class="check-mark">✓</span> 允许</td></tr>
           </tbody>
         </table>
 
@@ -98,7 +98,10 @@
 
     <!-- API 端点分组 -->
     <section v-for="group in groups" :key="group.title" :id="'group-' + group.title" class="section">
-      <h2 class="section-title">{{ group.icon }} {{ group.title }}</h2>
+      <h2 class="section-title">
+        <component :is="group.icon" :size="28" />
+        {{ group.title }}
+      </h2>
       <p class="section-desc">{{ group.desc }}</p>
       <EndpointCard
         v-for="ep in group.endpoints"
@@ -111,7 +114,7 @@
 
     <!-- 数据库表结构 -->
     <section id="database" class="section">
-      <h2 class="section-title">🗄️ 数据库表结构</h2>
+      <h2 class="section-title"><IconDatabase :size="28" /> 数据库表结构</h2>
       <p class="section-desc">
         Memories 使用 SQLite 数据库 <code>memories.db</code>，包含以下 4 张表。
       </p>
@@ -123,7 +126,7 @@
           <span class="expand-icon" :class="{ open: expandedTables[tbl.name] }">▼</span>
         </div>
         <div class="db-body" v-show="expandedTables[tbl.name]">
-          <CodeBlock :text="tbl.sql">{{ tbl.sql }}</CodeBlock>
+          <CodeBlock :text="tbl.sql" lang="sql" />
           <ParamTable title="字段说明" :rows="tbl.columns" col1-label="列" />
         </div>
       </div>
@@ -136,6 +139,21 @@ import { reactive } from 'vue'
 import EndpointCard from '../components/EndpointCard.vue'
 import CodeBlock from '../components/CodeBlock.vue'
 import ParamTable from '../components/ParamTable.vue'
+import IconServer from '../components/icons/IconServer.vue'
+import IconBox from '../components/icons/IconBox.vue'
+import IconGlobe from '../components/icons/IconGlobe.vue'
+import IconDatabase from '../components/icons/IconDatabase.vue'
+import IconLayout from '../components/icons/IconLayout.vue'
+import IconLock from '../components/icons/IconLock.vue'
+import IconImage from '../components/icons/IconImage.vue'
+import IconUser from '../components/icons/IconUser.vue'
+import IconBan from '../components/icons/IconBan.vue'
+import IconSettings from '../components/icons/IconSettings.vue'
+import IconChart from '../components/icons/IconChart.vue'
+import IconCloud from '../components/icons/IconCloud.vue'
+import IconTag from '../components/icons/IconTag.vue'
+import IconCode from '../components/icons/IconCode.vue'
+import IconKey from '../components/icons/IconKey.vue'
 import { endpointGroups, databaseTables, authMatrix } from '../data/apiEndpoints.js'
 
 defineProps({
@@ -162,6 +180,26 @@ function toggleTable(name) {
   color: var(--text);
   margin-bottom: 6px;
   letter-spacing: -0.025em;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.section-title :deep(svg) {
+  stroke: var(--accent);
+  flex-shrink: 0;
+}
+
+.check-mark { color: var(--success); font-weight: 700; }
+.cross-mark { color: var(--danger); font-weight: 700; }
+
+.intro-card .icon {
+  color: var(--accent);
+  margin-bottom: 10px;
+}
+
+.intro-card .icon :deep(svg) {
+  stroke: var(--accent);
 }
 
 .section-desc {
@@ -350,5 +388,53 @@ function toggleTable(name) {
 
 .db-body {
   padding: 4px 24px 24px;
+}
+
+/* ===== Mobile ===== */
+@media (max-width: 768px) {
+  .section { margin-bottom: 40px; }
+  .section-title { font-size: 22px; gap: 8px; }
+  .section-desc { font-size: 14px; margin-bottom: 20px; }
+
+  .intro-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .intro-card { padding: 18px; }
+  .intro-card h3 { font-size: 14px; }
+  .intro-card p { font-size: 12px; }
+  .intro-card .icon { margin-bottom: 6px; }
+  .intro-card .icon :deep(svg) { width: 22px; height: 22px; }
+
+  .info-card { padding: 18px; margin-bottom: 14px; }
+  .info-card h3 { font-size: 11px; margin: 14px 0 8px; }
+
+  .simple-table { font-size: 12px; }
+  .simple-table th, .simple-table td { padding: 8px 10px; }
+
+  .convention-list { font-size: 13px; margin-left: 18px; }
+  .convention-list code { font-size: 11px; }
+
+  .db-header { padding: 14px 18px; }
+  .db-name { font-size: 14px; }
+  .db-body { padding: 4px 16px 18px; }
+}
+
+@media (max-width: 480px) {
+  .section { margin-bottom: 32px; }
+  .section-title { font-size: 19px; gap: 6px; }
+  .section-title :deep(svg) { width: 22px; height: 22px; }
+
+  .intro-grid { grid-template-columns: 1fr; gap: 8px; }
+  .intro-card { padding: 16px; }
+
+  .info-card { padding: 14px; margin-bottom: 10px; }
+  .info-card h3 { font-size: 10px; }
+
+  .simple-table { font-size: 11px; }
+  .simple-table th, .simple-table td { padding: 6px 8px; }
+  .simple-table code { font-size: 11px; padding: 1px 5px; }
+
+  .db-header { padding: 12px 14px; gap: 8px; }
 }
 </style>

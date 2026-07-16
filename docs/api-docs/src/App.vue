@@ -9,6 +9,7 @@
     :active-section="activeSection"
     :groups="endpointGroups"
     @navigate="handleNavigate"
+    @close="sidebarOpen = false"
   />
 
   <!-- Main Content -->

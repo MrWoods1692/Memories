@@ -102,4 +102,18 @@ h4 {
   color: var(--text-secondary);
   font-size: 12px;
 }
+
+@media (max-width: 768px) {
+  h4 { font-size: 10px; margin: 14px 0 8px; }
+  .param-table { font-size: 12px; }
+  .param-table th, .param-table td { padding: 7px 10px; }
+  .param-table th { font-size: 10px; }
+  .param-table code { font-size: 11px; padding: 1px 5px; }
+}
+
+@media (max-width: 480px) {
+  .param-table { font-size: 11px; }
+  .param-table th, .param-table td { padding: 6px 8px; }
+  .param-table code { font-size: 10px; }
+}
 </style>

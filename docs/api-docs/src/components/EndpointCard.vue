@@ -249,4 +249,20 @@ const authLabel = computed(() => {
   line-height: 1.5;
   border: 1px solid #fef3c7;
 }
+
+@media (max-width: 768px) {
+  .endpoint-card { margin-bottom: 10px; }
+  .endpoint-header {
+    padding: 14px 16px;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .method-tag { font-size: 10px; padding: 3px 9px; }
+  .path { font-size: 13px; width: 100%; order: 1; }
+  .summary { display: none; }
+  .expand-icon { margin-left: auto; }
+  .endpoint-body { padding: 6px 16px 16px; }
+  .description { font-size: 13px; }
+  .notes { font-size: 12px; padding: 10px 12px; }
+}
 </style>

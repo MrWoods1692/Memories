@@ -83,8 +83,15 @@ body {
   transition: opacity 0.25s;
 }
 
+/* ===== Mobile / Tablet ===== */
 @media (max-width: 768px) {
+  body { font-size: 14px; }
   .mobile-menu-btn { display: block; }
   .sidebar-overlay.open { display: block; }
-  .main-content { margin-left: 0; padding: 24px 20px; }
+  .main-content { margin-left: 0; padding: 72px 16px 40px; }
+}
+
+@media (max-width: 480px) {
+  body { font-size: 13px; }
+  .main-content { padding: 68px 14px 32px; }
 }

@@ -16,7 +16,7 @@ export const authMatrix = [
 
 export const endpointGroups = [
   {
-    icon: '❤️',
+    icon: 'IconCheck',
     title: '健康检查',
     desc: '服务可用性检查',
     endpoints: [
@@ -32,7 +32,7 @@ export const endpointGroups = [
     ],
   },
   {
-    icon: '🖼️',
+    icon: 'IconImage',
     title: '图片管理',
     desc: '图片的上传、审核、删除',
     endpoints: [
@@ -114,7 +114,7 @@ export const endpointGroups = [
     ],
   },
   {
-    icon: '👤',
+    icon: 'IconUser',
     title: '用户管理',
     desc: '审核员与管理员的增删查',
     endpoints: [
@@ -165,7 +165,7 @@ export const endpointGroups = [
     ],
   },
   {
-    icon: '🚫',
+    icon: 'IconBan',
     title: '封禁管理',
     desc: '用户封禁与解封',
     endpoints: [
@@ -214,7 +214,7 @@ export const endpointGroups = [
     ],
   },
   {
-    icon: '⚙️',
+    icon: 'IconSettings',
     title: '配置管理',
     desc: '全局配置的读取与修改',
     endpoints: [
@@ -259,7 +259,7 @@ export const endpointGroups = [
     ],
   },
   {
-    icon: '📊',
+    icon: 'IconChart',
     title: '服务状态',
     desc: '运行状态与系统信息',
     endpoints: [
@@ -320,7 +320,7 @@ export const endpointGroups = [
     ],
   },
   {
-    icon: '☁️',
+    icon: 'IconCloud',
     title: 'WebDAV 备份',
     desc: 'WebDAV 配置状态',
     endpoints: [
@@ -348,7 +348,7 @@ export const endpointGroups = [
     ],
   },
   {
-    icon: '🏷️',
+    icon: 'IconTag',
     title: '平台信息',
     desc: '平台名称与 Logo',
     endpoints: [
@@ -374,7 +374,7 @@ export const endpointGroups = [
     ],
   },
   {
-    icon: '🔗',
+    icon: 'IconCode',
     title: 'FRPC 内网穿透',
     desc: 'FRPC 配置与状态',
     endpoints: [
@@ -421,7 +421,7 @@ export const endpointGroups = [
     ],
   },
   {
-    icon: '🔑',
+    icon: 'IconKey',
     title: 'OAuth 认证',
     desc: '第三方 OAuth 登录（PKCE S256）',
     endpoints: [

@@ -3,6 +3,9 @@
     <div class="sidebar-header">
       <h1>Memories API</h1>
       <div class="version">v1.0 · REST API 参考</div>
+      <button class="sidebar-close" @click="$emit('close')">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
     </div>
     <nav class="sidebar-nav">
       <!-- 概览 -->
@@ -13,7 +16,7 @@
           :class="{ active: activeSection === 'overview' }"
           @click="$emit('navigate', 'overview')"
         >
-          <span class="nav-icon">📋</span>
+          <span class="nav-icon"><IconLayout :size="16" /></span>
           架构概述
         </a>
         <a
@@ -21,7 +24,7 @@
           :class="{ active: activeSection === 'auth' }"
           @click="$emit('navigate', 'auth')"
         >
-          <span class="nav-icon">🔐</span>
+          <span class="nav-icon"><IconLock :size="16" /></span>
           认证与授权
         </a>
       </div>
@@ -30,7 +33,10 @@
       <div class="nav-group">
         <div class="nav-group-title">API 端点</div>
         <template v-for="group in groups" :key="group.title">
-          <div class="nav-subtitle">{{ group.icon }} {{ group.title }}</div>
+          <div class="nav-subtitle">
+            <component :is="group.icon" :size="14" />
+            {{ group.title }}
+          </div>
           <a
             v-for="ep in group.endpoints"
             :key="ep.id"
@@ -52,7 +58,7 @@
           :class="{ active: activeSection === 'database' }"
           @click="$emit('navigate', 'database')"
         >
-          <span class="nav-icon">🗄️</span>
+          <span class="nav-icon"><IconDatabase :size="16" /></span>
           数据库表结构
         </a>
       </div>
@@ -61,7 +67,9 @@
 </template>
 
 <script setup>
-import { getAllEndpoints } from '../data/apiEndpoints.js'
+import IconLayout from './icons/IconLayout.vue'
+import IconLock from './icons/IconLock.vue'
+import IconDatabase from './icons/IconDatabase.vue'
 
 defineProps({
   isOpen: Boolean,
@@ -72,7 +80,7 @@ defineProps({
   },
 })
 
-defineEmits(['navigate'])
+defineEmits(['navigate', 'close'])
 </script>
 
 <style scoped>
@@ -98,7 +106,24 @@ defineEmits(['navigate'])
 .sidebar-header {
   padding: 28px 24px 20px;
   border-bottom: 1px solid var(--border-light);
+  position: relative;
 }
+
+.sidebar-close {
+  display: none;
+  position: absolute;
+  top: 24px;
+  right: 20px;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  transition: all var(--transition);
+}
+
+.sidebar-close:hover { background: var(--sidebar-hover); color: var(--text); }
 
 .sidebar-header h1 {
   font-size: 20px;
@@ -139,6 +164,13 @@ defineEmits(['navigate'])
   font-weight: 600;
   color: var(--text);
   opacity: 0.6;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.nav-subtitle :deep(svg) {
+  stroke: var(--text-secondary);
 }
 
 .nav-item {
@@ -174,9 +206,16 @@ defineEmits(['navigate'])
 }
 
 .nav-icon {
-  font-size: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 20px;
-  text-align: center;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.nav-icon :deep(svg) {
+  stroke: currentColor;
 }
 
 .ep-summary {
@@ -223,5 +262,9 @@ defineEmits(['navigate'])
   .sidebar.open {
     transform: translateX(0);
   }
+  .sidebar-close { display: block; }
+  .nav-item { padding: 10px 20px; font-size: 14px; }
+  .nav-endpoint { padding: 7px 20px; font-size: 13px; }
+  .sidebar-header h1 { font-size: 18px; }
 }
 </style>
