@@ -1,10 +1,6 @@
 [
     {
-        "merged": "com.example.memories.app-merged_res-4:/layout_activity_main.xml.flat",
-        "source": "com.example.memories.app-main-6:/layout/activity_main.xml"
-    },
-    {
-        "merged": "/home/mrcwoods/.gradle/daemon/8.3/com.example.memories.app-merged_res-4:/layout_activity_main.xml.flat",
-        "source": "/home/mrcwoods/.gradle/daemon/8.3/com.example.memories.app-main-6:/layout/activity_main.xml"
+        "merged": "com.example.memories.app-merged_res-16:/layout_activity_main.xml.flat",
+        "source": "com.example.memories.app-main-18:/layout/activity_main.xml"
     }
 ]

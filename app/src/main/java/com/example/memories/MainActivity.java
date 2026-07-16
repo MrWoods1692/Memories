@@ -37,6 +37,9 @@ public class MainActivity extends android.app.Activity {
         // 请求权限
         requestPermissions();
 
+        // 引导开启国产 ROM 自启动权限
+        handler.postDelayed(() -> AutoStartHelper.tryOpenAutoStartSettings(this), 2000);
+
         // 绑定 WebView
         webView = findViewById(R.id.webview_admin);
         WebSettings ws = webView.getSettings();
