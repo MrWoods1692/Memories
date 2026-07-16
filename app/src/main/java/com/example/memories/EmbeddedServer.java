@@ -108,8 +108,14 @@ public class EmbeddedServer extends NanoHTTPD {
 
     @Override
     public Response serve(IHTTPSession session) {
-        // CORS 预检请求
-        if (Method.OPTIONS.equals(session.getMethod())) {
+        Method method = session.getMethod();
+        String uri = session.getUri();
+        Log.i(TAG, "CORS check: method=" + method + " uri=" + uri);
+
+        // CORS 预检请求：兼容 method 为 null 的情况（frp/nginx 代理可能丢失 method）
+        if (Method.OPTIONS.equals(method) || (method == null && "OPTIONS".equalsIgnoreCase(
+                session.getHeaders().getOrDefault("access-control-request-method", "")))) {
+            Log.i(TAG, "Handling CORS preflight: " + uri);
             Response r = NanoHTTPD.newFixedLengthResponse(Status.OK, "text/plain", "");
             addCorsHeaders(r);
             return r;
@@ -186,13 +192,15 @@ public class EmbeddedServer extends NanoHTTPD {
     }
 
     /**
-     * 为响应添加 CORS 跨域头，允许管理面板跨端口调用 API
+     * 为响应添加 CORS 跨域头，允许管理面板跨端口/跨域调用 API
      */
     private void addCorsHeaders(Response response) {
         response.addHeader("Access-Control-Allow-Origin", "*");
-        response.addHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-        response.addHeader("Access-Control-Allow-Headers", "Content-Type, x-user-qq, Authorization");
+        response.addHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS, HEAD, PATCH");
+        response.addHeader("Access-Control-Allow-Headers",
+                "Content-Type, x-user-qq, Authorization, authorization, DNT, User-Agent, X-Requested-With, If-Modified-Since, Cache-Control, Range");
         response.addHeader("Access-Control-Max-Age", "86400");
+        response.addHeader("Access-Control-Expose-Headers", "Content-Length, Content-Range");
     }
 
     private Response handleImages(IHTTPSession session) {
