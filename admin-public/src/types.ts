@@ -26,6 +26,7 @@ export interface BanItem {
 export interface ResourceInfo {
   percent: number; // 0-100
   label?: string;
+  freqKhz?: number; // CPU 频率 (kHz)
 }
 
 export interface MemoryDiskInfo {

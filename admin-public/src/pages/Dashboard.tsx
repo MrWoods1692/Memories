@@ -33,14 +33,14 @@ function ProgressBar({ percent, showLabel }: { percent: number; showLabel?: bool
   );
 }
 
-/** 电池状态卡片 */
+/** UPS 状态卡片 */
 function BatteryCard({ battery }: { battery: ResourceInfo }) {
   const pct = battery.percent;
   const cls = pct <= 20 ? 'danger' : pct <= 50 ? 'warn' : 'ok';
   return (
     <div className="resource-card">
       <div className="resource-header">
-        <div className="resource-title"><IconBattery size={18} /> 电池</div>
+        <div className="resource-title"><IconBattery size={18} /> UPS</div>
         <span className={`resource-value ${cls}`}>{pct}%</span>
       </div>
       <div className="progress-bar">
@@ -57,6 +57,7 @@ function BatteryCard({ battery }: { battery: ResourceInfo }) {
 /** CPU 状态卡片 */
 function CpuCard({ cpu }: { cpu: ResourceInfo }) {
   const cls = pctClass(cpu.percent);
+  const freqMhz = cpu.freqKhz ? (cpu.freqKhz / 1000).toFixed(0) : null;
   return (
     <div className="resource-card">
       <div className="resource-header">
@@ -64,6 +65,7 @@ function CpuCard({ cpu }: { cpu: ResourceInfo }) {
         <span className={`resource-value ${cls}`}>{cpu.percent.toFixed(1)}%</span>
       </div>
       <ProgressBar percent={cpu.percent} showLabel />
+      {freqMhz && <div className="progress-detail"><span>核心频率</span><span>{freqMhz} MHz</span></div>}
     </div>
   );
 }
@@ -118,18 +120,26 @@ export function DashboardPage({ toast: _toast }: Props) {
       ]);
       // 将 /sysinfo 数据合并到 status 中
       if (sysInfo) {
-        // 电池
+        // 电池/UPS
         if (sysInfo.battery && typeof sysInfo.battery.level === 'number') {
           s.battery = {
             percent: sysInfo.battery.level,
-            label: sysInfo.battery.status || '',
+            label: sysInfo.battery.power_source || sysInfo.battery.status || '',
           };
         }
-        // CPU（用 load avg1 / cores 估算使用率）
+        // CPU（用 load avg1 / cores 估算使用率，同时取核心频率）
         if (sysInfo.cpu && sysInfo.cpu.load && typeof sysInfo.cpu.cores === 'number') {
           const cores = sysInfo.cpu.cores;
           const load1 = sysInfo.cpu.load.avg1 || 0;
-          s.cpu = { percent: Math.min(100, (load1 / cores) * 100) };
+          // 取第一个核心的当前频率
+          let freqKhz = 0;
+          if (sysInfo.cpu.frequencies) {
+            const keys = Object.keys(sysInfo.cpu.frequencies);
+            if (keys.length > 0 && sysInfo.cpu.frequencies[keys[0]]?.cur_khz) {
+              freqKhz = sysInfo.cpu.frequencies[keys[0]].cur_khz;
+            }
+          }
+          s.cpu = { percent: Math.min(100, (load1 / cores) * 100), freqKhz };
         }
         // 内存
         if (sysInfo.memory && sysInfo.memory.sys_total > 0) {
