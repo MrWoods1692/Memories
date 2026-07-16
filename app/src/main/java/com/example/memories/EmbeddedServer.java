@@ -929,7 +929,21 @@ public class EmbeddedServer extends NanoHTTPD {
                 session.parseBody(files);
                 Map<String, String> params = session.getParms();
                 String config = params.get("frpc_config");
-                if (config != null) db.setConfig("frpc_config", config);
+                if (config != null) {
+                    db.setConfig("frpc_config", config);
+
+                    // 自动应用配置：非空时启动/重载 frpc，空配置时停止 frpc
+                    FrpcManager frpc = FrpcManager.getInstance();
+                    if (frpc != null) {
+                        if (config.trim().isEmpty()) {
+                            frpc.stopFrpc();
+                            Log.i(TAG, "frpc stopped (empty config)");
+                        } else {
+                            boolean ok = frpc.reload(config);
+                            Log.i(TAG, "frpc " + (ok ? "reloaded" : "start failed") + " after config update");
+                        }
+                    }
+                }
                 return NanoHTTPD.newFixedLengthResponse(Status.OK, "text/plain", "ok");
             }
 

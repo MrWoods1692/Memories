@@ -17,12 +17,19 @@ import frpandroid.Frpandroid;
  */
 public class FrpcManager {
     private static final String TAG = "FrpcManager";
+    private static FrpcManager instance;
     private boolean running = false;
     private String currentConfigContent = null;
     private Context context;
 
     public FrpcManager(Context context) {
         this.context = context.getApplicationContext();
+        instance = this;
+    }
+
+    /** 获取当前 FrpcManager 实例，供其他组件（如 EmbeddedServer）调用 */
+    public static FrpcManager getInstance() {
+        return instance;
     }
 
     /**
@@ -37,79 +44,12 @@ public class FrpcManager {
         }
 
         try {
-            // 解析 INI 配置
-            Map<String, Map<String, String>> sections = parseIni(configContent);
-
-            // 构建 FrpcConfig
-            frpandroid.FrpcConfig cfg = Frpandroid.newFrpcConfig();
-
-            // 解析 [common] 段
-            Map<String, String> common = sections.get("common");
-            if (common != null) {
-                if (common.containsKey("server_addr")) cfg.setServerAddr(common.get("server_addr"));
-                if (common.containsKey("server_port")) cfg.setServerPort(Integer.parseInt(common.get("server_port")));
-                if (common.containsKey("token")) cfg.setAuthToken(common.get("token"));
-                if (common.containsKey("user")) cfg.setUser(common.get("user"));
-                if (common.containsKey("tls_enable")) cfg.setTransportTLSEnable("true".equalsIgnoreCase(common.get("tls_enable")));
-                if (common.containsKey("protocol")) cfg.setTransportProtocol(common.get("protocol"));
-                if (common.containsKey("tcp_mux")) cfg.setTransportTCPMux("true".equalsIgnoreCase(common.get("tcp_mux")));
-                if (common.containsKey("auth_method")) cfg.setAuthMethod(common.get("auth_method"));
-                if (common.containsKey("log_file")) cfg.setLogTo(common.get("log_file"));
-                if (common.containsKey("log_level")) cfg.setLogLevel(common.get("log_level"));
-                if (common.containsKey("log_max_days")) cfg.setLogMaxDays(Long.parseLong(common.get("log_max_days")));
-                if (common.containsKey("login_fail_exit")) cfg.setLoginFailExit("true".equalsIgnoreCase(common.get("login_fail_exit")));
-
-                // 默认日志路径
-                if (!common.containsKey("log_file")) {
-                    cfg.setLogTo(new File(context.getFilesDir(), "frpc.log").getAbsolutePath());
-                    cfg.setLogMaxDays(3);
-                }
-            }
-
-            // 解析代理段
-            for (Map.Entry<String, Map<String, String>> entry : sections.entrySet()) {
-                String sectionName = entry.getKey();
-                if ("common".equals(sectionName)) continue;
-
-                Map<String, String> proxyConf = entry.getValue();
-                String type = proxyConf.getOrDefault("type", "tcp");
-                frpandroid.FrpcProxyConfig proxy = Frpandroid.newFrpcProxyConfig(type);
-                if (proxy == null) continue;
-                proxy.setName(sectionName);
-                if (proxyConf.containsKey("local_ip")) proxy.setLocalIP(proxyConf.get("local_ip"));
-                if (proxyConf.containsKey("local_port")) proxy.setLocalPort(Integer.parseInt(proxyConf.get("local_port")));
-                if (proxyConf.containsKey("use_encryption")) proxy.setUseEncryption("true".equalsIgnoreCase(proxyConf.get("use_encryption")));
-                if (proxyConf.containsKey("use_compression")) proxy.setUseCompression("true".equalsIgnoreCase(proxyConf.get("use_compression")));
-                // HTTP/HTTPS/TCPMux 代理专用配置
-                if (proxyConf.containsKey("custom_domains")) {
-                    for (String domain : proxyConf.get("custom_domains").split(",")) {
-                        String d = domain.trim();
-                        if (!d.isEmpty()) proxy.addCustomDomain(d);
-                    }
-                }
-                if (proxyConf.containsKey("subdomain")) proxy.setSubDomain(proxyConf.get("subdomain"));
-                if (proxyConf.containsKey("locations")) {
-                    for (String loc : proxyConf.get("locations").split(",")) {
-                        String l = loc.trim();
-                        if (!l.isEmpty()) proxy.addLocation(l);
-                    }
-                }
-                if (proxyConf.containsKey("host_header_rewrite")) proxy.setHostHeaderRewrite(proxyConf.get("host_header_rewrite"));
-                if (proxyConf.containsKey("http_user")) proxy.setHTTPUser(proxyConf.get("http_user"));
-                if (proxyConf.containsKey("http_password")) proxy.setHTTPPassword(proxyConf.get("http_password"));
-                // remote_port 仅 TCP/UDP
-                if (proxyConf.containsKey("remote_port")) proxy.setRemotePort(Integer.parseInt(proxyConf.get("remote_port")));
-
-                cfg.addProxy(proxy);
-            }
-
-            // 启动
+            frpandroid.FrpcConfig cfg = buildFrpcConfig(configContent);
             Frpandroid.start(cfg);
             running = true;
             currentConfigContent = configContent;
             Log.i(TAG, "frpc started successfully via frp_android");
             return true;
-
         } catch (Exception e) {
             Log.e(TAG, "Failed to start frpc via frp_android", e);
             running = false;
@@ -126,57 +66,7 @@ public class FrpcManager {
         }
 
         try {
-            Map<String, Map<String, String>> sections = parseIni(configContent);
-            frpandroid.FrpcConfig cfg = Frpandroid.newFrpcConfig();
-
-            Map<String, String> common = sections.get("common");
-            if (common != null) {
-                if (common.containsKey("server_addr")) cfg.setServerAddr(common.get("server_addr"));
-                if (common.containsKey("server_port")) cfg.setServerPort(Integer.parseInt(common.get("server_port")));
-                if (common.containsKey("token")) cfg.setAuthToken(common.get("token"));
-                if (common.containsKey("user")) cfg.setUser(common.get("user"));
-                if (common.containsKey("tls_enable")) cfg.setTransportTLSEnable("true".equalsIgnoreCase(common.get("tls_enable")));
-                if (common.containsKey("protocol")) cfg.setTransportProtocol(common.get("protocol"));
-                if (common.containsKey("tcp_mux")) cfg.setTransportTCPMux("true".equalsIgnoreCase(common.get("tcp_mux")));
-                if (common.containsKey("auth_method")) cfg.setAuthMethod(common.get("auth_method"));
-                if (common.containsKey("log_file")) cfg.setLogTo(common.get("log_file"));
-                if (common.containsKey("log_level")) cfg.setLogLevel(common.get("log_level"));
-                if (common.containsKey("log_max_days")) cfg.setLogMaxDays(Long.parseLong(common.get("log_max_days")));
-                if (common.containsKey("login_fail_exit")) cfg.setLoginFailExit("true".equalsIgnoreCase(common.get("login_fail_exit")));
-            }
-
-            for (Map.Entry<String, Map<String, String>> entry : sections.entrySet()) {
-                String sectionName = entry.getKey();
-                if ("common".equals(sectionName)) continue;
-                Map<String, String> proxyConf = entry.getValue();
-                String type = proxyConf.getOrDefault("type", "tcp");
-                frpandroid.FrpcProxyConfig proxy = Frpandroid.newFrpcProxyConfig(type);
-                if (proxy == null) continue;
-                proxy.setName(sectionName);
-                if (proxyConf.containsKey("local_ip")) proxy.setLocalIP(proxyConf.get("local_ip"));
-                if (proxyConf.containsKey("local_port")) proxy.setLocalPort(Integer.parseInt(proxyConf.get("local_port")));
-                if (proxyConf.containsKey("use_encryption")) proxy.setUseEncryption("true".equalsIgnoreCase(proxyConf.get("use_encryption")));
-                if (proxyConf.containsKey("use_compression")) proxy.setUseCompression("true".equalsIgnoreCase(proxyConf.get("use_compression")));
-                if (proxyConf.containsKey("custom_domains")) {
-                    for (String domain : proxyConf.get("custom_domains").split(",")) {
-                        String d = domain.trim();
-                        if (!d.isEmpty()) proxy.addCustomDomain(d);
-                    }
-                }
-                if (proxyConf.containsKey("subdomain")) proxy.setSubDomain(proxyConf.get("subdomain"));
-                if (proxyConf.containsKey("locations")) {
-                    for (String loc : proxyConf.get("locations").split(",")) {
-                        String l = loc.trim();
-                        if (!l.isEmpty()) proxy.addLocation(l);
-                    }
-                }
-                if (proxyConf.containsKey("host_header_rewrite")) proxy.setHostHeaderRewrite(proxyConf.get("host_header_rewrite"));
-                if (proxyConf.containsKey("http_user")) proxy.setHTTPUser(proxyConf.get("http_user"));
-                if (proxyConf.containsKey("http_password")) proxy.setHTTPPassword(proxyConf.get("http_password"));
-                if (proxyConf.containsKey("remote_port")) proxy.setRemotePort(Integer.parseInt(proxyConf.get("remote_port")));
-                cfg.addProxy(proxy);
-            }
-
+            frpandroid.FrpcConfig cfg = buildFrpcConfig(configContent);
             Frpandroid.reload(cfg);
             currentConfigContent = configContent;
             Log.i(TAG, "frpc reloaded successfully");
@@ -185,6 +75,76 @@ public class FrpcManager {
             Log.e(TAG, "Failed to reload frpc", e);
             return false;
         }
+    }
+
+    /**
+     * 从 INI 配置文本构建 FrpcConfig 对象（startFrpc 和 reload 共用）
+     */
+    private frpandroid.FrpcConfig buildFrpcConfig(String configContent) throws Exception {
+        Map<String, Map<String, String>> sections = parseIni(configContent);
+        frpandroid.FrpcConfig cfg = Frpandroid.newFrpcConfig();
+
+        // 解析 [common] 段
+        Map<String, String> common = sections.get("common");
+        if (common != null) {
+            if (common.containsKey("server_addr")) cfg.setServerAddr(common.get("server_addr"));
+            if (common.containsKey("server_port")) cfg.setServerPort(Integer.parseInt(common.get("server_port")));
+            if (common.containsKey("token")) cfg.setAuthToken(common.get("token"));
+            if (common.containsKey("user")) cfg.setUser(common.get("user"));
+            if (common.containsKey("tls_enable")) cfg.setTransportTLSEnable("true".equalsIgnoreCase(common.get("tls_enable")));
+            if (common.containsKey("protocol")) cfg.setTransportProtocol(common.get("protocol"));
+            if (common.containsKey("tcp_mux")) cfg.setTransportTCPMux("true".equalsIgnoreCase(common.get("tcp_mux")));
+            if (common.containsKey("auth_method")) cfg.setAuthMethod(common.get("auth_method"));
+            if (common.containsKey("log_file")) cfg.setLogTo(common.get("log_file"));
+            if (common.containsKey("log_level")) cfg.setLogLevel(common.get("log_level"));
+            if (common.containsKey("log_max_days")) cfg.setLogMaxDays(Long.parseLong(common.get("log_max_days")));
+            if (common.containsKey("login_fail_exit")) cfg.setLoginFailExit("true".equalsIgnoreCase(common.get("login_fail_exit")));
+
+            // 默认日志路径
+            if (!common.containsKey("log_file")) {
+                cfg.setLogTo(new File(context.getFilesDir(), "frpc.log").getAbsolutePath());
+                cfg.setLogMaxDays(3);
+            }
+        }
+
+        // 解析代理段
+        for (Map.Entry<String, Map<String, String>> entry : sections.entrySet()) {
+            String sectionName = entry.getKey();
+            if ("common".equals(sectionName)) continue;
+
+            Map<String, String> proxyConf = entry.getValue();
+            String type = proxyConf.getOrDefault("type", "tcp");
+            frpandroid.FrpcProxyConfig proxy = Frpandroid.newFrpcProxyConfig(type);
+            if (proxy == null) continue;
+            proxy.setName(sectionName);
+            if (proxyConf.containsKey("local_ip")) proxy.setLocalIP(proxyConf.get("local_ip"));
+            if (proxyConf.containsKey("local_port")) proxy.setLocalPort(Integer.parseInt(proxyConf.get("local_port")));
+            if (proxyConf.containsKey("use_encryption")) proxy.setUseEncryption("true".equalsIgnoreCase(proxyConf.get("use_encryption")));
+            if (proxyConf.containsKey("use_compression")) proxy.setUseCompression("true".equalsIgnoreCase(proxyConf.get("use_compression")));
+            // HTTP/HTTPS/TCPMux 代理专用配置
+            if (proxyConf.containsKey("custom_domains")) {
+                for (String domain : proxyConf.get("custom_domains").split(",")) {
+                    String d = domain.trim();
+                    if (!d.isEmpty()) proxy.addCustomDomain(d);
+                }
+            }
+            if (proxyConf.containsKey("subdomain")) proxy.setSubDomain(proxyConf.get("subdomain"));
+            if (proxyConf.containsKey("locations")) {
+                for (String loc : proxyConf.get("locations").split(",")) {
+                    String l = loc.trim();
+                    if (!l.isEmpty()) proxy.addLocation(l);
+                }
+            }
+            if (proxyConf.containsKey("host_header_rewrite")) proxy.setHostHeaderRewrite(proxyConf.get("host_header_rewrite"));
+            if (proxyConf.containsKey("http_user")) proxy.setHTTPUser(proxyConf.get("http_user"));
+            if (proxyConf.containsKey("http_password")) proxy.setHTTPPassword(proxyConf.get("http_password"));
+            // remote_port 仅 TCP/UDP
+            if (proxyConf.containsKey("remote_port")) proxy.setRemotePort(Integer.parseInt(proxyConf.get("remote_port")));
+
+            cfg.addProxy(proxy);
+        }
+
+        return cfg;
     }
 
     /**
