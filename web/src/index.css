@@ -1,0 +1,229 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&family=Noto+Serif+SC:wght@400;600;700;900&display=swap');
+@import url('https://resource-static.bj.bcebos.com/fonts-skill/JiYingHuiPianHuiSong-2.woff2');
+
+/* stylelint-disable */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Memories 设计系统 — 校园记忆胶片杂志 */
+
+@layer base {
+  :root {
+    --radius: 1rem;
+    /* 明亮多彩背景：晨雾粉、湖蓝、薄荷绿和暖杏色交织 */
+    --background: 210 55% 98%;
+    --foreground: 226 32% 18%;
+    /* 毛玻璃卡片：半透明白色基底 */
+    --card: 0 0% 100%;
+    --card-foreground: 226 32% 18%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 226 32% 18%;
+    --primary: 175 65% 42%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 30 85% 62%;
+    --secondary-foreground: 25 40% 16%;
+    --muted: 214 48% 94%;
+    --muted-foreground: 226 16% 44%;
+    --accent: 344 87% 68%;
+    --accent-foreground: 345 58% 16%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    /* 半透明白色边框，配合毛玻璃 */
+    --border: 0 0% 100%;
+    --input: 214 36% 84%;
+    --ring: 175 65% 42%;
+    --chart-1: 175 65% 42%;
+    --chart-2: 30 88% 60%;
+    --chart-3: 160 55% 48%;
+    --chart-4: 15 82% 56%;
+    --chart-5: 200 60% 50%;
+    --sidebar-background: 210 55% 98%;
+    --sidebar-foreground: 226 32% 18%;
+    --sidebar-primary: 175 65% 42%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 214 48% 94%;
+    --sidebar-accent-foreground: 226 32% 18%;
+    --sidebar-border: 0 0% 100%;
+    --sidebar-ring: 175 65% 42%;
+    --success: 142 60% 40%;
+    --warning: 38 96% 58%;
+    --info: 198 88% 54%;
+    --education-blue: 214 86% 56%;
+    --education-green: 166 68% 45%;
+    --gradient-primary: linear-gradient(135deg, hsl(175 65% 42%) 0%, hsl(160 58% 48%) 100%);
+    --gradient-warm: linear-gradient(135deg, hsl(22 95% 48%) 0%, hsl(8 85% 44%) 100%);
+    --gradient-card: linear-gradient(145deg, hsl(0 0% 100% / 0.82), hsl(210 75% 98% / 0.54));
+    --gradient-background:
+      radial-gradient(circle at 12% 18%, hsla(344, 87%, 82%, 0.55) 0%, transparent 28%),
+      radial-gradient(circle at 82% 10%, hsla(198, 88%, 78%, 0.62) 0%, transparent 30%),
+      radial-gradient(circle at 76% 76%, hsla(166, 68%, 78%, 0.56) 0%, transparent 34%),
+      linear-gradient(135deg, #fff8f6 0%, #eef7ff 42%, #f4fff8 100%);
+    --shadow-card: 0 10px 36px hsla(226, 32%, 18%, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.68);
+    --shadow-hover: 0 18px 48px hsla(214, 86%, 40%, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.76);
+    --shadow-focus: 0 0 0 3px hsla(214, 86%, 56%, 0.2);
+    --transition-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+    --transition-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .dark {
+    --background: 155 28% 8%;
+    --foreground: 48 33% 92%;
+    --card: 155 28% 11%;
+    --card-foreground: 48 33% 92%;
+    --popover: 155 28% 11%;
+    --popover-foreground: 48 33% 92%;
+    --primary: 157 48% 55%;
+    --primary-foreground: 155 28% 8%;
+    --secondary: 167 40% 35%;
+    --secondary-foreground: 48 33% 92%;
+    --muted: 155 20% 16%;
+    --muted-foreground: 42 15% 60%;
+    --accent: 43 60% 55%;
+    --accent-foreground: 155 28% 8%;
+    --destructive: 0 62% 40%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 155 18% 20%;
+    --input: 155 18% 20%;
+    --ring: 157 48% 55%;
+    --chart-1: 157 48% 55%;
+    --chart-2: 43 60% 55%;
+    --chart-3: 167 40% 35%;
+    --chart-4: 25 70% 50%;
+    --chart-5: 200 45% 50%;
+    --sidebar-background: 155 28% 8%;
+    --sidebar-foreground: 48 33% 92%;
+    --sidebar-primary: 157 48% 55%;
+    --sidebar-primary-foreground: 155 28% 8%;
+    --sidebar-accent: 155 20% 16%;
+    --sidebar-accent-foreground: 48 33% 92%;
+    --sidebar-border: 155 18% 20%;
+    --sidebar-ring: 157 48% 55%;
+    --success: 142 50% 45%;
+    --warning: 43 60% 55%;
+    --info: 200 45% 50%;
+    --education-blue: 200 45% 50%;
+    --education-green: 157 48% 55%;
+    --gradient-primary: linear-gradient(135deg, hsl(157 48% 55%), hsl(167 40% 35%));
+    --gradient-card: linear-gradient(180deg, hsl(155 28% 11%), hsl(155 28% 8%));
+    --gradient-background: linear-gradient(180deg, hsl(155 28% 8%), hsl(155 28% 6%));
+    --shadow-card: 0 2px 12px hsla(0, 0%, 0%, 0.3);
+    --shadow-hover: 0 8px 30px hsla(0, 0%, 0%, 0.4);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply text-foreground;
+    font-family: 'Noto Sans SC', sans-serif;
+    background: var(--gradient-background) fixed;
+    background-size: 100% 100vh;
+    min-height: 100vh;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'JiYingHuiPianHuiSong', 'Noto Serif SC', serif;
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--border)) transparent;
+  }
+
+  /* 自定义鼠标样式 */
+  @media (pointer: fine) {
+    * {
+      cursor: none;
+    }
+  }
+
+  /* 减弱默认聚焦环，统一由组件接管 */
+  :focus-visible {
+    outline: none;
+  }
+}
+
+@layer components {
+  /* 新拟态 + 毛玻璃混合卡片 */
+  .neo-glass {
+    background: hsl(0 0% 100% / 0.56);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.65);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-card);
+    transition: transform 0.3s var(--transition-bounce), box-shadow 0.3s var(--transition-bounce), background 0.2s ease;
+    will-change: transform, box-shadow;
+  }
+
+  .neo-glass:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-hover);
+    background: hsl(0 0% 100% / 0.66);
+  }
+
+  .neo-glass:focus-visible {
+    box-shadow: var(--shadow-hover), var(--shadow-focus);
+  }
+
+  /* 全局微交互：链接与可聚焦元素 */
+  .micro-hover {
+    transition: all 0.2s ease;
+  }
+
+  .micro-hover:hover,
+  .micro-hover:focus-visible {
+    box-shadow: 0 0 0 4px hsla(167, 57%, 27%, 0.08);
+  }
+
+  /* 胶片照片边框效果 */
+  .photo-frame {
+    @apply p-2 neo-glass;
+    border-radius: 2px;
+  }
+
+  .photo-frame-hover {
+    @apply neo-glass;
+  }
+
+  /* 动态背景 blob 动画（更柔和，适配径向渐变背景） */
+  .animate-blob {
+    animation: blob 18s ease-in-out infinite;
+  }
+
+  .animation-delay-2000 {
+    animation-delay: 2s;
+  }
+
+  .animation-delay-4000 {
+    animation-delay: 4s;
+  }
+
+  /* 胶片颗粒纹理 */
+  .film-grain {
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  @keyframes blob {
+    0%, 100% {
+      transform: translate(0, 0) scale(1);
+    }
+    33% {
+      transform: translate(30px, -40px) scale(1.08);
+    }
+    66% {
+      transform: translate(-20px, 20px) scale(0.96);
+    }
+  }
+
+  /* 纸张纹理叠加（更淡，避免与新背景冲突） */
+  .paper-texture {
+    background-image:
+      radial-gradient(circle at 20% 50%, hsla(43, 76%, 66%, 0.03) 0%, transparent 50%),
+      radial-gradient(circle at 80% 20%, hsla(167, 57%, 27%, 0.02) 0%, transparent 50%);
+  }
+}
