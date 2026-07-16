@@ -142,6 +142,17 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:
 .battery-icon-wrap{position:relative;display:inline-flex;align-items:center}
 .battery-level{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:.62rem;font-weight:700;color:var(--text);font-family:var(--mono)}
 
+/* ===== CPU 核心频率展开 ===== */
+.cpu-summary{display:flex;justify-content:space-between;align-items:center;font-size:.72rem;color:var(--text2);margin-bottom:4px}
+.cpu-expand-hint{font-size:.64rem;color:var(--text3);transition:color var(--transition)}
+.resource-card:hover .cpu-expand-hint{color:var(--accent)}
+.cpu-cores{margin-top:10px;padding-top:10px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:6px;animation:expandIn .2s ease}
+.cpu-core-item{display:flex;align-items:center;gap:10px;padding:6px 10px;background:var(--bg-input);border-radius:var(--radius-sm);font-size:.7rem}
+.cpu-core-name{font-weight:600;color:var(--accent);min-width:52px;font-family:var(--mono)}
+.cpu-core-freq{font-weight:700;color:var(--text);font-family:var(--mono)}
+.cpu-core-gov{font-size:.62rem;color:var(--text3);margin-left:auto}
+@keyframes expandIn{from{opacity:0;max-height:0}to{opacity:1;max-height:400px}}
+
 /* ===== TABLE ===== */
 .table-wrap{overflow-x:auto;border-radius:var(--radius);border:1px solid var(--border);background:var(--bg3)}
 table{width:100%;border-collapse:collapse;font-size:.78rem}

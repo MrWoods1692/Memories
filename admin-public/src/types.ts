@@ -23,10 +23,18 @@ export interface BanItem {
   banned_at: string;
 }
 
+export interface CoreFreq {
+  cur_khz?: number;
+  governor?: string;
+  max_khz?: number;
+  min_khz?: number;
+}
+
 export interface ResourceInfo {
   percent: number; // 0-100
   label?: string;
-  freqKhz?: number; // CPU 频率 (kHz)
+  cores?: number;       // CPU 核心数
+  frequencies?: Record<string, CoreFreq>; // 各核心频率
 }
 
 export interface MemoryDiskInfo {

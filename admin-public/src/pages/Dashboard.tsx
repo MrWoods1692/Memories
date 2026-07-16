@@ -54,18 +54,37 @@ function BatteryCard({ battery }: { battery: ResourceInfo }) {
   );
 }
 
-/** CPU 状态卡片 */
+/** CPU 状态卡片（可展开显示各核心频率） */
 function CpuCard({ cpu }: { cpu: ResourceInfo }) {
+  const [expanded, setExpanded] = useState(false);
   const cls = pctClass(cpu.percent);
-  const freqMhz = cpu.freqKhz ? (cpu.freqKhz / 1000).toFixed(0) : null;
+  const cores = cpu.cores || 0;
+  const freqEntries = cpu.frequencies ? Object.entries(cpu.frequencies) : [];
+
   return (
-    <div className="resource-card">
+    <div className={`resource-card cpu-card ${expanded ? 'expanded' : ''}`} onClick={() => setExpanded(!expanded)} style={{cursor:'pointer'}}>
       <div className="resource-header">
         <div className="resource-title"><IconCpu size={18} /> CPU</div>
         <span className={`resource-value ${cls}`}>{cpu.percent.toFixed(1)}%</span>
       </div>
-      <ProgressBar percent={cpu.percent} showLabel />
-      {freqMhz && <div className="progress-detail"><span>核心频率</span><span>{freqMhz} MHz</span></div>}
+      <div className="cpu-summary">
+        <span>{cores} 核</span>
+        <span className="cpu-expand-hint">{expanded ? '▲ 收起' : '▼ 展开频率'}</span>
+      </div>
+      {expanded && freqEntries.length > 0 && (
+        <div className="cpu-cores">
+          {freqEntries.map(([key, f]) => {
+            const mhz = f.cur_khz ? (f.cur_khz / 1000).toFixed(0) : '-';
+            return (
+              <div key={key} className="cpu-core-item">
+                <span className="cpu-core-name">{key.replace('core', 'Core ')}</span>
+                <span className="cpu-core-freq">{mhz} MHz</span>
+                <span className="cpu-core-gov">{f.governor || ''}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -131,15 +150,11 @@ export function DashboardPage({ toast: _toast }: Props) {
         if (sysInfo.cpu && sysInfo.cpu.load && typeof sysInfo.cpu.cores === 'number') {
           const cores = sysInfo.cpu.cores;
           const load1 = sysInfo.cpu.load.avg1 || 0;
-          // 取第一个核心的当前频率
-          let freqKhz = 0;
-          if (sysInfo.cpu.frequencies) {
-            const keys = Object.keys(sysInfo.cpu.frequencies);
-            if (keys.length > 0 && sysInfo.cpu.frequencies[keys[0]]?.cur_khz) {
-              freqKhz = sysInfo.cpu.frequencies[keys[0]].cur_khz;
-            }
-          }
-          s.cpu = { percent: Math.min(100, (load1 / cores) * 100), freqKhz };
+          s.cpu = {
+            percent: Math.min(100, (load1 / cores) * 100),
+            cores,
+            frequencies: sysInfo.cpu.frequencies || {},
+          };
         }
         // 内存
         if (sysInfo.memory && sysInfo.memory.sys_total > 0) {
