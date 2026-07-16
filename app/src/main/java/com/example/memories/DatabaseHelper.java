@@ -25,11 +25,16 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     public static String resolveDatabasePath(Context ctx) {
         if (dbPath != null) return dbPath;
         try {
+            // 优先外部公共目录（卸载不丢失），在 Android 11+ 需授予"所有文件访问"权限
             File dir = new File(Environment.getExternalStorageDirectory(), "Memories");
             if (!dir.exists()) dir.mkdirs();
             File f = new File(dir, DB_NAME);
-            // 测试能否写入
-            if (dir.canWrite() || f.exists()) {
+            // 实际写入测试，而非依赖 canWrite()
+            boolean writable = f.exists();
+            if (!writable) {
+                try { writable = f.createNewFile() || f.exists(); } catch (Exception ignored) {}
+            }
+            if (writable) {
                 dbPath = f.getAbsolutePath();
                 Log.i("DatabaseHelper", "Using external DB: " + dbPath);
                 return dbPath;
