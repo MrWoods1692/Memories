@@ -62,11 +62,13 @@
         <service
             android:name="com.example.memories.ServerService"
             android:exported="false"
-            android:foregroundServiceType="dataSync|specialUse" />
+            android:foregroundServiceType="dataSync|specialUse"
+            android:process=":server" />
         <service
             android:name="com.example.memories.FloatingWindow"
             android:exported="false"
-            android:foregroundServiceType="specialUse" />
+            android:foregroundServiceType="specialUse"
+            android:process=":server" />
 
         <receiver
             android:name="com.example.memories.BootReceiver"

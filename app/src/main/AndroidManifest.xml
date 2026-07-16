@@ -45,11 +45,13 @@
         <service
             android:name="com.example.memories.ServerService"
             android:exported="false"
+            android:process=":server"
             android:foregroundServiceType="dataSync|specialUse" />
 
         <service
             android:name="com.example.memories.FloatingWindow"
             android:exported="false"
+            android:process=":server"
             android:foregroundServiceType="specialUse" />
 
         <receiver

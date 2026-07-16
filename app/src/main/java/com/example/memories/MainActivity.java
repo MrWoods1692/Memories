@@ -3,6 +3,7 @@ package com.example.memories;
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Build;
@@ -34,12 +35,6 @@ public class MainActivity extends android.app.Activity {
         frpcManager = new FrpcManager(this);
         dbHelper = new DatabaseHelper(this);
 
-        // 请求权限
-        requestPermissions();
-
-        // 引导开启国产 ROM 自启动权限
-        handler.postDelayed(() -> AutoStartHelper.tryOpenAutoStartSettings(this), 2000);
-
         // 绑定 WebView
         webView = findViewById(R.id.webview_admin);
         WebSettings ws = webView.getSettings();
@@ -49,26 +44,54 @@ public class MainActivity extends android.app.Activity {
         ws.setCacheMode(WebSettings.LOAD_NO_CACHE);
         webView.setWebViewClient(new WebViewClient());
 
-        // 启动服务
+        // ⚠️ 先启动服务（必须在 requestPermissions 之前，否则跳转设置页后
+        //    Activity 进入后台，Android 12+ 会禁止 startForegroundService）
         startMemoriesService();
         startFloatingWindow();
 
         // 自动加载 FRPC 配置
         tryAutoStartFrpc();
 
-        // 加载管理页面
-        handler.postDelayed(this::loadAdminPage, 1500);
+        // 延迟请求权限（避免覆盖服务启动）
+        handler.postDelayed(this::requestPermissions, 500);
+
+        // 引导开启国产 ROM 自启动权限（仅首次）
+        SharedPreferences prefs = getSharedPreferences("memories_prefs", MODE_PRIVATE);
+        if (!prefs.getBoolean("autostart_guide_shown", false)) {
+            handler.postDelayed(() -> {
+                if (AutoStartHelper.tryOpenAutoStartSettings(this)) {
+                    prefs.edit().putBoolean("autostart_guide_shown", true).apply();
+                }
+            }, 2500);
+        }
+
+        // 加载管理页面（带重试，等待 LAN IP 就绪）
+        loadAdminPageWithRetry();
     }
 
-    private void loadAdminPage() {
+    /** 带重试的管理页面加载：等 WiFi 获取 LAN IP 后再加载 */
+    private void loadAdminPageWithRetry() {
         String adminPortStr = dbHelper.getConfig("admin_port");
         int adminPort = 8081;
         if (adminPortStr != null) {
             try { adminPort = Integer.parseInt(adminPortStr); } catch (NumberFormatException ignored) {}
         }
-        String lanIp = EmbeddedServer.getLanIpAddress();
-        String url = "http://" + lanIp + ":" + adminPort + "/admin";
-        webView.loadUrl(url);
+        final int port = adminPort;
+        handler.postDelayed(new Runnable() {
+            private int attempts = 0;
+            @Override
+            public void run() {
+                attempts++;
+                String lanIp = EmbeddedServer.getLanIpAddress();
+                if (!"127.0.0.1".equals(lanIp) || attempts >= 10) {
+                    String url = "http://" + lanIp + ":" + port + "/admin";
+                    webView.loadUrl(url);
+                    return;
+                }
+                // WiFi 还没连上，500ms 后重试
+                handler.postDelayed(this, 500);
+            }
+        }, 1000);
     }
 
     private void tryAutoStartFrpc() {
