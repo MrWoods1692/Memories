@@ -121,11 +121,14 @@ public class OAuthHelper {
             conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
             conn.setRequestProperty("Accept", "application/json");
 
-            // 构建表单 - client_secret_post 方式（凭据放 body）
+            // client_secret_basic: 凭据放 Authorization header
+            String credentials = clientId + ":" + clientSecret;
+            String basicAuth = Base64.encodeToString(credentials.getBytes(StandardCharsets.UTF_8), Base64.NO_WRAP);
+            conn.setRequestProperty("Authorization", "Basic " + basicAuth);
+
+            // 构建表单 - 不含 client_id/client_secret
             StringBuilder body = new StringBuilder();
             body.append("grant_type=authorization_code");
-            body.append("&client_id=").append(urlEncode(clientId));
-            body.append("&client_secret=").append(urlEncode(clientSecret));
             body.append("&code=").append(urlEncode(code));
             body.append("&redirect_uri=").append(urlEncode(redirectUri));
             body.append("&code_verifier=").append(urlEncode(codeVerifier));
@@ -209,10 +212,12 @@ public class OAuthHelper {
             conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
             conn.setRequestProperty("Accept", "application/json");
 
+            String credentials = clientId + ":" + clientSecret;
+            String basicAuth = Base64.encodeToString(credentials.getBytes(StandardCharsets.UTF_8), Base64.NO_WRAP);
+            conn.setRequestProperty("Authorization", "Basic " + basicAuth);
+
             StringBuilder body = new StringBuilder();
             body.append("grant_type=refresh_token");
-            body.append("&client_id=").append(urlEncode(clientId));
-            body.append("&client_secret=").append(urlEncode(clientSecret));
             body.append("&refresh_token=").append(urlEncode(refreshToken));
 
             byte[] bodyBytes = body.toString().getBytes(StandardCharsets.UTF_8);
