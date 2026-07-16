@@ -111,10 +111,48 @@ export function DashboardPage({ toast: _toast }: Props) {
 
   const load = async () => {
     try {
-      const [s, imgs] = await Promise.all([
+      const [s, imgs, sysInfo] = await Promise.all([
         apiGet<ServerStatus>('/status'),
         apiGet<ImageItem[]>('/images'),
+        apiGet<any>('/sysinfo').catch(() => null),
       ]);
+      // 将 /sysinfo 数据合并到 status 中
+      if (sysInfo) {
+        // 电池
+        if (sysInfo.battery && typeof sysInfo.battery.level === 'number') {
+          s.battery = {
+            percent: sysInfo.battery.level,
+            label: sysInfo.battery.status || '',
+          };
+        }
+        // CPU（用 load avg1 / cores 估算使用率）
+        if (sysInfo.cpu && sysInfo.cpu.load && typeof sysInfo.cpu.cores === 'number') {
+          const cores = sysInfo.cpu.cores;
+          const load1 = sysInfo.cpu.load.avg1 || 0;
+          s.cpu = { percent: Math.min(100, (load1 / cores) * 100) };
+        }
+        // 内存
+        if (sysInfo.memory && sysInfo.memory.sys_total > 0) {
+          const total = sysInfo.memory.sys_total;
+          const available = sysInfo.memory.sys_available || 0;
+          const used = total - available;
+          s.memory = {
+            used,
+            total,
+            percent: total > 0 ? (used / total) * 100 : 0,
+          };
+        }
+        // 硬盘
+        if (sysInfo.disk && sysInfo.disk.total > 0) {
+          const total = sysInfo.disk.total;
+          const used = sysInfo.disk.used || 0;
+          s.disk = {
+            used,
+            total,
+            percent: (used / total) * 100,
+          };
+        }
+      }
       setStatus(s);
       setRecent(Array.isArray(imgs) ? imgs.slice(0, 6) : []);
     } catch { /* ignore */ }
