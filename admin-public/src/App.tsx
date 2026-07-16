@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { AuthProvider, useAuth } from './AuthContext';
+import { ThemeProvider, useTheme } from './ThemeContext';
 import { LoginPage } from './pages/Login';
 import { DashboardPage } from './pages/Dashboard';
 import { ImagesPage } from './pages/Images';
@@ -7,7 +8,7 @@ import { UsersPage } from './pages/Users';
 import { BansPage } from './pages/Bans';
 import { SettingsPage } from './pages/Settings';
 import { useToast, ToastContainer } from './components/Toast';
-import { IconHome, IconImage, IconUsers, IconBan, IconSettings, IconLogout } from './components/Icons';
+import { IconHome, IconImage, IconUsers, IconBan, IconSettings, IconLogout, IconSun, IconMoon } from './components/Icons';
 import { API_BASE_URL } from './config';
 import './App.css';
 
@@ -23,14 +24,17 @@ const tabs: { key: Tab; label: string; Icon: React.ComponentType<{size?:number}>
 
 export default function App() {
   return (
-    <AuthProvider>
-      <AppShell />
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <AppShell />
+      </AuthProvider>
+    </ThemeProvider>
   );
 }
 
 function AppShell() {
   const { loading, user, logout } = useAuth();
+  const { theme, toggle } = useTheme();
   const [tab, setTab] = useState<Tab>('home');
   const { list, toast } = useToast();
 
@@ -73,6 +77,9 @@ function AppShell() {
             <span className="user-qq">QQ: {user.qq}</span>
           </span>
           <span className="api-url">{API_BASE_URL}</span>
+          <button className="theme-btn" onClick={toggle} title={theme === 'dark' ? '切换到亮色' : '切换到暗色'}>
+            {theme === 'dark' ? <IconSun size={15} /> : <IconMoon size={15} />}
+          </button>
           <button className="btn ghost sm" onClick={logout} title="退出"><IconLogout size={14} /></button>
         </div>
       </header>
