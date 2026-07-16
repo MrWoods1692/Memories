@@ -23,10 +23,25 @@ export interface BanItem {
   banned_at: string;
 }
 
+export interface ResourceInfo {
+  percent: number; // 0-100
+  label?: string;
+}
+
+export interface MemoryDiskInfo {
+  used: number;   // bytes
+  total: number;  // bytes
+  percent: number; // 0-100
+}
+
 export interface ServerStatus {
   image_count: number;
   db_path: string;
   uptime: number;
+  battery?: ResourceInfo;
+  cpu?: ResourceInfo;
+  memory?: MemoryDiskInfo;
+  disk?: MemoryDiskInfo;
 }
 
 export interface SiteConfig {

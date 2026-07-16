@@ -120,6 +120,28 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:
 .num{font-size:1.5rem;font-weight:700;line-height:1.2}
 .label{font-size:.7rem;color:var(--text3);margin-top:3px;font-weight:500}
 
+/* ===== RESOURCE STATS (Battery/CPU/Memory/Disk) ===== */
+.resource-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin-bottom:24px}
+.resource-card{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-lg);padding:18px 20px;box-shadow:var(--shadow-sm);transition:all var(--transition);cursor:default;position:relative;overflow:hidden}
+.resource-card::before{content:'';position:absolute;inset:0;border-radius:inherit;opacity:0;transition:opacity var(--transition);background:radial-gradient(600px circle at 50% 0%,var(--accent-bg),transparent 70%);pointer-events:none}
+.resource-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-md);border-color:var(--accent-border)}
+.resource-card:hover::before{opacity:1}
+.resource-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.resource-title{display:flex;align-items:center;gap:8px;font-size:.78rem;font-weight:600;color:var(--text2)}
+.resource-title svg{flex-shrink:0;opacity:.7}
+.resource-value{font-size:1.1rem;font-weight:700;font-family:var(--mono)}
+.resource-value.warn{color:var(--warning)}
+.resource-value.danger{color:var(--danger)}
+.resource-value.ok{color:var(--success)}
+.progress-bar{width:100%;height:6px;background:var(--bg4);border-radius:3px;overflow:hidden;margin-bottom:6px}
+.progress-fill{height:100%;border-radius:3px;transition:width .6s ease,background .6s ease}
+.progress-fill.ok{background:var(--success)}
+.progress-fill.warn{background:var(--warning)}
+.progress-fill.danger{background:var(--danger)}
+.progress-detail{display:flex;justify-content:space-between;font-size:.66rem;color:var(--text3);font-family:var(--mono)}
+.battery-icon-wrap{position:relative;display:inline-flex;align-items:center}
+.battery-level{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:.62rem;font-weight:700;color:var(--text);font-family:var(--mono)}
+
 /* ===== TABLE ===== */
 .table-wrap{overflow-x:auto;border-radius:var(--radius);border:1px solid var(--border);background:var(--bg3)}
 table{width:100%;border-collapse:collapse;font-size:.78rem}

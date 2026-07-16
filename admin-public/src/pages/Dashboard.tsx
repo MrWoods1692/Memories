@@ -1,9 +1,108 @@
 import { useEffect, useState } from 'react';
 import { apiGet } from '../api';
-import { IconImage, IconRefresh } from '../components/Icons';
-import type { ServerStatus, ImageItem } from '../types';
+import { IconImage, IconRefresh, IconBattery, IconCpu, IconMemory, IconDisk } from '../components/Icons';
+import type { ServerStatus, ImageItem, ResourceInfo, MemoryDiskInfo } from '../types';
 
 interface Props { toast: (m: string, t?: 'success' | 'error') => void; }
+
+/** 格式化字节为可读大小 */
+function fmtBytes(bytes: number): string {
+  if (bytes >= 1073741824) return (bytes / 1073741824).toFixed(1) + ' GB';
+  if (bytes >= 1048576) return (bytes / 1048576).toFixed(1) + ' MB';
+  if (bytes >= 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return bytes + ' B';
+}
+
+/** 根据百分比返回颜色类名 */
+function pctClass(pct: number): 'ok' | 'warn' | 'danger' {
+  if (pct >= 90) return 'danger';
+  if (pct >= 70) return 'warn';
+  return 'ok';
+}
+
+/** 进度条组件 */
+function ProgressBar({ percent, showLabel }: { percent: number; showLabel?: boolean }) {
+  const cls = pctClass(percent);
+  return (
+    <div>
+      <div className="progress-bar">
+        <div className={`progress-fill ${cls}`} style={{ width: `${Math.min(100, Math.max(0, percent))}%` }} />
+      </div>
+      {showLabel && <div className="progress-detail"><span>{cls === 'danger' ? '高负载' : cls === 'warn' ? '中等' : '正常'}</span><span>{percent.toFixed(1)}%</span></div>}
+    </div>
+  );
+}
+
+/** 电池状态卡片 */
+function BatteryCard({ battery }: { battery: ResourceInfo }) {
+  const pct = battery.percent;
+  const cls = pct <= 20 ? 'danger' : pct <= 50 ? 'warn' : 'ok';
+  return (
+    <div className="resource-card">
+      <div className="resource-header">
+        <div className="resource-title"><IconBattery size={18} /> 电池</div>
+        <span className={`resource-value ${cls}`}>{pct}%</span>
+      </div>
+      <div className="progress-bar">
+        <div className={`progress-fill ${cls}`} style={{ width: `${Math.min(100, Math.max(0, pct))}%` }} />
+      </div>
+      <div className="progress-detail">
+        <span>{cls === 'danger' ? '电量低' : cls === 'warn' ? '中等电量' : '电量充足'}</span>
+        <span>{battery.label || ''}</span>
+      </div>
+    </div>
+  );
+}
+
+/** CPU 状态卡片 */
+function CpuCard({ cpu }: { cpu: ResourceInfo }) {
+  const cls = pctClass(cpu.percent);
+  return (
+    <div className="resource-card">
+      <div className="resource-header">
+        <div className="resource-title"><IconCpu size={18} /> CPU</div>
+        <span className={`resource-value ${cls}`}>{cpu.percent.toFixed(1)}%</span>
+      </div>
+      <ProgressBar percent={cpu.percent} showLabel />
+    </div>
+  );
+}
+
+/** 内存状态卡片 */
+function MemoryCard({ memory }: { memory: MemoryDiskInfo }) {
+  const cls = pctClass(memory.percent);
+  return (
+    <div className="resource-card">
+      <div className="resource-header">
+        <div className="resource-title"><IconMemory size={18} /> 内存</div>
+        <span className={`resource-value ${cls}`}>{memory.percent.toFixed(1)}%</span>
+      </div>
+      <ProgressBar percent={memory.percent} />
+      <div className="progress-detail">
+        <span>已用 {fmtBytes(memory.used)}</span>
+        <span>共 {fmtBytes(memory.total)}</span>
+      </div>
+    </div>
+  );
+}
+
+/** 硬盘状态卡片 */
+function DiskCard({ disk }: { disk: MemoryDiskInfo }) {
+  const cls = pctClass(disk.percent);
+  return (
+    <div className="resource-card">
+      <div className="resource-header">
+        <div className="resource-title"><IconDisk size={18} /> 硬盘</div>
+        <span className={`resource-value ${cls}`}>{disk.percent.toFixed(1)}%</span>
+      </div>
+      <ProgressBar percent={disk.percent} />
+      <div className="progress-detail">
+        <span>已用 {fmtBytes(disk.used)}</span>
+        <span>共 {fmtBytes(disk.total)}</span>
+      </div>
+    </div>
+  );
+}
 
 export function DashboardPage({ toast: _toast }: Props) {
   const [status, setStatus] = useState<ServerStatus | null>(null);
@@ -49,6 +148,16 @@ export function DashboardPage({ toast: _toast }: Props) {
           <div><div className="num">{uptime(status?.uptime || 0)}</div><div className="label">运行时间</div></div>
         </div>
       </div>
+
+      {/* ---- 系统资源状态 ---- */}
+      {status && (status.battery || status.cpu || status.memory || status.disk) && (
+        <div className="resource-grid">
+          {status.battery && <BatteryCard battery={status.battery} />}
+          {status.cpu && <CpuCard cpu={status.cpu} />}
+          {status.memory && <MemoryCard memory={status.memory} />}
+          {status.disk && <DiskCard disk={status.disk} />}
+        </div>
+      )}
 
       <div className="card">
         <h2><IconImage size={16} /> 最近图片</h2>
