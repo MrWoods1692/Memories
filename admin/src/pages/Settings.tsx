@@ -56,11 +56,18 @@ export function Settings({ toast }: SettingsProps) {
   };
 
   const saveOauthConfig = async () => {
-    await saveConfig('oauth_prefix', config.oauth_prefix || '');
-    await saveConfig('oauth_client_id', config.oauth_client_id || '');
-    await saveConfig('oauth_client_secret', config.oauth_client_secret || '');
-    const domain = (config.oauth_domain || '').replace(/\/+$/, '');
-    await saveConfig('oauth_redirect_uri', domain ? `${domain}/oauth/callback` : '');
+    const prefix = (config.oauth_prefix || '').trim();
+    const clientId = (config.oauth_client_id || '').trim();
+    const clientSecret = (config.oauth_client_secret || '').trim();
+    const domain = (config.oauth_domain || '').trim().replace(/\/+$/, '');
+    if (!prefix || !clientId || !clientSecret || !domain) {
+      toast('请完整填写 OAuth 前缀、Client ID、Client Secret 和服务器域名', 'error');
+      return;
+    }
+    await saveConfig('oauth_prefix', prefix);
+    await saveConfig('oauth_client_id', clientId);
+    await saveConfig('oauth_client_secret', clientSecret);
+    await saveConfig('oauth_redirect_uri', `${domain}/oauth/callback`);
     toast('保存成功');
   };
 

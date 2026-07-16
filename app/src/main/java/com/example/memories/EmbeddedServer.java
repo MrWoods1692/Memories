@@ -1006,7 +1006,7 @@ public class EmbeddedServer extends NanoHTTPD {
                 String prefix = db.getConfig("oauth_prefix");
                 String clientId = db.getConfig("oauth_client_id");
                 String redirectUri = db.getConfig("oauth_redirect_uri");
-                if (prefix == null || clientId == null || redirectUri == null) {
+                if (prefix == null || prefix.isEmpty() || clientId == null || clientId.isEmpty() || redirectUri == null || redirectUri.isEmpty()) {
                     return NanoHTTPD.newFixedLengthResponse(Status.BAD_REQUEST, "text/plain", "oauth not configured");
                 }
                 Map<String, String> params = session.getParms();
@@ -1024,7 +1024,7 @@ public class EmbeddedServer extends NanoHTTPD {
                 String prefix = db.getConfig("oauth_prefix");
                 String clientId = db.getConfig("oauth_client_id");
                 String redirectUri = db.getConfig("oauth_redirect_uri");
-                if (prefix == null || clientId == null || redirectUri == null) {
+                if (prefix == null || prefix.isEmpty() || clientId == null || clientId.isEmpty() || redirectUri == null || redirectUri.isEmpty()) {
                     return NanoHTTPD.newFixedLengthResponse(Status.BAD_REQUEST, "text/plain", "oauth not configured");
                 }
                 String scope = "profile";
@@ -1049,7 +1049,7 @@ public class EmbeddedServer extends NanoHTTPD {
                 String clientId = db.getConfig("oauth_client_id");
                 String clientSecret = db.getConfig("oauth_client_secret");
                 String redirectUri = db.getConfig("oauth_redirect_uri");
-                if (prefix == null || clientId == null || clientSecret == null || redirectUri == null) {
+                if (prefix == null || prefix.isEmpty() || clientId == null || clientId.isEmpty() || clientSecret == null || clientSecret.isEmpty() || redirectUri == null || redirectUri.isEmpty()) {
                     return NanoHTTPD.newFixedLengthResponse(Status.BAD_REQUEST, "text/plain", "oauth not configured");
                 }
 
@@ -1121,7 +1121,7 @@ public class EmbeddedServer extends NanoHTTPD {
                 String prefix = db.getConfig("oauth_prefix");
                 String clientId = db.getConfig("oauth_client_id");
                 String clientSecret = db.getConfig("oauth_client_secret");
-                if (prefix == null || clientId == null || clientSecret == null) {
+                if (prefix == null || prefix.isEmpty() || clientId == null || clientId.isEmpty() || clientSecret == null || clientSecret.isEmpty()) {
                     return NanoHTTPD.newFixedLengthResponse(Status.BAD_REQUEST, "text/plain", "oauth not configured");
                 }
                 JSONObject tokenResp = OAuthHelper.refreshToken(prefix, clientId, clientSecret, refreshToken);
