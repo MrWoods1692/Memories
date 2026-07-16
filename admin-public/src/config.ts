@@ -4,7 +4,7 @@
  */
 
 /** 后端 API 基地址 */
-export const API_BASE_URL = 'http://api.mrcwoods.com';
+export const API_BASE_URL = 'https://api.mrcwoods.com';
 
 /** 健康检查地址（测试用） */
-export const HEALTH_CHECK_URL = 'http://api.mrcwoods.com/health';
+export const HEALTH_CHECK_URL = 'https://api.mrcwoods.com/health';
