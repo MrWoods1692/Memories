@@ -167,6 +167,47 @@ export function Database({ toast }: DatabaseProps) {
     });
   };
 
+  /** 保存内联编辑 */
+  const saveCellEdit = async () => {
+    if (!editingCell || !selectedTable || !selectedTableInfo) return;
+    const pkCols = selectedTableInfo.columns.filter(c => c.pk);
+    if (pkCols.length === 0) {
+      toast('该表没有主键，不支持内联编辑，请使用 SQL 控制台', 'error');
+      setEditingCell(null);
+      return;
+    }
+    // 从 rowKey 还原 where 条件
+    const pkCol = pkCols[0];
+    const pkVal = editingCell.rowKey;
+    const isNumberPk = !pkVal.startsWith("'");
+    const whereClause = isNumberPk
+      ? `${pkCol.name} = ${pkVal}`
+      : `${pkCol.name} = ${pkVal}`;
+
+    const newVal = editingCell.value;
+    const valLiteral = newVal === 'NULL'
+      ? 'NULL'
+      : `'${newVal.replace(/'/g, "''")}'`;
+
+    const stmt = `UPDATE ${selectedTable} SET ${editingCell.col} = ${valLiteral} WHERE ${whereClause}`;
+    try {
+      setEditingSaving(true);
+      const result = await apiPost<DbQueryResult>('/db/query', { sql: stmt });
+      if (result.error) {
+        toast(result.error, 'error');
+      } else {
+        toast('已更新', 'success');
+        loadTables();
+        loadTableData(selectedTable, page);
+      }
+    } catch {
+      toast('更新失败', 'error');
+    } finally {
+      setEditingSaving(false);
+      setEditingCell(null);
+    }
+  };
+
   const renderValue = (val: unknown): string => {
     if (val === null || val === undefined) return 'NULL';
     if (typeof val === 'object') return JSON.stringify(val);
@@ -189,6 +230,19 @@ export function Database({ toast }: DatabaseProps) {
   };
 
   const selectedTableInfo = tables.find(t => t.name === selectedTable);
+  const pkColumns = selectedTableInfo?.columns.filter(c => c.pk) ?? [];
+  const canEdit = pkColumns.length > 0;
+
+  /** 开始编辑某个单元格 */
+  const startEdit = (row: Record<string, unknown>, col: string) => {
+    const val = row[col];
+    const strVal = val === null || val === undefined ? 'NULL' : String(val);
+    const rowKey = getPkValue(row, pkColumns);
+    if (!rowKey) return;
+    setEditingCell({ rowKey, col, value: strVal });
+    // 延迟聚焦输入框
+    setTimeout(() => editInputRef.current?.focus(), 50);
+  };
 
   const renderResultTable = (columns: string[], rows: Record<string, unknown>[]) => (
     <div className="table-wrapper">
@@ -201,17 +255,65 @@ export function Database({ toast }: DatabaseProps) {
           </tr>
         </thead>
         <tbody>
-          {rows.map((row, i) => (
-            <tr key={i}>
+          {rows.map((row, i) => {
+            const rowKey = getPkValue(row, pkColumns);
+            const isEditing = editingCell?.rowKey === rowKey;
+            return (
+            <tr key={i} className={isEditing ? 'row-editing' : ''}>
               <td className="row-num">{i + 1}</td>
-              {columns.map(col => (
-                <td key={col} className={cellClass(row[col])}>
-                  <span className="cell-value">{renderValue(row[col])}</span>
-                  <button className="btn-copy" onClick={() => copyCell(row[col])} title="复制">
-                    <IconCopy size={10} />
-                  </button>
-                </td>
-              ))}
+              {columns.map(col => {
+                const editingThis = isEditing && editingCell?.col === col;
+                const isPk = pkColumns.some(c => c.name === col);
+                if (editingThis) {
+                  return (
+                    <td key={col} className="cell-editing">
+                      <div className="edit-cell-wrap">
+                        <input
+                          ref={editInputRef}
+                          className="edit-cell-input"
+                          value={editingCell!.value}
+                          onChange={e => setEditingCell(prev => prev ? { ...prev, value: e.target.value } : null)}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter') saveCellEdit();
+                            if (e.key === 'Escape') setEditingCell(null);
+                          }}
+                          onBlur={() => saveCellEdit()}
+                          disabled={editingSaving}
+                        />
+                        <button
+                          className="btn btn-success btn-xs edit-save-btn"
+                          onMouseDown={e => { e.preventDefault(); saveCellEdit(); }}
+                          disabled={editingSaving}
+                          title="保存"
+                        >
+                          {editingSaving ? <span className="spin"><IconRefresh size={10} /></span> : <IconCheck size={10} />}
+                        </button>
+                        <button
+                          className="btn btn-ghost btn-xs edit-cancel-btn"
+                          onMouseDown={e => { e.preventDefault(); setEditingCell(null); }}
+                          title="取消"
+                        >
+                          <IconX size={10} />
+                        </button>
+                      </div>
+                    </td>
+                  );
+                }
+                return (
+                  <td
+                    key={col}
+                    className={`${canEdit ? 'cell-editable ' : ''}${cellClass(row[col])}`}
+                    onClick={() => canEdit ? startEdit(row, col) : undefined}
+                    title={!canEdit ? '' : isPk ? '主键不可编辑' : '点击编辑'}
+                  >
+                    <span className="cell-value">{renderValue(row[col])}</span>
+                    <button className="btn-copy" onClick={e => { e.stopPropagation(); copyCell(row[col]); }} title="复制">
+                      <IconCopy size={10} />
+                    </button>
+                    {canEdit && !isPk && <span className="cell-edit-hint">✎</span>}
+                  </td>
+                );
+              })}
               <td>
                 <button
                   className="btn btn-danger btn-xs"
@@ -222,7 +324,7 @@ export function Database({ toast }: DatabaseProps) {
                 </button>
               </td>
             </tr>
-          ))}
+          )})}
         </tbody>
       </table>
     </div>

@@ -239,6 +239,67 @@ input[type="checkbox"]{width:15px;height:15px;accent-color:var(--accent);cursor:
 .cell-value {
   vertical-align: middle;
 }
+/* 可编辑单元格 */
+.cell-editable {
+  cursor: pointer;
+  position: relative;
+  transition: background 0.12s var(--ease);
+}
+.cell-editable:hover {
+  background: var(--accent-bg);
+}
+.cell-edit-hint {
+  display: inline-block;
+  opacity: 0;
+  font-size: 0.65rem;
+  margin-left: 4px;
+  color: var(--accent);
+  transition: opacity 0.12s var(--ease);
+  vertical-align: middle;
+}
+.cell-editable:hover .cell-edit-hint {
+  opacity: 0.7;
+}
+/* 编辑态 */
+.cell-editing {
+  padding: 2px 4px !important;
+  min-width: 120px;
+}
+.edit-cell-wrap {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.edit-cell-input {
+  flex: 1;
+  min-width: 60px;
+  padding: 3px 6px !important;
+  font-size: 0.7rem !important;
+  font-family: var(--font-mono);
+  border: 1px solid var(--accent) !important;
+  border-radius: 3px;
+  background: var(--bg-input);
+  color: var(--text-primary);
+  outline: none;
+  height: 26px;
+}
+.edit-cell-input:focus {
+  box-shadow: 0 0 0 2px rgba(108,108,240,0.2);
+}
+.edit-save-btn, .edit-cancel-btn {
+  flex-shrink: 0;
+  padding: 2px 5px !important;
+  min-width: 22px;
+  height: 22px;
+}
+/* 正在编辑的行高亮 */
+tr.row-editing {
+  background: var(--accent-bg) !important;
+  outline: 1px solid var(--accent-border);
+}
+tr.row-editing:hover {
+  background: var(--accent-bg-hover) !important;
+}
 .query-error {
   padding: 10px 14px;
   background: var(--danger-bg);
@@ -356,6 +417,18 @@ input[type="checkbox"]{width:15px;height:15px;accent-color:var(--accent);cursor:
   .query-warning {
     font-size: 0.68rem;
     flex-wrap: wrap;
+  }
+  .cell-editing {
+    min-width: 100px;
+    max-width: 160px;
+  }
+  .edit-cell-input {
+    font-size: 0.65rem !important;
+    padding: 2px 4px !important;
+    height: 24px;
+  }
+  .cell-edit-hint {
+    display: none;
   }
 }
 
