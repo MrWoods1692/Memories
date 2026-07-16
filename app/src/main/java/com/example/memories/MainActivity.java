@@ -2,6 +2,8 @@ package com.example.memories;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
+import android.app.AlarmManager;
+import android.app.PendingIntent;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
@@ -12,10 +14,13 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.PowerManager;
 import android.provider.Settings;
+import android.util.Log;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Toast;
+
+import androidx.work.WorkManager;
 
 public class MainActivity extends android.app.Activity {
     private static final int REQUEST_NOTIFICATIONS = 1001;
@@ -82,6 +87,10 @@ public class MainActivity extends android.app.Activity {
                 }, 2000);
             }
         });
+
+        // ⚠️ 关键：清理上次被杀时残留的 WorkManager / AlarmManager 重启任务，
+        //    防止残留状态阻塞本次服务启动（这就是"杀后台后无法启动"的根因）
+        cleanupStaleState();
 
         // ⚠️ 先启动服务（必须在 requestPermissions 之前，否则跳转设置页后
         //    Activity 进入后台，Android 12+ 会禁止 startForegroundService）
@@ -259,6 +268,58 @@ public class MainActivity extends android.app.Activity {
             startForegroundService(ka);
         } else {
             startService(ka);
+        }
+    }
+
+    /**
+     * 清理上次被杀时残留的 WorkManager 任务和 AlarmManager 闹钟。
+     * 这是修复"杀后台再打开无法启动"的关键：
+     * onTaskRemoved 中安排的 WorkManager / AlarmManager 重启在进程被杀后变成
+     * 残留状态，会阻塞 MainActivity 的新启动流程。
+     */
+    private void cleanupStaleState() {
+        // 1. 取消 WorkManager 中所有 memories 相关的待执行任务
+        try {
+            WorkManager.getInstance(this).cancelAllWorkByTag("memories_restart");
+            WorkManager.getInstance(this).cancelUniqueWork("memories_restart");
+            WorkManager.getInstance(this).cancelAllWorkByTag("memories_boot_startup");
+            WorkManager.getInstance(this).cancelUniqueWork("memories_boot_startup");
+            Log.i("MainActivity", "Stale WorkManager tasks cancelled");
+        } catch (Exception e) {
+            Log.w("MainActivity", "Failed to cancel WorkManager tasks", e);
+        }
+
+        // 2. 取消 onTaskRemoved 中安排的 ServerService 重启闹钟
+        cancelAlarmForService(ServerService.class, 1);
+        cancelAlarmForService(ServerService.class, 5);
+
+        // 3. 取消 onTaskRemoved 中安排的 FloatingWindow 重启闹钟
+        cancelAlarmForService(FloatingWindow.class, 1001);
+        cancelAlarmForService(FloatingWindow.class, 1005);
+
+        // 4. 取消 KeepAliveService 的周期性闹钟和 onDestroy 重启闹钟
+        cancelAlarmForService(KeepAliveService.class, 0);
+        cancelAlarmForService(KeepAliveService.class, 1);
+    }
+
+    private void cancelAlarmForService(Class<?> serviceClass, int requestCode) {
+        try {
+            Intent intent = new Intent(this, serviceClass);
+            PendingIntent pi = PendingIntent.getService(
+                this, requestCode, intent,
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
+                    ? PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_NO_CREATE
+                    : PendingIntent.FLAG_NO_CREATE
+            );
+            if (pi != null) {
+                AlarmManager am = (AlarmManager) getSystemService(ALARM_SERVICE);
+                if (am != null) {
+                    am.cancel(pi);
+                    pi.cancel();
+                }
+            }
+        } catch (Exception e) {
+            Log.w("MainActivity", "Failed to cancel alarm for " + serviceClass.getSimpleName(), e);
         }
     }
 

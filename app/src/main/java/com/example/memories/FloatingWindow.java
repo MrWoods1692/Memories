@@ -1,6 +1,5 @@
 package com.example.memories;
 
-import android.app.AlarmManager;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -162,10 +161,10 @@ public class FloatingWindow extends Service {
         super.onTaskRemoved(rootIntent);
         Log.i("FloatingWindow", "onTaskRemoved - scheduling restart");
 
-        // 方案 1: WorkManager
+        // 仅通过 WorkManager 延迟重启（避免 AlarmManager 残留导致无法启动）
         try {
             OneTimeWorkRequest work = new OneTimeWorkRequest.Builder(BootStartupWorker.class)
-                    .setInitialDelay(500, TimeUnit.MILLISECONDS)
+                    .setInitialDelay(2, TimeUnit.SECONDS)
                     .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
                     .addTag("memories_restart")
                     .build();
@@ -175,33 +174,8 @@ public class FloatingWindow extends Service {
             Log.e("FloatingWindow", "WorkManager restart failed", e);
         }
 
-        // 方案 2: AlarmManager 兜底
-        scheduleAlarmRestart(1000);
-        scheduleAlarmRestart(5000);
-    }
-
-    private void scheduleAlarmRestart(long delayMs) {
-        try {
-            Intent restartIntent = new Intent(getApplicationContext(), FloatingWindow.class);
-            PendingIntent pi = PendingIntent.getService(
-                getApplicationContext(), (int) (delayMs / 1000 + 1000), restartIntent,
-                Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
-                    ? PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT
-                    : PendingIntent.FLAG_UPDATE_CURRENT
-            );
-            AlarmManager am = (AlarmManager) getSystemService(ALARM_SERVICE);
-            if (am != null) {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && am.canScheduleExactAlarms()) {
-                    am.setExact(AlarmManager.RTC_WAKEUP,
-                        System.currentTimeMillis() + delayMs, pi);
-                } else {
-                    am.set(AlarmManager.RTC_WAKEUP,
-                        System.currentTimeMillis() + delayMs, pi);
-                }
-            }
-        } catch (Exception e) {
-            Log.e("FloatingWindow", "Failed to schedule alarm restart", e);
-        }
+        // 注意：不再使用 AlarmManager 直启（requestCode=1001/1005），
+        // MainActivity.cleanupStaleState() 会清理这些残留闹钟
     }
 
     @Override

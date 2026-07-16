@@ -1,6 +1,5 @@
 package com.example.memories;
 
-import android.app.AlarmManager;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -34,32 +33,44 @@ public class ServerService extends Service {
         super.onCreate();
         createNotificationChannel();
 
-        // 先读取端口配置（快速）
-        DatabaseHelper db = new DatabaseHelper(this);
-        String portStr = db.getConfig("server_port");
-        if (portStr != null) {
-            try { apiPort = Integer.parseInt(portStr); } catch (NumberFormatException ignored) {}
-        }
-        String adminPortStr = db.getConfig("admin_port");
-        if (adminPortStr != null) {
-            try { adminPort = Integer.parseInt(adminPortStr); } catch (NumberFormatException ignored) {}
+        // 先读取端口配置（带容错：如果数据库损坏，使用默认端口）
+        try {
+            DatabaseHelper db = new DatabaseHelper(this);
+            String portStr = db.getConfig("server_port");
+            if (portStr != null) {
+                try { apiPort = Integer.parseInt(portStr); } catch (NumberFormatException ignored) {}
+            }
+            String adminPortStr = db.getConfig("admin_port");
+            if (adminPortStr != null) {
+                try { adminPort = Integer.parseInt(adminPortStr); } catch (NumberFormatException ignored) {}
+            }
+        } catch (Exception e) {
+            Log.e("ServerService", "Failed to read config from database, using defaults", e);
+            // 数据库损坏时使用默认端口，不影响服务启动
         }
 
         // ⚠️ 关键：必须立即调用 startForeground()（5 秒内），否则系统杀死服务
-        Intent openIntent = new Intent(this, MainActivity.class);
-        PendingIntent pendingIntent = PendingIntent.getActivity(
-            this, 0, openIntent,
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? PendingIntent.FLAG_IMMUTABLE : 0
-        );
-        Notification n = new Notification.Builder(this, CHANNEL_ID)
-                .setContentTitle("Memories 启动中")
-                .setContentText("正在启动服务...")
-                .setSmallIcon(android.R.drawable.ic_menu_manage)
-                .setOngoing(true)
-                .setContentIntent(pendingIntent)
-                .setPriority(Notification.PRIORITY_LOW)
-                .build();
-        startForeground(NOTIFICATION_ID, n);
+        try {
+            Intent openIntent = new Intent(this, MainActivity.class);
+            PendingIntent pendingIntent = PendingIntent.getActivity(
+                this, 0, openIntent,
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? PendingIntent.FLAG_IMMUTABLE : 0
+            );
+            Notification n = new Notification.Builder(this, CHANNEL_ID)
+                    .setContentTitle("Memories 启动中")
+                    .setContentText("正在启动服务...")
+                    .setSmallIcon(android.R.drawable.ic_menu_manage)
+                    .setOngoing(true)
+                    .setContentIntent(pendingIntent)
+                    .setPriority(Notification.PRIORITY_LOW)
+                    .build();
+            startForeground(NOTIFICATION_ID, n);
+        } catch (Exception e) {
+            Log.e("ServerService", "Failed to start foreground", e);
+            // 如果前台启动失败，服务无法存活，停止自身以避免僵尸状态
+            stopSelf();
+            return;
+        }
 
         // 前台通知已就绪，在后台线程启动服务器（避免阻塞主线程）
         new Thread(this::startServers).start();
@@ -148,10 +159,10 @@ public class ServerService extends Service {
         super.onTaskRemoved(rootIntent);
         Log.i("ServerService", "onTaskRemoved - scheduling restart");
 
-        // 方案 1: WorkManager（Android 12+ 合规方式）
+        // 方案 1: WorkManager 延迟重启（唯一合规的 Android 12+ 方式）
         try {
             OneTimeWorkRequest work = new OneTimeWorkRequest.Builder(BootStartupWorker.class)
-                    .setInitialDelay(500, TimeUnit.MILLISECONDS)
+                    .setInitialDelay(2, TimeUnit.SECONDS)
                     .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
                     .addTag("memories_restart")
                     .build();
@@ -162,62 +173,19 @@ public class ServerService extends Service {
             Log.e("ServerService", "WorkManager restart failed", e);
         }
 
-        // 方案 2: AlarmManager 兜底（1 秒后精确唤醒）
-        scheduleAlarmRestart(1000);
-
-        // 方案 3: AlarmManager 二次兜底（5 秒后再次唤醒，防止第一次被系统丢弃）
-        scheduleAlarmRestart(5000);
-
-        // 方案 4: 设置周期性保活检查（每 15 分钟）
+        // 方案 2: 设置周期性保活检查（每 15 分钟，作为长期兜底）
         KeepAliveService.scheduleKeepAlive(this);
-    }
 
-    private void scheduleAlarmRestart(long delayMs) {
-        try {
-            Intent restartIntent = new Intent(getApplicationContext(), ServerService.class);
-            PendingIntent pi = PendingIntent.getService(
-                getApplicationContext(), (int) (delayMs / 1000), restartIntent,
-                Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
-                    ? PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT
-                    : PendingIntent.FLAG_UPDATE_CURRENT
-            );
-            AlarmManager am = (AlarmManager) getSystemService(ALARM_SERVICE);
-            if (am != null) {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    // Android 12+：如果权限不足，用 setAndAllowWhileIdle
-                    if (am.canScheduleExactAlarms()) {
-                        am.setExact(AlarmManager.RTC_WAKEUP,
-                            System.currentTimeMillis() + delayMs, pi);
-                    } else {
-                        am.set(AlarmManager.RTC_WAKEUP,
-                            System.currentTimeMillis() + delayMs, pi);
-                    }
-                } else {
-                    am.setExact(AlarmManager.RTC_WAKEUP,
-                        System.currentTimeMillis() + delayMs, pi);
-                }
-                Log.i("ServerService", "Alarm restart scheduled in " + delayMs + "ms");
-            }
-        } catch (Exception e) {
-            Log.e("ServerService", "Failed to schedule alarm restart", e);
-        }
+        // 注意：不再使用 AlarmManager 直启（requestCode=1/5），
+        // 因为 MainActivity.cleanupStaleState() 会清理这些残留闹钟，
+        // 避免"杀后台再打开无法启动"的问题
     }
 
     @Override
     public void onDestroy() {
-        // 在销毁前尝试最后一次重启
-        if (!isFinishing()) {
-            scheduleAlarmRestart(1000);
-        }
         super.onDestroy();
         if (server != null) server.stop();
         if (adminServer != null) adminServer.stop();
-    }
-
-    /** 判断服务是否正在被系统主动终止（非用户操作） */
-    private boolean isFinishing() {
-        // 简单判断：如果服务器之前已成功启动，可能是异常终止
-        return !serversStarted;
     }
 
     @Override
