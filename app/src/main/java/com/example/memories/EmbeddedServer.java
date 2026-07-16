@@ -1033,8 +1033,9 @@ public class EmbeddedServer extends NanoHTTPD {
 
                 // 换取 token
                 JSONObject tokenResp = OAuthHelper.exchangeToken(prefix, clientId, clientSecret, code, redirectUri, state);
-                if (tokenResp == null) {
-                    return NanoHTTPD.newFixedLengthResponse(Status.UNAUTHORIZED, "text/plain", "token exchange failed");
+                if (tokenResp == null || tokenResp.has("error")) {
+                    String detail = tokenResp != null ? tokenResp.optString("detail", "unknown") : "no response";
+                    return NanoHTTPD.newFixedLengthResponse(Status.UNAUTHORIZED, "text/plain", "token exchange failed: " + detail);
                 }
 
                 String accessToken = tokenResp.optString("access_token");

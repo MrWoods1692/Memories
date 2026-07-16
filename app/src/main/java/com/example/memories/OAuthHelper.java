@@ -146,8 +146,22 @@ public class OAuthHelper {
                 br.close();
                 return new JSONObject(resp.toString());
             } else {
-                Log.e(TAG, "Token exchange failed: " + responseCode);
-                return null;
+                // 读取 Campux 返回的错误详情
+                String errBody = "";
+                try {
+                    BufferedReader br = new BufferedReader(new InputStreamReader(conn.getErrorStream()));
+                    StringBuilder sb = new StringBuilder();
+                    String line;
+                    while ((line = br.readLine()) != null) sb.append(line);
+                    br.close();
+                    errBody = sb.toString();
+                } catch (Exception ignored) {}
+                Log.e(TAG, "Token exchange failed: HTTP " + responseCode + " body: " + errBody);
+                JSONObject err = new JSONObject();
+                err.put("error", "token_exchange_failed");
+                err.put("http_status", responseCode);
+                err.put("detail", errBody);
+                return err;
             }
         } catch (Exception e) {
             Log.e(TAG, "Token exchange error", e);
