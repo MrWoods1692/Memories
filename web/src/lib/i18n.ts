@@ -34,6 +34,8 @@ export interface Translation {
     badge: string; title: string; subtitle: string; missionTitle: string; missionText: string;
     valuesTitle: string; values: { title: string; desc: string }[];
     schoolTitle: string; schoolText: string; schoolStatus: string;
+    costTitle: string; costTotal: string; costs: { label: string; amount: string }[];
+    techStackTitle: string; techStack: string[];
     openSourceTitle: string; openSourceDesc: string; repo: string; license: string; viewRepo: string;
     developerTitle: string; developerName: string; developerHome: string; developerHomeLabel: string;
     timelineTitle: string; launchDate: string; launchDateLabel: string; uptimeLabel: string; uptimeSuffix: string;
@@ -103,8 +105,16 @@ const zh: Translation = {
       { title: '智能体验', desc: 'AI赋能的照片管理，让浏览与查找更高效' },
     ],
     schoolTitle: '学校合作', schoolText: 'Memories 采用「一校一包」模式，为每所学校提供独立的客户端与数据空间。', schoolStatus: '首家合作学校 · 已开通服务',
+    costTitle: '投入费用', costTotal: '合计',
+    costs: [
+      { label: '服务器', amount: '¥3,798' },
+      { label: '电源适配器', amount: '¥68' },
+      { label: '域名费用', amount: '¥85' },
+    ],
+    techStackTitle: '技术栈',
+    techStack: ['React', 'TypeScript', 'Vite', 'Tailwind CSS', 'shadcn/ui', 'Kotlin', 'Jetpack Compose', 'Spring Boot', 'PostgreSQL', 'Redis', 'Docker', 'Nginx'],
     openSourceTitle: '开源项目', openSourceDesc: 'Memories 客户端是一个开源项目，代码托管在 GitHub，欢迎开发者参与贡献与改进。',
-    repo: 'idoknow/Memories-Client', license: 'GPL-3.0 License', viewRepo: '查看 GitHub 仓库',
+    repo: 'MrWoods1692/Memories', license: 'GPL-3.0 License', viewRepo: '查看 GitHub 仓库',
     developerTitle: '开发者', developerName: 'Mr.C.Woods', developerHome: 'mrcwoods.com', developerHomeLabel: '访问开发者主页',
     timelineTitle: '项目时间线', launchDateLabel: '项目上架时间', launchDate: '2026年7月4日', uptimeLabel: '稳定运行时间', uptimeSuffix: '',
     ctaTitle: '开始记录你的校园记忆', ctaText: '下载 Memories 客户端，即刻开启你的记忆之旅', ctaBtn: '下载客户端',
@@ -173,8 +183,16 @@ const en: Translation = {
       { title: 'Smart Experience', desc: 'AI-powered photo management for more efficient browsing and search' },
     ],
     schoolTitle: 'School Partnership', schoolText: 'Memories uses a "one school, one package" model, providing each school with an independent client and data space.', schoolStatus: 'First Partner School · Active',
+    costTitle: 'Investment', costTotal: 'Total',
+    costs: [
+      { label: 'Server', amount: '¥3,798' },
+      { label: 'Power Adapter', amount: '¥68' },
+      { label: 'Domain Fee', amount: '¥85' },
+    ],
+    techStackTitle: 'Tech Stack',
+    techStack: ['React', 'TypeScript', 'Vite', 'Tailwind CSS', 'shadcn/ui', 'Kotlin', 'Jetpack Compose', 'Spring Boot', 'PostgreSQL', 'Redis', 'Docker', 'Nginx'],
     openSourceTitle: 'Open Source Project', openSourceDesc: 'The Memories client is an open-source project hosted on GitHub. Developers are welcome to contribute and improve.',
-    repo: 'idoknow/Memories-Client', license: 'GPL-3.0 License', viewRepo: 'View GitHub Repository',
+    repo: 'MrWoods1692/Memories', license: 'GPL-3.0 License', viewRepo: 'View GitHub Repository',
     developerTitle: 'Developer', developerName: 'Mr.C.Woods', developerHome: 'mrcwoods.com', developerHomeLabel: 'Visit Developer Homepage',
     timelineTitle: 'Project Timeline', launchDateLabel: 'Launch Date', launchDate: 'July 4, 2026', uptimeLabel: 'Stable Uptime', uptimeSuffix: '',
     ctaTitle: 'Start Recording Your Campus Memories', ctaText: 'Download the Memories client and begin your memory journey today', ctaBtn: 'Download Client',
@@ -243,8 +261,16 @@ const zhTW: Translation = {
       { title: '智慧體驗', desc: 'AI賦能的照片管理，讓瀏覽與查找更高效' },
     ],
     schoolTitle: '學校合作', schoolText: 'Memories 採用「一校一包」模式，為每所學校提供獨立的客戶端與資料空間。', schoolStatus: '首家合作學校 · 已開通',
+    costTitle: '投入費用', costTotal: '合計',
+    costs: [
+      { label: '伺服器', amount: '¥3,798' },
+      { label: '電源適配器', amount: '¥68' },
+      { label: '域名費用', amount: '¥85' },
+    ],
+    techStackTitle: '技術棧',
+    techStack: ['React', 'TypeScript', 'Vite', 'Tailwind CSS', 'shadcn/ui', 'Kotlin', 'Jetpack Compose', 'Spring Boot', 'PostgreSQL', 'Redis', 'Docker', 'Nginx'],
     openSourceTitle: '開源專案', openSourceDesc: 'Memories 客戶端是一個開源專案，程式碼託管在 GitHub，歡迎開發者參與貢獻與改進。',
-    repo: 'idoknow/Memories-Client', license: 'GPL-3.0 License', viewRepo: '查看 GitHub 倉庫',
+    repo: 'MrWoods1692/Memories', license: 'GPL-3.0 License', viewRepo: '查看 GitHub 倉庫',
     developerTitle: '開發者', developerName: 'Mr.C.Woods', developerHome: 'mrcwoods.com', developerHomeLabel: '造訪開發者主頁',
     timelineTitle: '專案時間線', launchDateLabel: '專案上架時間', launchDate: '2026年7月4日', uptimeLabel: '穩定運行時間', uptimeSuffix: '',
     ctaTitle: '開始記錄你的校園記憶', ctaText: '下載 Memories 客戶端，即刻開啟你的記憶之旅', ctaBtn: '下載客戶端',
@@ -313,8 +339,16 @@ const ja: Translation = {
       { title: 'スマート体験', desc: 'AIを活用した写真管理で、より効率的な閲覧と検索を実現' },
     ],
     schoolTitle: '学校パートナーシップ', schoolText: 'Memories は「一校一パッケージ」モデルを採用し、各学校に独立したクライアントとデータ空間を提供します。', schoolStatus: '最初の提携校 · 提供中',
+    costTitle: '投入費用', costTotal: '合計',
+    costs: [
+      { label: 'サーバー', amount: '¥3,798' },
+      { label: '電源アダプター', amount: '¥68' },
+      { label: 'ドメイン費用', amount: '¥85' },
+    ],
+    techStackTitle: '技術スタック',
+    techStack: ['React', 'TypeScript', 'Vite', 'Tailwind CSS', 'shadcn/ui', 'Kotlin', 'Jetpack Compose', 'Spring Boot', 'PostgreSQL', 'Redis', 'Docker', 'Nginx'],
     openSourceTitle: 'オープンソースプロジェクト', openSourceDesc: 'Memories クライアントはオープンソースプロジェクトで、コードは GitHub で公開されています。開発者の皆様の貢献と改善を歓迎します。',
-    repo: 'idoknow/Memories-Client', license: 'GPL-3.0 License', viewRepo: 'GitHub リポジトリを見る',
+    repo: 'MrWoods1692/Memories', license: 'GPL-3.0 License', viewRepo: 'GitHub リポジトリを見る',
     developerTitle: '開発者', developerName: 'Mr.C.Woods', developerHome: 'mrcwoods.com', developerHomeLabel: '開発者ホームページを開く',
     timelineTitle: 'プロジェクトタイムライン', launchDateLabel: 'プロジェクト公開日', launchDate: '2026年7月4日', uptimeLabel: '安定稼働時間', uptimeSuffix: '',
     ctaTitle: 'キャンパスの思い出を記録し始めましょう', ctaText: 'Memories クライアントをダウンロードして、思い出の旅を今すぐ始めましょう', ctaBtn: 'クライアントをダウンロード',

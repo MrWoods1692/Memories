@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Typewriter from '@/components/common/Typewriter';
 import { useLoading } from '@/components/common/LoadingScreen';
-import { Heart, Users, Shield, Sparkles, ArrowRight, Github, Scale, ExternalLink, CalendarDays, Clock, Globe, School } from 'lucide-react';
+import { Heart, Users, Shield, Sparkles, ArrowRight, Github, Scale, ExternalLink, CalendarDays, Clock, Globe, School, DollarSign, Cpu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -124,6 +124,57 @@ const AboutPage: React.FC = () => {
         </div>
       </section>
 
+      {/* 投入费用 */}
+      <section className="py-16 md:py-20">
+        <div className="container mx-auto px-4 md:px-6">
+          <div className="max-w-3xl mx-auto">
+            <div className="text-center mb-10">
+              <div className="inline-flex items-center gap-2 mb-2">
+                <DollarSign className="h-6 w-6 text-primary" />
+                <h2 className="text-2xl md:text-3xl font-bold text-balance">{t.aboutPage.costTitle}</h2>
+              </div>
+            </div>
+            <Card className="">
+              <CardContent className="p-6 md:p-8">
+                <div className="space-y-3">
+                  {t.aboutPage.costs.map((item) => (
+                    <div key={item.label} className="flex items-center justify-between py-2 border-b border-white/30 last:border-b-0">
+                      <span className="text-muted-foreground">{item.label}</span>
+                      <span className="font-semibold tabular-nums">{item.amount}</span>
+                    </div>
+                  ))}
+                  <div className="flex items-center justify-between pt-3">
+                    <span className="font-semibold">{t.aboutPage.costTotal}</span>
+                    <span className="font-bold text-lg text-primary tabular-nums">¥3,951</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </section>
+
+      {/* 技术栈 */}
+      <section className="py-16 md:py-20">
+        <div className="container mx-auto px-4 md:px-6">
+          <div className="max-w-3xl mx-auto">
+            <div className="text-center mb-10">
+              <div className="inline-flex items-center gap-2 mb-2">
+                <Cpu className="h-6 w-6 text-primary" />
+                <h2 className="text-2xl md:text-3xl font-bold text-balance">{t.aboutPage.techStackTitle}</h2>
+              </div>
+            </div>
+            <div className="flex flex-wrap justify-center gap-3">
+              {t.aboutPage.techStack.map((tech) => (
+                <Badge key={tech} variant="secondary" className="px-4 py-2 text-sm">
+                  {tech}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* 开源项目 + 开发者 */}
       <section className="py-16 md:py-20">
         <div className="container mx-auto px-4 md:px-6">
@@ -154,7 +205,7 @@ const AboutPage: React.FC = () => {
                     {t.aboutPage.license}
                   </Badge>
                   <Button variant="outline" size="sm" asChild className="mt-auto w-fit">
-                    <a href="https://github.com/idoknow/Memories-Client" target="_blank" rel="noopener noreferrer">
+                    <a href="https://github.com/MrWoods1692/Memories" target="_blank" rel="noopener noreferrer">
                       {t.aboutPage.viewRepo}
                       <ExternalLink className="ml-1 h-4 w-4" />
                     </a>
