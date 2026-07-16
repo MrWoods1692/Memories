@@ -993,7 +993,24 @@ public class EmbeddedServer extends NanoHTTPD {
                 return NanoHTTPD.newFixedLengthResponse(Status.OK, "text/plain", "ok");
             }
 
-            // GET /oauth/start - 发起授权，返回跳转 URL
+            // GET /oauth/login?redirect=FRONTEND_URL - 浏览器跳转方式发起授权
+            if ("/oauth/login".equals(uri) && Method.GET.equals(method)) {
+                String prefix = db.getConfig("oauth_prefix");
+                String clientId = db.getConfig("oauth_client_id");
+                String redirectUri = db.getConfig("oauth_redirect_uri");
+                if (prefix == null || clientId == null || redirectUri == null) {
+                    return NanoHTTPD.newFixedLengthResponse(Status.BAD_REQUEST, "text/plain", "oauth not configured");
+                }
+                Map<String, String> params = session.getParms();
+                String frontendRedirect = params.get("redirect");
+                String authUrl = OAuthHelper.buildAuthUrl(prefix, clientId, redirectUri, "profile", frontendRedirect, db);
+                Response r = NanoHTTPD.newFixedLengthResponse(Status.REDIRECT, "text/html",
+                    "<html><body>正在跳转到授权页...<script>location.replace('" + authUrl + "');</script></body></html>");
+                r.addHeader("Location", authUrl);
+                return r;
+            }
+
+            // GET /oauth/start - 发起授权，返回跳转 URL（API 方式）
             // 可选参数 redirect: OAuth 完成后重定向到的前端 URL
             if ("/oauth/start".equals(uri) && Method.GET.equals(method)) {
                 String prefix = db.getConfig("oauth_prefix");
@@ -1005,7 +1022,7 @@ public class EmbeddedServer extends NanoHTTPD {
                 String scope = "profile";
                 Map<String, String> params = session.getParms();
                 String frontendRedirect = params.get("redirect");
-                String authUrl = OAuthHelper.buildAuthUrl(prefix, clientId, redirectUri, scope, frontendRedirect);
+                String authUrl = OAuthHelper.buildAuthUrl(prefix, clientId, redirectUri, scope, frontendRedirect, db);
                 JSONObject o = new JSONObject();
                 o.put("url", authUrl);
                 return NanoHTTPD.newFixedLengthResponse(Status.OK, "application/json", o.toString());
@@ -1028,11 +1045,11 @@ public class EmbeddedServer extends NanoHTTPD {
                     return NanoHTTPD.newFixedLengthResponse(Status.BAD_REQUEST, "text/plain", "oauth not configured");
                 }
 
-                // 在 exchangeToken 之前获取前端重定向 URL（exchangeToken 会移除 state）
-                String frontendRedirect = OAuthHelper.getFrontendRedirect(state);
+                // 在 exchangeToken 之前获取前端重定向 URL
+                String frontendRedirect = OAuthHelper.getFrontendRedirect(state, db);
 
                 // 换取 token
-                JSONObject tokenResp = OAuthHelper.exchangeToken(prefix, clientId, clientSecret, code, redirectUri, state);
+                JSONObject tokenResp = OAuthHelper.exchangeToken(prefix, clientId, clientSecret, code, redirectUri, state, db);
                 if (tokenResp == null || tokenResp.has("error")) {
                     String detail = tokenResp != null ? tokenResp.optString("detail", "unknown") : "no response";
                     return NanoHTTPD.newFixedLengthResponse(Status.UNAUTHORIZED, "text/plain", "token exchange failed: " + detail);

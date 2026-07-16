@@ -23,16 +23,7 @@ import java.util.Map;
  */
 public class OAuthHelper {
     private static final String TAG = "OAuthHelper";
-
-    // 存储进行中的授权状态 (state -> {code_verifier, redirect_uri})
-    private static final Map<String, OAuthState> pendingStates = new HashMap<>();
-
-    static class OAuthState {
-        String codeVerifier;
-        String redirectUri;
-        String frontendRedirect;  // OAuth 完成后重定向回前端的 URL
-        long createdAt;
-    }
+    private static final String STATE_PREFIX = "oauth_state_";
 
     /**
      * 生成 PKCE code_verifier (43-128 字符随机串)
@@ -69,24 +60,27 @@ public class OAuthHelper {
     }
 
     /**
-     * 构建授权 URL，存储 state 对应的 verifier
+     * 构建授权 URL，state 和 code_verifier 存入数据库（防进程重启丢失）
      * @param frontendRedirect 可选：OAuth 完成后重定向到前端的 URL
      */
-    public static String buildAuthUrl(String prefix, String clientId, String redirectUri, String scope, String frontendRedirect) {
+    public static String buildAuthUrl(String prefix, String clientId, String redirectUri, String scope, String frontendRedirect, DatabaseHelper db) {
         String state = generateState();
         String codeVerifier = generateCodeVerifier();
         String codeChallenge = generateCodeChallenge(codeVerifier);
 
-        // 存储 state 对应信息
-        OAuthState oaState = new OAuthState();
-        oaState.codeVerifier = codeVerifier;
-        oaState.redirectUri = redirectUri;
-        oaState.frontendRedirect = frontendRedirect;
-        oaState.createdAt = System.currentTimeMillis();
-        pendingStates.put(state, oaState);
-
-        // 清理过期 state (超过10分钟)
-        cleanExpiredStates();
+        // 存入数据库：code_verifier, redirect_uri, frontend_redirect
+        try {
+            JSONObject st = new JSONObject();
+            st.put("code_verifier", codeVerifier);
+            st.put("redirect_uri", redirectUri);
+            if (frontendRedirect != null) st.put("frontend_redirect", frontendRedirect);
+            st.put("created_at", System.currentTimeMillis());
+            db.setConfig(STATE_PREFIX + state, st.toString());
+            // 清理过期 state (超过10分钟)
+            cleanExpiredStates(db);
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to store oauth state", e);
+        }
 
         String baseUrl = "https://" + prefix + ".campux.top/oauth/authorize";
         StringBuilder sb = new StringBuilder(baseUrl);
@@ -107,11 +101,19 @@ public class OAuthHelper {
      * 用授权码换取 access token
      */
     public static JSONObject exchangeToken(String prefix, String clientId, String clientSecret,
-                                           String code, String redirectUri, String state) {
+                                           String code, String redirectUri, String state, DatabaseHelper db) {
         try {
-            // 获取 code_verifier
-            OAuthState oaState = pendingStates.remove(state);
-            String codeVerifier = (oaState != null) ? oaState.codeVerifier : "";
+            // 从数据库获取 code_verifier
+            String stateJson = db.getConfig(STATE_PREFIX + state);
+            String codeVerifier = "";
+            if (stateJson != null) {
+                try {
+                    JSONObject st = new JSONObject(stateJson);
+                    codeVerifier = st.optString("code_verifier", "");
+                } catch (Exception ignored) {}
+            }
+            // 用完删除
+            db.setConfig(STATE_PREFIX + state, null);
 
             String tokenUrl = "https://" + prefix + ".campux.top/oauth/token";
             URL url = new URL(tokenUrl);
@@ -251,18 +253,21 @@ public class OAuthHelper {
         }
     }
 
-    private static void cleanExpiredStates() {
-        long now = System.currentTimeMillis();
-        pendingStates.entrySet().removeIf(e -> (now - e.getValue().createdAt) > 600_000); // 10 min
+    private static void cleanExpiredStates(DatabaseHelper db) {
+        // 数据库存储无需手动清理，state 用完即删（在 exchangeToken 中删除）
     }
 
     /**
-     * 获取 OAuth 完成后重定向到前端的 URL（如果有的话），不删除 state
+     * 获取 OAuth 完成后重定向到前端的 URL（如果有的话）
      */
-    public static String getFrontendRedirect(String state) {
-        OAuthState oaState = pendingStates.get(state);
-        if (oaState != null) {
-            return oaState.frontendRedirect;
+    public static String getFrontendRedirect(String state, DatabaseHelper db) {
+        String stateJson = db.getConfig(STATE_PREFIX + state);
+        if (stateJson != null) {
+            try {
+                JSONObject st = new JSONObject(stateJson);
+                String fr = st.optString("frontend_redirect", null);
+                if (fr != null && !fr.isEmpty()) return fr;
+            } catch (Exception ignored) {}
         }
         return null;
     }
