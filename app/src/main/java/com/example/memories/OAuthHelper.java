@@ -241,10 +241,10 @@ public class OAuthHelper {
     }
 
     /**
-     * 获取 OAuth 完成后重定向到前端的 URL（如果有的话）
+     * 获取 OAuth 完成后重定向到前端的 URL（如果有的话），不删除 state
      */
     public static String getFrontendRedirect(String state) {
-        OAuthState oaState = pendingStates.remove(state);
+        OAuthState oaState = pendingStates.get(state);
         if (oaState != null) {
             return oaState.frontendRedirect;
         }

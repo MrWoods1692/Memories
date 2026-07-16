@@ -1028,6 +1028,9 @@ public class EmbeddedServer extends NanoHTTPD {
                     return NanoHTTPD.newFixedLengthResponse(Status.BAD_REQUEST, "text/plain", "oauth not configured");
                 }
 
+                // 在 exchangeToken 之前获取前端重定向 URL（exchangeToken 会移除 state）
+                String frontendRedirect = OAuthHelper.getFrontendRedirect(state);
+
                 // 换取 token
                 JSONObject tokenResp = OAuthHelper.exchangeToken(prefix, clientId, clientSecret, code, redirectUri, state);
                 if (tokenResp == null) {
@@ -1064,7 +1067,6 @@ public class EmbeddedServer extends NanoHTTPD {
                 result.put("is_admin", role >= 2);
 
                 // 如果有前端重定向 URL，则重定向到前端（而非返回 JSON）
-                String frontendRedirect = OAuthHelper.getFrontendRedirect(state);
                 if (frontendRedirect != null && !frontendRedirect.isEmpty()) {
                     String sep = frontendRedirect.contains("?") ? "&" : "?";
                     String loc = frontendRedirect + sep
