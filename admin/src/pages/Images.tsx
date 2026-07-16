@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { apiGet, apiPost, apiDelete } from '../api';
 import { ConfirmDialog } from '../components/ConfirmDialog';
-import { IconImage, IconSearch, IconTrash, IconCheck, IconX, IconCopy } from '../components/Icons';
+import { IconImage, IconSearch, IconTrash, IconCheck, IconX, IconCopy, IconChevronLeft, IconChevronRight } from '../components/Icons';
 import { useDebounce, copyToClipboard, relativeTime } from '../hooks';
 import { fmtTs } from './Dashboard';
 import type { ImageItem, ImageStatus } from '../types';
@@ -34,6 +34,7 @@ export function Images({ toast, refreshKey }: ImagesProps) {
   const [confirmMsg, setConfirmMsg] = useState('');
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState<Set<number>>(new Set());
+  const [previewIdx, setPreviewIdx] = useState<number>(-1);
 
   const loadPage = useCallback(async (p: number) => {
     setLoading(true);
@@ -127,6 +128,54 @@ export function Images({ toast, refreshKey }: ImagesProps) {
     const ok = await copyToClipboard(url);
     toast(ok ? '已复制到剪贴板' : '复制失败', ok ? 'success' : 'error');
   };
+
+  // ---- 图片预览导航 ----
+  const pendingIds = new Set(images.filter(i => i.status === 0).map(i => i.id));
+
+  const openPreview = (idx: number) => { if (idx >= 0 && idx < images.length) setPreviewIdx(idx); };
+
+  const previewPrev = () => {
+    for (let i = previewIdx - 1; i >= 0; i--) {
+      if (pendingIds.has(images[i].id)) { setPreviewIdx(i); return; }
+    }
+  };
+
+  const previewNext = () => {
+    for (let i = previewIdx + 1; i < images.length; i++) {
+      if (pendingIds.has(images[i].id)) { setPreviewIdx(i); return; }
+    }
+  };
+
+  const previewItem = previewIdx >= 0 && previewIdx < images.length ? images[previewIdx] : null;
+  const hasPrev = previewIdx > 0 && images.slice(0, previewIdx).some(i => pendingIds.has(i.id));
+  const hasNext = previewIdx < images.length - 1 && images.slice(previewIdx + 1).some(i => pendingIds.has(i.id));
+
+  const handlePreviewAudit = async (status: 1 | 2) => {
+    if (!previewItem) return;
+    setActing(p => new Set(p).add(previewItem.id));
+    try {
+      await apiPost(`/images/${previewItem.id}/audit`, { status: String(status) });
+      toast(status === 1 ? '已通过' : '已拒绝');
+      loadPage(page);
+      if (hasNext) { setTimeout(() => previewNext(), 100); }
+      else setPreviewIdx(-1);
+    } catch { toast('操作失败', 'error'); }
+    finally { setActing(p => { const n = new Set(p); n.delete(previewItem.id); return n; }); }
+  };
+
+  // 键盘快捷键
+  useEffect(() => {
+    if (previewIdx < 0) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setPreviewIdx(-1);
+      else if (e.key === 'ArrowLeft' && hasPrev) previewPrev();
+      else if (e.key === 'ArrowRight' && hasNext) previewNext();
+      else if (e.key === 'a' && !e.ctrlKey && !e.metaKey) handlePreviewAudit(1);
+      else if (e.key === 'r' && !e.ctrlKey && !e.metaKey) handlePreviewAudit(2);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [previewIdx, hasPrev, hasNext, previewItem]);
 
   const isSearching = search !== debouncedSearch;
   const statusLabels: Record<number, string> = { 0: '待审核', 1: '已通过', 2: '已拒绝' };
@@ -226,7 +275,7 @@ export function Images({ toast, refreshKey }: ImagesProps) {
                     <input type="checkbox" checked={selected.has(i.id)} onChange={() => toggleSelect(i.id)} />
                   </td>
                   <td style={{color:'var(--accent)',fontWeight:600,fontSize:'0.72rem'}}>#{i.id}</td>
-                  <td className="url" title={i.url}>
+                  <td className="url preview-link" title={i.url} onClick={(e) => { e.stopPropagation(); openPreview(images.indexOf(i)); }}>
                     {i.url}
                     <button className="btn-copy" onClick={e => { e.stopPropagation(); handleCopyUrl(i.url); }} title="复制链接"><IconCopy size={12} /></button>
                   </td>
@@ -269,6 +318,52 @@ export function Images({ toast, refreshKey }: ImagesProps) {
           onConfirm={confirmAction}
           onCancel={() => setConfirmAction(null)}
         />
+      )}
+
+      {/* ---- 图片预览弹窗 ---- */}
+      {previewItem && (
+        <div className="dialog-overlay preview-overlay" onClick={() => setPreviewIdx(-1)}>
+          <div className="preview-dialog" onClick={e => e.stopPropagation()}>
+            <div className="preview-header">
+              <span className="preview-title">图片预览 #{previewItem.id}</span>
+              <span className={`badge ${statusBadge[previewItem.status]}`}>{statusLabels[previewItem.status]}</span>
+              <button className="preview-close" onClick={() => setPreviewIdx(-1)} title="关闭 (Esc)">
+                <IconX size={18} />
+              </button>
+            </div>
+            <div className="preview-body">
+              <img src={previewItem.url} alt={`#${previewItem.id}`} className="preview-img"
+                onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+            </div>
+            <div className="preview-actions">
+              <div className="preview-nav">
+                <button className="btn btn-ghost btn-sm" disabled={!hasPrev} onClick={previewPrev} title="上一张 (←)">
+                  <IconChevronLeft size={14} /> 上一张
+                </button>
+                <span className="preview-pos">
+                  {images.filter(i => i.status === 0).findIndex(i => i.id === previewItem.id) + 1} / {images.filter(i => i.status === 0).length} 待审
+                </span>
+                <button className="btn btn-ghost btn-sm" disabled={!hasNext} onClick={previewNext} title="下一张 (→)">
+                  下一张 <IconChevronRight size={14} />
+                </button>
+              </div>
+              <div className="preview-audit">
+                {previewItem.status === 0 ? (
+                  <>
+                    <button className="btn btn-success" disabled={acting.has(previewItem.id)} onClick={() => handlePreviewAudit(1)} title="通过 (A)">
+                      <IconCheck size={16} /> 通过
+                    </button>
+                    <button className="btn btn-danger" disabled={acting.has(previewItem.id)} onClick={() => handlePreviewAudit(2)} title="拒绝 (R)">
+                      <IconX size={16} /> 不通过
+                    </button>
+                  </>
+                ) : (
+                  <span className="preview-done">该图片已{previewItem.status === 1 ? '通过' : '拒绝'}</span>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

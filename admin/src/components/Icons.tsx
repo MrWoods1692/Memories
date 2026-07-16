@@ -28,6 +28,8 @@ export const IconUser        = (p: IconProps) => <S {...p}><path d="M19 21v-2a4 
 export const IconUnlock      = (p: IconProps) => <S {...p}><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></S>;
 export const IconAlert       = (p: IconProps) => <S {...p}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></S>;
 export const IconCloud       = (p: IconProps) => <S {...p}><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></S>;
+export const IconChevronLeft = (p: IconProps) => <S {...p}><polyline points="15 18 9 12 15 6"/></S>;
+export const IconChevronRight= (p: IconProps) => <S {...p}><polyline points="9 18 15 12 9 6"/></S>;
 export const IconKey         = (p: IconProps) => <S {...p}><path d="m21 2-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0 3 3L22 7l-3-3m-3.5 3.5L19 4"/></S>;
 export const IconLink        = (p: IconProps) => <S {...p}><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></S>;
 export const IconShield      = (p: IconProps) => <S {...p}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></S>;
