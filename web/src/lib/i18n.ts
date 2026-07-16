@@ -35,7 +35,7 @@ export interface Translation {
     valuesTitle: string; values: { title: string; desc: string }[];
     schoolTitle: string; schoolText: string; schoolStatus: string;
     costTitle: string; costTotal: string; costs: { label: string; amount: string }[];
-    techStackTitle: string; techStack: string[];
+    techStackTitle: string; techStack: { category: string; items: string[] }[];
     openSourceTitle: string; openSourceDesc: string; repo: string; license: string; viewRepo: string;
     developerTitle: string; developerName: string; developerHome: string; developerHomeLabel: string;
     timelineTitle: string; launchDate: string; launchDateLabel: string; uptimeLabel: string; uptimeSuffix: string;
@@ -112,7 +112,13 @@ const zh: Translation = {
       { label: '域名费用', amount: '¥85' },
     ],
     techStackTitle: '技术栈',
-    techStack: ['React', 'TypeScript', 'Vite', 'Tailwind CSS', 'shadcn/ui', 'Kotlin', 'Jetpack Compose', 'Spring Boot', 'PostgreSQL', 'Redis', 'Docker', 'Nginx'],
+    techStack: [
+      { category: 'Android', items: ['Java', 'Android SDK', 'NanoHTTPD', 'SQLite', 'WorkManager'] },
+      { category: '官网', items: ['React 18', 'TypeScript', 'Vite', 'Tailwind CSS', 'shadcn/ui', 'Framer Motion'] },
+      { category: '管理面板', items: ['React 19', 'Vite 8', 'oxlint'] },
+      { category: '文档站', items: ['Vue 3', 'Vite', 'Vue Router'] },
+      { category: '工具链', items: ['pnpm', 'npm', 'Gradle', 'Biome'] },
+    ],
     openSourceTitle: '开源项目', openSourceDesc: 'Memories 客户端是一个开源项目，代码托管在 GitHub，欢迎开发者参与贡献与改进。',
     repo: 'MrWoods1692/Memories', license: 'GPL-3.0 License', viewRepo: '查看 GitHub 仓库',
     developerTitle: '开发者', developerName: 'Mr.C.Woods', developerHome: 'mrcwoods.com', developerHomeLabel: '访问开发者主页',
@@ -190,7 +196,13 @@ const en: Translation = {
       { label: 'Domain Fee', amount: '¥85' },
     ],
     techStackTitle: 'Tech Stack',
-    techStack: ['React', 'TypeScript', 'Vite', 'Tailwind CSS', 'shadcn/ui', 'Kotlin', 'Jetpack Compose', 'Spring Boot', 'PostgreSQL', 'Redis', 'Docker', 'Nginx'],
+    techStack: [
+      { category: 'Android', items: ['Java', 'Android SDK', 'NanoHTTPD', 'SQLite', 'WorkManager'] },
+      { category: 'Website', items: ['React 18', 'TypeScript', 'Vite', 'Tailwind CSS', 'shadcn/ui', 'Framer Motion'] },
+      { category: 'Admin Panel', items: ['React 19', 'Vite 8', 'oxlint'] },
+      { category: 'API Docs', items: ['Vue 3', 'Vite', 'Vue Router'] },
+      { category: 'Toolchain', items: ['pnpm', 'npm', 'Gradle', 'Biome'] },
+    ],
     openSourceTitle: 'Open Source Project', openSourceDesc: 'The Memories client is an open-source project hosted on GitHub. Developers are welcome to contribute and improve.',
     repo: 'MrWoods1692/Memories', license: 'GPL-3.0 License', viewRepo: 'View GitHub Repository',
     developerTitle: 'Developer', developerName: 'Mr.C.Woods', developerHome: 'mrcwoods.com', developerHomeLabel: 'Visit Developer Homepage',
@@ -268,7 +280,13 @@ const zhTW: Translation = {
       { label: '域名費用', amount: '¥85' },
     ],
     techStackTitle: '技術棧',
-    techStack: ['React', 'TypeScript', 'Vite', 'Tailwind CSS', 'shadcn/ui', 'Kotlin', 'Jetpack Compose', 'Spring Boot', 'PostgreSQL', 'Redis', 'Docker', 'Nginx'],
+    techStack: [
+      { category: 'Android', items: ['Java', 'Android SDK', 'NanoHTTPD', 'SQLite', 'WorkManager'] },
+      { category: '官網', items: ['React 18', 'TypeScript', 'Vite', 'Tailwind CSS', 'shadcn/ui', 'Framer Motion'] },
+      { category: '管理面板', items: ['React 19', 'Vite 8', 'oxlint'] },
+      { category: '文檔站', items: ['Vue 3', 'Vite', 'Vue Router'] },
+      { category: '工具鏈', items: ['pnpm', 'npm', 'Gradle', 'Biome'] },
+    ],
     openSourceTitle: '開源專案', openSourceDesc: 'Memories 客戶端是一個開源專案，程式碼託管在 GitHub，歡迎開發者參與貢獻與改進。',
     repo: 'MrWoods1692/Memories', license: 'GPL-3.0 License', viewRepo: '查看 GitHub 倉庫',
     developerTitle: '開發者', developerName: 'Mr.C.Woods', developerHome: 'mrcwoods.com', developerHomeLabel: '造訪開發者主頁',
@@ -346,7 +364,13 @@ const ja: Translation = {
       { label: 'ドメイン費用', amount: '¥85' },
     ],
     techStackTitle: '技術スタック',
-    techStack: ['React', 'TypeScript', 'Vite', 'Tailwind CSS', 'shadcn/ui', 'Kotlin', 'Jetpack Compose', 'Spring Boot', 'PostgreSQL', 'Redis', 'Docker', 'Nginx'],
+    techStack: [
+      { category: 'Android', items: ['Java', 'Android SDK', 'NanoHTTPD', 'SQLite', 'WorkManager'] },
+      { category: 'Webサイト', items: ['React 18', 'TypeScript', 'Vite', 'Tailwind CSS', 'shadcn/ui', 'Framer Motion'] },
+      { category: '管理パネル', items: ['React 19', 'Vite 8', 'oxlint'] },
+      { category: 'ドキュメント', items: ['Vue 3', 'Vite', 'Vue Router'] },
+      { category: 'ツールチェーン', items: ['pnpm', 'npm', 'Gradle', 'Biome'] },
+    ],
     openSourceTitle: 'オープンソースプロジェクト', openSourceDesc: 'Memories クライアントはオープンソースプロジェクトで、コードは GitHub で公開されています。開発者の皆様の貢献と改善を歓迎します。',
     repo: 'MrWoods1692/Memories', license: 'GPL-3.0 License', viewRepo: 'GitHub リポジトリを見る',
     developerTitle: '開発者', developerName: 'Mr.C.Woods', developerHome: 'mrcwoods.com', developerHomeLabel: '開発者ホームページを開く',

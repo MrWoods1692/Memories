@@ -166,11 +166,20 @@ const AboutPage: React.FC = () => {
                 <h2 className="text-2xl md:text-3xl font-bold text-balance">{t.aboutPage.techStackTitle}</h2>
               </div>
             </div>
-            <div className="flex flex-wrap justify-center gap-3">
-              {t.aboutPage.techStack.map((tech) => (
-                <Badge key={tech} variant="secondary" className="px-4 py-2 text-sm">
-                  {tech}
-                </Badge>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {t.aboutPage.techStack.map((group) => (
+                <Card key={group.category} className="h-full group">
+                  <CardContent className="p-5">
+                    <h3 className="font-semibold text-sm text-muted-foreground mb-3 tracking-wide uppercase">{group.category}</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {group.items.map((item) => (
+                        <Badge key={item} variant="secondary" className="px-3 py-1.5 text-xs font-medium">
+                          {item}
+                        </Badge>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
               ))}
             </div>
           </div>
