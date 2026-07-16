@@ -10,6 +10,11 @@ function headers(extra?: Record<string, string>): Record<string, string> {
   const t = token();
   const h: Record<string, string> = { ...extra };
   if (t) h['Authorization'] = `Bearer ${t}`;
+  // 同时发送 QQ 号，后端用于角色检查
+  try {
+    const u = JSON.parse(localStorage.getItem('admin_user') || '{}');
+    if (u.qq) h['x-user-qq'] = u.qq;
+  } catch { /* ignore */ }
   return h;
 }
 

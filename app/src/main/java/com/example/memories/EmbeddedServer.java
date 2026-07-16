@@ -74,7 +74,7 @@ public class EmbeddedServer extends NanoHTTPD {
     }
 
     /**
-     * 检查是否为管理员：局域网请求自动获得管理员权限，否则检查 x-user-qq header
+     * 检查是否为管理员：局域网自动授权，公网通过 x-user-qq header 检查 role >= 2
      */
     private boolean isAdmin(IHTTPSession session, DatabaseHelper db) {
         if (isLanRequest(session)) return true;
