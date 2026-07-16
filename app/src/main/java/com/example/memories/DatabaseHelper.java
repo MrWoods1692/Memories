@@ -5,17 +5,49 @@ import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
+import android.os.Environment;
 import android.util.Log;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.io.File;
+
 public class DatabaseHelper extends SQLiteOpenHelper {
     private static final String DB_NAME = "memories.db";
     private static final int DB_VERSION = 1;
+    private static String dbPath = null;
+
+    /**
+     * 获取数据库路径：优先外部存储（卸载不丢失），回退内部存储
+     */
+    public static String resolveDatabasePath(Context ctx) {
+        if (dbPath != null) return dbPath;
+        try {
+            File dir = new File(Environment.getExternalStorageDirectory(), "Memories");
+            if (!dir.exists()) dir.mkdirs();
+            File f = new File(dir, DB_NAME);
+            // 测试能否写入
+            if (dir.canWrite() || f.exists()) {
+                dbPath = f.getAbsolutePath();
+                Log.i("DatabaseHelper", "Using external DB: " + dbPath);
+                return dbPath;
+            }
+        } catch (Exception e) {
+            Log.w("DatabaseHelper", "External storage unavailable", e);
+        }
+        dbPath = ctx.getDatabasePath(DB_NAME).getAbsolutePath();
+        Log.i("DatabaseHelper", "Using internal DB: " + dbPath);
+        return dbPath;
+    }
 
     public DatabaseHelper(Context ctx) {
-        super(ctx, DB_NAME, null, DB_VERSION);
+        super(ctx, resolveDatabasePath(ctx), null, DB_VERSION);
+    }
+
+    /** 获取数据库文件路径（用于备份等） */
+    public String getDatabasePathString() {
+        return getWritableDatabase().getPath();
     }
 
     @Override
@@ -298,10 +330,6 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         }
         c.close();
         return arr.toString();
-    }
-
-    public String getDatabasePathString() {
-        return getReadableDatabase().getPath();
     }
 
     // ==================== 数据库可视化管理 ====================
