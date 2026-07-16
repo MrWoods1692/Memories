@@ -5,6 +5,7 @@ import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
+import android.util.Log;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -31,11 +32,18 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     }
 
     public long addImage(String url) {
-        SQLiteDatabase db = getWritableDatabase();
-        ContentValues cv = new ContentValues();
-        cv.put("url", url);
-        cv.put("created_at", System.currentTimeMillis());
-        return db.insert("images", null, cv);
+        try {
+            return WriteQueue.submit(() -> {
+                SQLiteDatabase db = getWritableDatabase();
+                ContentValues cv = new ContentValues();
+                cv.put("url", url);
+                cv.put("created_at", System.currentTimeMillis());
+                return db.insert("images", null, cv);
+            }).get();
+        } catch (Exception e) {
+            Log.e("DatabaseHelper", "addImage error", e);
+            return -1;
+        }
     }
 
     public String listImagesJson() {
@@ -109,17 +117,31 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     }
 
     public boolean deleteImage(long id) {
-        SQLiteDatabase db = getWritableDatabase();
-        int rows = db.delete("images", "id=?", new String[]{String.valueOf(id)});
-        return rows > 0;
+        try {
+            return WriteQueue.submit(() -> {
+                SQLiteDatabase db = getWritableDatabase();
+                int rows = db.delete("images", "id=?", new String[]{String.valueOf(id)});
+                return rows > 0;
+            }).get();
+        } catch (Exception e) {
+            Log.e("DatabaseHelper", "deleteImage error", e);
+            return false;
+        }
     }
 
     public boolean updateImageStatus(long id, int status) {
-        SQLiteDatabase db = getWritableDatabase();
-        ContentValues cv = new ContentValues();
-        cv.put("status", status);
-        int rows = db.update("images", cv, "id=?", new String[]{String.valueOf(id)});
-        return rows > 0;
+        try {
+            return WriteQueue.submit(() -> {
+                SQLiteDatabase db = getWritableDatabase();
+                ContentValues cv = new ContentValues();
+                cv.put("status", status);
+                int rows = db.update("images", cv, "id=?", new String[]{String.valueOf(id)});
+                return rows > 0;
+            }).get();
+        } catch (Exception e) {
+            Log.e("DatabaseHelper", "updateImageStatus error", e);
+            return false;
+        }
     }
 
     public long getImageCount() {
@@ -132,11 +154,18 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     }
 
     public void addUser(String qq, int role) {
-        SQLiteDatabase db = getWritableDatabase();
-        ContentValues cv = new ContentValues();
-        cv.put("qq", qq);
-        cv.put("role", role);
-        db.insertWithOnConflict("users", null, cv, SQLiteDatabase.CONFLICT_REPLACE);
+        try {
+            WriteQueue.submit(() -> {
+                SQLiteDatabase db = getWritableDatabase();
+                ContentValues cv = new ContentValues();
+                cv.put("qq", qq);
+                cv.put("role", role);
+                db.insertWithOnConflict("users", null, cv, SQLiteDatabase.CONFLICT_REPLACE);
+                return null;
+            }).get();
+        } catch (Exception e) {
+            Log.e("DatabaseHelper", "addUser error", e);
+        }
     }
 
     public int getUserRole(String qq) {
@@ -161,11 +190,18 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     }
 
     public void setConfig(String k, String v) {
-        SQLiteDatabase db = getWritableDatabase();
-        ContentValues cv = new ContentValues();
-        cv.put("k", k);
-        cv.put("v", v);
-        db.insertWithOnConflict("config", null, cv, SQLiteDatabase.CONFLICT_REPLACE);
+        try {
+            WriteQueue.submit(() -> {
+                SQLiteDatabase db = getWritableDatabase();
+                ContentValues cv = new ContentValues();
+                cv.put("k", k);
+                cv.put("v", v);
+                db.insertWithOnConflict("config", null, cv, SQLiteDatabase.CONFLICT_REPLACE);
+                return null;
+            }).get();
+        } catch (Exception e) {
+            Log.e("DatabaseHelper", "setConfig error", e);
+        }
     }
 
     public String getConfig(String k) {
@@ -195,26 +231,47 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     }
 
     public boolean deleteUser(String qq) {
-        SQLiteDatabase db = getWritableDatabase();
-        int rows = db.delete("users", "qq=?", new String[]{qq});
-        return rows > 0;
+        try {
+            return WriteQueue.submit(() -> {
+                SQLiteDatabase db = getWritableDatabase();
+                int rows = db.delete("users", "qq=?", new String[]{qq});
+                return rows > 0;
+            }).get();
+        } catch (Exception e) {
+            Log.e("DatabaseHelper", "deleteUser error", e);
+            return false;
+        }
     }
 
     // --- 封禁用户管理 ---
 
     public void banUser(String qq, String reason) {
-        SQLiteDatabase db = getWritableDatabase();
-        ContentValues cv = new ContentValues();
-        cv.put("qq", qq);
-        cv.put("reason", reason != null ? reason : "");
-        cv.put("banned_at", System.currentTimeMillis());
-        db.insertWithOnConflict("banned_users", null, cv, SQLiteDatabase.CONFLICT_REPLACE);
+        try {
+            WriteQueue.submit(() -> {
+                SQLiteDatabase db = getWritableDatabase();
+                ContentValues cv = new ContentValues();
+                cv.put("qq", qq);
+                cv.put("reason", reason != null ? reason : "");
+                cv.put("banned_at", System.currentTimeMillis());
+                db.insertWithOnConflict("banned_users", null, cv, SQLiteDatabase.CONFLICT_REPLACE);
+                return null;
+            }).get();
+        } catch (Exception e) {
+            Log.e("DatabaseHelper", "banUser error", e);
+        }
     }
 
     public boolean unbanUser(String qq) {
-        SQLiteDatabase db = getWritableDatabase();
-        int rows = db.delete("banned_users", "qq=?", new String[]{qq});
-        return rows > 0;
+        try {
+            return WriteQueue.submit(() -> {
+                SQLiteDatabase db = getWritableDatabase();
+                int rows = db.delete("banned_users", "qq=?", new String[]{qq});
+                return rows > 0;
+            }).get();
+        } catch (Exception e) {
+            Log.e("DatabaseHelper", "unbanUser error", e);
+            return false;
+        }
     }
 
     public boolean isUserBanned(String qq) {
@@ -522,31 +579,37 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
     /** 执行写语句 */
     private String executeWriteStatement(String sql) {
-        SQLiteDatabase db = getWritableDatabase();
         try {
-            db.beginTransaction();
-            db.execSQL(sql);
-            // 尝试获取影响行数（仅对 INSERT/UPDATE/DELETE 有效）
-            Cursor c = null;
-            int affected = 0;
-            try {
-                c = db.rawQuery("SELECT changes()", null);
-                if (c.moveToFirst()) affected = c.getInt(0);
-            } catch (Exception ignored) {}
-            finally { if (c != null) c.close(); }
-            db.setTransactionSuccessful();
+            return WriteQueue.submit(() -> {
+                SQLiteDatabase db = getWritableDatabase();
+                try {
+                    db.beginTransaction();
+                    db.execSQL(sql);
+                    Cursor c = null;
+                    int affected = 0;
+                    try {
+                        c = db.rawQuery("SELECT changes()", null);
+                        if (c.moveToFirst()) affected = c.getInt(0);
+                    } catch (Exception ignored) {}
+                    finally { if (c != null) c.close(); }
+                    db.setTransactionSuccessful();
 
-            JSONObject result = new JSONObject();
-            result.put("type", "write");
-            result.put("success", true);
-            result.put("affected", affected);
-            result.put("message", "执行成功，影响 " + affected + " 行");
-            return result.toString();
+                    JSONObject result = new JSONObject();
+                    result.put("type", "write");
+                    result.put("success", true);
+                    result.put("affected", affected);
+                    result.put("message", "执行成功，影响 " + affected + " 行");
+                    return result.toString();
+                } catch (Exception e) {
+                    try { db.endTransaction(); } catch (Exception ignored) {}
+                    return errorJson(e.getMessage());
+                } finally {
+                    try { db.endTransaction(); } catch (Exception ignored) {}
+                }
+            }).get();
         } catch (Exception e) {
-            try { db.endTransaction(); } catch (Exception ignored) {}
+            Log.e("DatabaseHelper", "executeWriteStatement error", e);
             return errorJson(e.getMessage());
-        } finally {
-            try { db.endTransaction(); } catch (Exception ignored) {}
         }
     }
 
@@ -574,8 +637,14 @@ public class DatabaseHelper extends SQLiteOpenHelper {
      * 清理所有已拒绝（status=2）的图片记录，返回删除数量
      */
     public int cleanupRejectedImages() {
-        SQLiteDatabase db = getWritableDatabase();
-        int deleted = db.delete("images", "status=?", new String[]{"2"});
-        return deleted;
+        try {
+            return WriteQueue.submit(() -> {
+                SQLiteDatabase db = getWritableDatabase();
+                return db.delete("images", "status=?", new String[]{"2"});
+            }).get();
+        } catch (Exception e) {
+            Log.e("DatabaseHelper", "cleanupRejectedImages error", e);
+            return 0;
+        }
     }
 }
