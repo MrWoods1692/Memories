@@ -111,20 +111,34 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     }
 
     /**
-     * 分页查询图片列表
+     * 分页查询图片列表 — 默认只返回审核通过的图片 (status=1)
      * @param page 页码，从 1 开始
      * @param limit 每页条数，默认 20
      * @return JSON: {"items":[...], "total":N, "page":1, "limit":20, "totalPages":N}
      */
     public String listImagesPaginatedJson(int page, int limit) {
+        return listImagesPaginatedJson(page, limit, false);
+    }
+
+    /**
+     * 分页查询图片列表，支持返回全部状态
+     * @param page 页码，从 1 开始
+     * @param limit 每页条数，默认 20
+     * @param allStatus true=返回全部状态, false=只返回审核通过 (status=1)
+     * @return JSON: {"items":[...], "total":N, "page":1, "limit":20, "totalPages":N}
+     */
+    public String listImagesPaginatedJson(int page, int limit, boolean allStatus) {
         if (page < 1) page = 1;
         if (limit < 1) limit = 20;
         int offset = (page - 1) * limit;
 
         SQLiteDatabase db = getSharedDb();
 
+        String whereClause = allStatus ? "" : " WHERE status = 1";
+        String countSql = "SELECT COUNT(*) FROM images" + whereClause;
+
         // 查总数
-        Cursor countCur = db.rawQuery("SELECT COUNT(*) FROM images", null);
+        Cursor countCur = db.rawQuery(countSql, null);
         long total = 0;
         if (countCur.moveToFirst()) total = countCur.getLong(0);
         countCur.close();
@@ -133,7 +147,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
         // 查分页数据
         Cursor c = db.rawQuery(
-            "SELECT id, url, status, created_at FROM images ORDER BY created_at DESC LIMIT ? OFFSET ?",
+            "SELECT id, url, status, created_at FROM images" + whereClause + " ORDER BY created_at DESC LIMIT ? OFFSET ?",
             new String[]{String.valueOf(limit), String.valueOf(offset)}
         );
         JSONArray items = new JSONArray();

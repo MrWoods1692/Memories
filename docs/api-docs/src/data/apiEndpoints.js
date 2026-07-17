@@ -4,6 +4,7 @@
  */
 
 export const authMatrix = [
+  { endpoint: '/images', method: 'GET', role: '无限制（默认仅返回已通过）；审核员 (≥1) 带 ?status=all' },
   { endpoint: '/images', method: 'POST', role: '无限制' },
   { endpoint: '/images/{id}/audit', method: 'POST', role: '审核员 (≥1)' },
   { endpoint: '/images/{id}', method: 'DELETE', role: '管理员 (≥2)' },
@@ -41,11 +42,12 @@ export const endpointGroups = [
         method: 'GET',
         path: '/images',
         summary: '获取图片列表（分页）',
-        auth: 'none',
-        description: '分页获取图片列表，按创建时间倒序排列。默认每页 20 条。',
+        auth: 'mixed',
+        description: '默认只返回审核通过 (status=1) 的图片。添加 ?status=all 参数可获取全部状态图片，需要审核员身份（role≥1）或局域网。',
         queryParams: [
           { name: 'page', type: 'number', required: false, desc: '页码，从 1 开始（默认 1）' },
           { name: 'limit', type: 'number', required: false, desc: '每页条数（默认 20）' },
+          { name: 'status', type: 'string', required: false, desc: '值为 all 时返回全部状态图片，需审核身份' },
         ],
         response: {
           type: 'json',

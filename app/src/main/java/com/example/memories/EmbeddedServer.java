@@ -210,17 +210,33 @@ public class EmbeddedServer extends NanoHTTPD {
 
         try {
             if ("/images".equals(uri) && Method.GET.equals(method)) {
-                // 分页参数：page（页码，默认1），limit（每页条数，默认20）
+                // 分页参数：page（页码，默认1），limit（每页条数，默认20），status（默认只返回审核通过）
                 Map<String, String> params = session.getParms();
                 int page = 1;
                 int limit = 20;
+                boolean allStatus = false;
                 try {
                     String pageStr = params.get("page");
                     if (pageStr != null && !pageStr.isEmpty()) page = Integer.parseInt(pageStr);
                     String limitStr = params.get("limit");
                     if (limitStr != null && !limitStr.isEmpty()) limit = Integer.parseInt(limitStr);
+                    // status=all 时返回全部状态图片，需要审核身份
+                    String statusStr = params.get("status");
+                    if ("all".equals(statusStr)) {
+                        allStatus = true;
+                    }
                 } catch (NumberFormatException ignored) {}
-                String json = db.listImagesPaginatedJson(page, limit);
+
+                // 如果需要全部状态图片，检查审核权限（局域网 或 审核员 role>=1）
+                if (allStatus) {
+                    String qq = session.getHeaders().get("x-user-qq");
+                    int role = db.getUserRole(qq);
+                    if (!isLanRequest(session) && role < 1) {
+                        return NanoHTTPD.newFixedLengthResponse(Status.UNAUTHORIZED, "text/plain", "reviewer required");
+                    }
+                }
+
+                String json = db.listImagesPaginatedJson(page, limit, allStatus);
                 return NanoHTTPD.newFixedLengthResponse(Status.OK, "application/json", json);
             }
 

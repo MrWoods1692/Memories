@@ -24,7 +24,7 @@ export function ImagesPage({ toast }: Props) {
   const load = async () => {
     setLoading(true);
     try {
-      const data = await apiGet<PaginatedResponse<ImageItem>>('/images');
+      const data = await apiGet<PaginatedResponse<ImageItem>>('/images?status=all');
       setImages(data?.items ?? []);
     } catch { toast('加载失败', 'error'); }
     finally { setLoading(false); }

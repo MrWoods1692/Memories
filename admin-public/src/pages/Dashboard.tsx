@@ -134,7 +134,7 @@ export function DashboardPage({ toast: _toast }: Props) {
     try {
       const [s, imgs, sysInfo] = await Promise.all([
         apiGet<ServerStatus>('/status'),
-        apiGet<PaginatedResponse<ImageItem>>('/images'),
+        apiGet<PaginatedResponse<ImageItem>>('/images?status=all'),
         apiGet<any>('/sysinfo').catch(() => null),
       ]);
       // 将 /sysinfo 数据合并到 status 中

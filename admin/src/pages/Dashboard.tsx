@@ -46,7 +46,7 @@ export function Dashboard({ toast: _toast }: DashboardProps) {
         apiGet<ServerStatus>('/status'),
         apiGet<SysInfo>('/sysinfo'),
         apiGet<AppConfig>('/config'),
-        apiGet<ImageItem[]>('/images'),
+        apiGet<ImageItem[]>('/images?status=all'),
       ]);
       setStatus(s);
       setSysinfo(si);

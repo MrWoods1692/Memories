@@ -225,6 +225,7 @@
     .auth-badge.none { background: #f1f5f9; color: #64748b; }
     .auth-badge.admin { background: #fef3c7; color: #92400e; }
     .auth-badge.reviewer { background: #dbeafe; color: #1e40af; }
+    .auth-badge.mixed { background: #fce7f3; color: #9d174d; }
 
     /* ===== Tables ===== */
     .param-table {
@@ -493,6 +494,7 @@
                 <tr><th>端点</th><th>方法</th><th>所需角色</th></tr>
               </thead>
               <tbody>
+                <tr><td><code>/images</code></td><td>GET</td><td>无限制（默认仅返回已通过）；<br/>审核员 (≥1) 带 <code>?status=all</code></td></tr>
                 <tr><td><code>/images</code></td><td>POST</td><td>无限制</td></tr>
                 <tr><td><code>/images/{id}/audit</code></td><td>POST</td><td>审核员 (≥1)</td></tr>
                 <tr><td><code>/images/{id}</code></td><td>DELETE</td><td>管理员 (≥2)</td></tr>
@@ -667,9 +669,14 @@
             response:'OK' },
 
           // Images
-          { id:'images-get', method:'GET', path:'/images', pathShort:'/images', summary:'获取图片列表',
-            expanded:false, authClass:'none', authLabel:'无需认证',
-            description:'获取所有图片列表，按创建时间倒序排列。',
+          { id:'images-get', method:'GET', path:'/images', pathShort:'/images', summary:'获取图片列表（分页）',
+            expanded:false, authClass:'mixed', authLabel:'默认无需认证；?status=all 需审核员',
+            description:'默认只返回审核通过 (status=1) 的图片。添加 <code>?status=all</code> 参数可获取全部状态图片，需要审核员身份（role≥1）或局域网。',
+            queryParams:[
+              { name:'page', type:'number', required:false, default:'1', desc:'页码，从 1 开始' },
+              { name:'limit', type:'number', required:false, default:'20', desc:'每页条数' },
+              { name:'status', type:'string', required:false, default:'-', desc:'<code>all</code> 返回全部状态，需审核身份' }
+            ],
             responseFields:[
               {name:'id',type:'number',desc:'图片唯一标识'},
               {name:'url',type:'string',desc:'图片 URL 地址'},

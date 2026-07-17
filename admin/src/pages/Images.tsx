@@ -39,7 +39,7 @@ export function Images({ toast, refreshKey }: ImagesProps) {
   const loadPage = useCallback(async (p: number) => {
     setLoading(true);
     try {
-      const data = await apiGet<PaginatedImages>(`/images?page=${p}&limit=${PAGE_SIZE}`);
+      const data = await apiGet<PaginatedImages>(`/images?page=${p}&limit=${PAGE_SIZE}&status=all`);
       setRawImages(Array.isArray(data.items) ? data.items : []);
       setTotal(data.total || 0);
       setPage(data.page || p);
