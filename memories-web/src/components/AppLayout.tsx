@@ -88,14 +88,22 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           backdropFilter: "blur(20px)",
           borderTop: "1px solid var(--ant-color-border-secondary)",
           paddingBottom: "env(safe-area-inset-bottom, 0)",
+          display: "flex", alignItems: "center",
         }}>
           <Menu
             mode="horizontal"
             selectedKeys={[currentKey as string]}
             items={items}
             onClick={({ key }) => navigate(key)}
-            style={{ justifyContent: "center", borderBottom: "none", background: "transparent" }}
+            style={{ flex: 1, justifyContent: "center", borderBottom: "none", background: "transparent" }}
           />
+          {!isLoggedIn && (
+            <Button type="primary" size="small" icon={<LoginOutlined />}
+              onClick={startLogin}
+              style={{ borderRadius: 16, marginRight: 8, flexShrink: 0 }}>
+              登录
+            </Button>
+          )}
         </div>
       )}
     </Layout>
