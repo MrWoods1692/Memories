@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Button, Card, Descriptions, Empty, Image, Modal, Segmented, Spin, Tag, Tooltip, Typography, App,
 } from "antd";
 import {
   AppstoreOutlined, ArrowDownOutlined, BarsOutlined, BlockOutlined, BorderOutlined, CheckCircleOutlined, CheckSquareOutlined,
-  CloseCircleOutlined, CopyOutlined, DownloadOutlined, EyeOutlined, InfoCircleOutlined, PictureOutlined,
+  CloseCircleOutlined, CopyOutlined, DownloadOutlined, EyeOutlined, FieldTimeOutlined, InfoCircleOutlined, PictureOutlined,
   PlayCircleOutlined, PauseCircleOutlined, CaretRightOutlined,
   UnorderedListOutlined,
 } from "@ant-design/icons";
@@ -53,7 +53,7 @@ export default function GalleryPage() {
   const SLIDESHOW_INTERVAL = 4000;
 
   // 视图模式
-  type GalleryView = "grid" | "compact" | "list" | "simple" | "river" | "masonry";
+  type GalleryView = "grid" | "compact" | "list" | "simple" | "river" | "masonry" | "timeline";
   const [viewMode, setViewMode] = useState<GalleryView>("grid");
 
   const toggleSelect = useCallback((id: number) => {
@@ -418,7 +418,7 @@ export default function GalleryPage() {
                 { value: "compact", icon: <PictureOutlined /> },
                 { value: "list", icon: <UnorderedListOutlined /> },
                 { value: "simple", icon: <BarsOutlined /> },
-                ...(isDesktop ? [{ value: "river" as const, icon: <BorderOutlined /> }, { value: "masonry" as const, icon: <BlockOutlined /> }] : []),
+                ...(isDesktop ? [{ value: "river" as const, icon: <BorderOutlined /> }, { value: "masonry" as const, icon: <BlockOutlined /> }, { value: "timeline" as const, icon: <FieldTimeOutlined /> }] : []),
               ] as any}
               style={{ marginRight: 4 }}
             />
@@ -598,28 +598,20 @@ export default function GalleryPage() {
           } as any}
         >
           <div style={{
-            columnCount: 4, columnGap: 4,
-            padding: "0 4px",
+            columnCount: 4, columnGap: 0,
+            padding: 0,
           }}>
-            {images.map((img) => {
-              const dateStr = new Date(img.created_at).toLocaleDateString("zh-CN");
-              return (
-                <div key={img.id} style={{
-                  breakInside: "avoid", marginBottom: 4,
-                  borderRadius: 4, overflow: "hidden",
-                  background: "var(--ant-color-bg-container)",
-                }}>
-                  <Image src={img.url} alt={dateStr}
-                    style={{ width: "100%", height: "auto", display: "block" }}
-                    preview={{ mask: <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", background: "rgba(0,0,0,0.12)", backdropFilter: "blur(2px)" }}><Text style={{ color: "#fff", fontSize: 11 }}>查看</Text></div> }}
-                    {...getImgProps(img)} />
-                  <Text type="secondary" style={{
-                    fontSize: 10, textAlign: "center",
-                    display: "block", padding: "2px 0",
-                  }}>{dateStr}</Text>
-                </div>
-              );
-            })}
+            {images.map((img) => (
+              <div key={img.id} style={{
+                breakInside: "avoid", marginBottom: 0,
+                lineHeight: 0,
+              }}>
+                <Image src={img.url}
+                  style={{ width: "100%", height: "auto", display: "block" }}
+                  preview={{ mask: <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", background: "rgba(0,0,0,0.12)", backdropFilter: "blur(2px)" }}><Text style={{ color: "#fff", fontSize: 11 }}>查看</Text></div> }}
+                  {...getImgProps(img)} />
+              </div>
+            ))}
           </div>
         </Image.PreviewGroup>
         <div ref={observerRef} style={{ textAlign: "center", padding: "24px 16px" }}>
@@ -635,6 +627,18 @@ export default function GalleryPage() {
           )}
         </div>
         </>
+      ) : viewMode === "timeline" ? (
+        <TimelineView
+          images={images}
+          loading={loading}
+          page={page}
+          totalPages={totalPages}
+          loadImages={loadImages}
+          getImgProps={getImgProps}
+          downloadOne={downloadOne}
+          copyOne={copyOne}
+          handleQueryInfo={handleQueryInfo}
+        />
       ) : (
         /* ===== 普通视图：grid / compact / list ===== */
         <>
@@ -922,6 +926,142 @@ export default function GalleryPage() {
           </div>
         </>
       )}
+    </div>
+  );
+}
+
+/* ===== 时间线视图组件 ===== */
+
+function TimelineView({ images, loading, page, totalPages, loadImages, getImgProps, downloadOne, copyOne, handleQueryInfo }: {
+  images: ImageItem[];
+  loading: boolean;
+  page: number;
+  totalPages: number;
+  loadImages: (pageNum: number) => void;
+  getImgProps: (img: ImageItem) => any;
+  downloadOne: (url: string) => void;
+  copyOne: (url: string) => void;
+  handleQueryInfo: (url: string) => void;
+}) {
+  const timelineRef = useRef<HTMLDivElement>(null);
+  const [activeDate, setActiveDate] = useState<string>("");
+
+  // 按日期分组
+  const dateGroups = useMemo(() => {
+    const groups: Map<string, ImageItem[]> = new Map();
+    images.forEach((img) => {
+      const date = new Date(img.created_at).toLocaleDateString("zh-CN");
+      const existing = groups.get(date) || [];
+      existing.push(img);
+      groups.set(date, existing);
+    });
+    return Array.from(groups.entries());
+  }, [images]);
+
+  // 默认选中最新日期
+  useEffect(() => {
+    if (dateGroups.length > 0 && !activeDate) {
+      setActiveDate(dateGroups[0][0]);
+    }
+  }, [dateGroups, activeDate]);
+
+  const activeImages = dateGroups.find(([d]) => d === activeDate)?.[1] || [];
+  const observerRef = useRef<HTMLDivElement>(null);
+
+  // 无限滚动
+  useEffect(() => {
+    if (!observerRef.current || page >= totalPages || loading) return;
+    const observer = new IntersectionObserver(
+      (entries) => { if (entries[0].isIntersecting && page < totalPages && !loading) loadImages(page + 1); },
+      { threshold: 0.1 },
+    );
+    observer.observe(observerRef.current);
+    return () => observer.disconnect();
+  }, [page, totalPages, loading, loadImages]);
+
+  return (
+    <div>
+      {/* 时间轴 */}
+      <div style={{
+        position: "sticky", top: 0, zIndex: 10,
+        background: "var(--ant-color-bg-layout)",
+        borderBottom: "1px solid var(--ant-color-border-secondary)",
+        padding: "8px 0",
+      }}>
+        <div ref={timelineRef} style={{
+          display: "flex", gap: 0, overflowX: "auto",
+          padding: "0 16px",
+          scrollbarWidth: "thin",
+          WebkitOverflowScrolling: "touch",
+        }}>
+          {dateGroups.map(([date, imgs]) => {
+            const isActive = date === activeDate;
+            return (
+              <div key={date} onClick={() => setActiveDate(date)} style={{
+                flexShrink: 0, cursor: "pointer",
+                padding: "4px 12px", borderRadius: 16,
+                textAlign: "center", fontSize: 13,
+                fontWeight: isActive ? 600 : 400,
+                color: isActive ? "#fff" : "var(--ant-color-text-secondary)",
+                background: isActive ? "var(--ant-color-primary)" : "transparent",
+                transition: "all 0.15s",
+                whiteSpace: "nowrap",
+                userSelect: "none",
+              }}>
+                <div style={{ fontSize: 11, opacity: 0.8 }}>{date.split("/").slice(0, 2).join("/")}</div>
+                <div style={{ fontSize: 11 }}>{imgs.length}张</div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* 图片区 */}
+      <Image.PreviewGroup
+        preview={{
+          toolbarRender: (originalNode: React.ReactNode, info: { current: number }) => {
+            const idx = (info as any).current ?? 0;
+            const url = activeImages[idx]?.url || "";
+            const btnStyle: React.CSSProperties = { cursor: "pointer", color: "#fff", fontSize: 18, lineHeight: 1, padding: "2px 6px" };
+            return (
+              <div style={{ display: "flex", alignItems: "center", background: "rgba(0,0,0,0.45)", backdropFilter: "blur(10px)", borderRadius: 10, padding: "4px 8px", gap: 2 }}>
+                <Tooltip title="下载"><span onClick={() => url && downloadOne(url)} style={btnStyle}><DownloadOutlined /></span></Tooltip>
+                <Tooltip title="复制链接"><span onClick={() => url && copyOne(url)} style={btnStyle}><CopyOutlined /></span></Tooltip>
+                <Tooltip title="图片信息"><span onClick={() => url && handleQueryInfo(url)} style={btnStyle}><InfoCircleOutlined /></span></Tooltip>
+                {originalNode}
+              </div>
+            );
+          },
+        } as any}
+      >
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
+          gap: 8, padding: "12px 16px",
+        }}>
+          {activeImages.map((img) => (
+            <div key={img.id} style={{ borderRadius: 8, overflow: "hidden", background: "var(--ant-color-fill-quaternary)" }}>
+              <Image src={img.url}
+                style={{ width: "100%", height: "auto", display: "block", maxHeight: 300, objectFit: "cover" }}
+                preview={{ mask: <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", background: "rgba(0,0,0,0.12)", backdropFilter: "blur(2px)" }}><Text style={{ color: "#fff", fontSize: 11 }}>查看</Text></div> }}
+                {...getImgProps(img)} />
+            </div>
+          ))}
+        </div>
+      </Image.PreviewGroup>
+
+      <div ref={observerRef} style={{ textAlign: "center", padding: "24px 16px" }}>
+        {loading && <Spin size="small" />}
+        {!loading && page < totalPages && (
+          <Button type="link" icon={<ArrowDownOutlined />} onClick={() => loadImages(page + 1)} style={{ fontSize: 14 }}>加载更多</Button>
+        )}
+        {!loading && page >= totalPages && images.length > 0 && (
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, color: "#999" }}>
+            <CheckCircleOutlined style={{ color: "#52c41a", fontSize: 18 }} />
+            <Text type="secondary">已加载全部照片 🎉</Text>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
