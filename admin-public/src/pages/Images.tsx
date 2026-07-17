@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { apiGet, apiPost } from '../api';
+import { useAuth } from '../AuthContext';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { IconImage, IconCheck, IconX, IconTrash, IconRefresh, IconArrowLeft, IconArrowRight, IconGrid, IconList } from '../components/Icons';
 import type { ImageItem, PaginatedResponse } from '../types';
@@ -7,6 +8,8 @@ import type { ImageItem, PaginatedResponse } from '../types';
 interface Props { toast: (m: string, t?: 'success' | 'error') => void; }
 
 export function ImagesPage({ toast }: Props) {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 2;
   const [images, setImages] = useState<ImageItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('');
@@ -77,7 +80,7 @@ export function ImagesPage({ toast }: Props) {
 
   const selectAll = () => {
     const pendings = filtered.filter(i => i.status === 0);
-    if (selected.size === pendings.length) setSelected(new Set());
+    if (selected.size === pendings.length && pendings.length > 0) setSelected(new Set());
     else setSelected(new Set(pendings.map(i => i.id)));
   };
 
@@ -237,9 +240,11 @@ export function ImagesPage({ toast }: Props) {
                 {filtered.map((i, idx) => (
                   <tr key={i.id} className={selected.has(i.id) ? 'row-selected' : ''}>
                     <td style={{textAlign:'center'}}>
-                      <input type="checkbox" checked={selected.has(i.id)}
-                        onChange={() => toggleSelect(i.id)}
-                        style={{width:14,height:14,margin:0,cursor:'pointer'}} />
+                      {i.status === 0 && (
+                        <input type="checkbox" checked={selected.has(i.id)}
+                          onChange={() => toggleSelect(i.id)}
+                          style={{width:14,height:14,margin:0,cursor:'pointer'}} />
+                      )}
                     </td>
                     <td style={{color:'var(--accent)',fontWeight:600}}>#{i.id}</td>
                     <td>
@@ -253,9 +258,15 @@ export function ImagesPage({ toast }: Props) {
                     <td>{fmt(i.created_at)}</td>
                     <td>
                       <div className="btn-row">
-                        {i.status !== 1 && <button className="btn success xs" disabled={acting.has(i.id)} onClick={() => audit(i.id, 1)}><IconCheck size={12} /> 通过</button>}
-                        {i.status !== 2 && <button className="btn warn xs" disabled={acting.has(i.id)} onClick={() => audit(i.id, 2)}><IconX size={12} /> 拒绝</button>}
-                        <button className="btn danger xs" onClick={() => del(i.id)}><IconTrash size={12} /></button>
+                        {i.status === 0 && (
+                          <>
+                            <button className="btn success xs" disabled={acting.has(i.id)} onClick={() => audit(i.id, 1)}><IconCheck size={12} /> 通过</button>
+                            <button className="btn warn xs" disabled={acting.has(i.id)} onClick={() => audit(i.id, 2)}><IconX size={12} /> 拒绝</button>
+                          </>
+                        )}
+                        {i.status !== 0 && isAdmin && (
+                          <button className="btn danger xs" onClick={() => del(i.id)}><IconTrash size={12} /> 删除</button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -270,13 +281,15 @@ export function ImagesPage({ toast }: Props) {
               <div key={i.id}
                 className={`gallery-item ${selected.has(i.id) ? 'selected' : ''}`}
                 onClick={() => goPreview(idx)}
-                onContextMenu={e => { e.preventDefault(); toggleSelect(i.id); }}
+                onContextMenu={e => { e.preventDefault(); if (i.status === 0) toggleSelect(i.id); }}
               >
                 <span className="gallery-id">#{i.id}</span>
                 <span className={`gallery-badge gallery-status-${i.status}`}>{s[i.status]}</span>
-                <div className="gallery-check" onClick={e => { e.stopPropagation(); toggleSelect(i.id); }}>
-                  {selected.has(i.id) && <IconCheck size={14} />}
-                </div>
+                {i.status === 0 && (
+                  <div className="gallery-check" onClick={e => { e.stopPropagation(); toggleSelect(i.id); }}>
+                    {selected.has(i.id) && <IconCheck size={14} />}
+                  </div>
+                )}
                 <img src={i.url} alt={`#${i.id}`} loading="lazy"
                   onError={e => {
                     const t = e.target as HTMLImageElement;
@@ -348,6 +361,10 @@ export function ImagesPage({ toast }: Props) {
                       <IconX size={16} /> 不通过
                     </button>
                   </>
+                ) : isAdmin ? (
+                  <button className="btn danger" onClick={() => { del(previewItem.id); setPreviewIdx(-1); }}>
+                    <IconTrash size={16} /> 删除
+                  </button>
                 ) : (
                   <span className="preview-done">该图片已{previewItem.status === 1 ? '通过' : '拒绝'}</span>
                 )}

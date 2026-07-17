@@ -136,6 +136,20 @@ function AppShell() {
         <main className="content">{renderPage()}</main>
       </div>
 
+      {/* ---- 移动端底部导航 ---- */}
+      <nav className="mobile-nav">
+        {visibleTabs.map(({ key, label, Icon }) => (
+          <button
+            key={key}
+            className={`mobile-nav-item ${tab === key ? 'active' : ''}`}
+            onClick={() => setTab(key)}
+          >
+            <Icon size={20} />
+            <span>{label}</span>
+          </button>
+        ))}
+      </nav>
+
       <ToastContainer list={list} />
     </div>
   );
