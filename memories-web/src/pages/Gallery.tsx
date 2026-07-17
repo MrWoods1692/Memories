@@ -532,7 +532,9 @@ export default function GalleryPage() {
           } as any}
         >
           <div style={{
-            display: "flex", flexWrap: "wrap",
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))",
+            gridAutoRows: "180px",
             columnGap: 1, rowGap: 12,
             padding: 0,
           }}>
@@ -542,11 +544,10 @@ export default function GalleryPage() {
                 <div key={img.id} style={{
                   display: "flex", flexDirection: "column",
                   background: "var(--ant-color-bg-container)",
-                  flex: "1 0 auto",
                   overflow: "hidden",
                 }}>
                   <div style={{
-                    height: 180, overflow: "hidden",
+                    flex: 1, overflow: "hidden",
                     background: "var(--ant-color-fill-quaternary)",
                   }}>
                     <Image src={img.url} alt={dateStr}
