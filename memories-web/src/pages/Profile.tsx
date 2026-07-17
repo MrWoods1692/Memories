@@ -144,8 +144,8 @@ export default function ProfilePage() {
             value={isDark ? "dark" : "light"}
             onChange={(val) => { if ((val === "dark") !== isDark) toggleDark(); }}
             options={[
-              { label: "☀️ 浅色", value: "light" },
-              { label: "🌙 深色", value: "dark" },
+              { label: "浅色", value: "light", icon: <SunOutlined /> },
+              { label: "深色", value: "dark", icon: <MoonOutlined /> },
             ]}
           />
         </Card>
@@ -156,7 +156,7 @@ export default function ProfilePage() {
           title={<><FontSizeOutlined style={{ fontSize: 15 }} /> 字体与字号</>}>
           <div style={{
             display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))",
-            gap: 6, maxHeight: 240, overflow: "auto", marginBottom: 10,
+            gap: 6, marginBottom: 10,
           }}>
             {fontOptions.map((f) => {
               const isActive = font.id === f.id;

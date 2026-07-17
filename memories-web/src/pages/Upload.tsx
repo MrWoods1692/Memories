@@ -115,7 +115,7 @@ class UploadEngine {
         this.retryMap.set(record.id, retries);
         // 重新加入队列（标记为 failed 但会再次被 pick up）
         this.queue[idx] = { ...record, status: "failed" as const,
-          error: `重试 ${retries}/${this.maxRetry}: ${err instanceof Error ? err.message : "失败"}` };
+          error: err instanceof Error ? err.message : "上传失败" };
       } else {
         this.queue[idx] = { ...record, status: "failed" as const,
           error: err instanceof Error ? err.message : "上传失败" };
@@ -210,7 +210,7 @@ export default function UploadPage() {
           style={{ borderRadius: 16 }}>
           <p className="ant-upload-drag-icon"><CloudUploadOutlined style={{ fontSize: 48, color: accentColor }} /></p>
           <p className="ant-upload-text" style={{ fontSize: 16, fontWeight: 600 }}>点击或拖拽图片到此处</p>
-          <p className="ant-upload-hint" style={{ fontSize: 13 }}>支持 JPG / PNG / WebP · 可多选 · 自动重试 · 限制 5张/5秒</p>
+          <p className="ant-upload-hint" style={{ fontSize: 13 }}>支持 JPG / PNG / WebP · 可多选</p>
         </Dragger>
 
         {records.length > 0 && (

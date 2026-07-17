@@ -612,7 +612,7 @@ export default function GalleryPage() {
             {!loading && page >= totalPages && images.length > 0 && (
               <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, color: "#999" }}>
                 <CheckCircleOutlined style={{ color: "#52c41a", fontSize: 18 }} />
-                <Text type="secondary">已加载全部回忆 🎉</Text>
+                <Text type="secondary">已加载全部照片 🎉</Text>
               </div>
             )}
           </div>
