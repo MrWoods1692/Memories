@@ -536,8 +536,6 @@ export default function GalleryPage() {
                   </div>
                 ),
                 toolbarRender: (originalNode: React.ReactNode, info: { current: number; actions: Record<string, unknown> }) => {
-                  // 幻灯模式下不显示自定义按钮
-                  if (isSlideshowRef.current) return originalNode;
                   const idx = (info as any).current ?? 0;
                   const url = images[idx]?.url || "";
                   const btnStyle: React.CSSProperties = {
