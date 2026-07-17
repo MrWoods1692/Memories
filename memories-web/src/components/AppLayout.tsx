@@ -1,13 +1,18 @@
 import { type ReactNode, useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Layout, Menu } from "antd";
-import { PictureOutlined, CloudUploadOutlined, UserOutlined } from "@ant-design/icons";
+import { Button, Layout, Menu } from "antd";
+import { PictureOutlined, CloudUploadOutlined, UserOutlined, LoginOutlined } from "@ant-design/icons";
 import type { MenuProps } from "antd";
+import { useAuth } from "@/contexts/AuthContext";
 import BackToTop from "./BackToTop";
 
 const { Content, Sider } = Layout;
 
-const menuItems: MenuProps["items"] = [
+const guestMenuItems: MenuProps["items"] = [
+  { label: "广场", key: "/gallery", icon: <PictureOutlined /> },
+];
+
+const userMenuItems: MenuProps["items"] = [
   { label: "广场", key: "/gallery", icon: <PictureOutlined /> },
   { label: "上传", key: "/upload", icon: <CloudUploadOutlined /> },
   { label: "个人中心", key: "/profile", icon: <UserOutlined /> },
@@ -18,6 +23,7 @@ const desktopBreakpoint = 768;
 export default function AppLayout({ children }: { children: ReactNode }) {
   const location = useLocation();
   const navigate = useNavigate();
+  const { isLoggedIn, startLogin } = useAuth();
   const [isDesktop, setIsDesktop] = useState(
     typeof window !== "undefined" ? window.innerWidth >= desktopBreakpoint : false
   );
@@ -28,7 +34,8 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     return () => window.removeEventListener("resize", onResize);
   }, []);
 
-  const currentKey = menuItems?.find((opt) => opt && location.pathname.startsWith(opt.key as string))?.key || "/gallery";
+  const items = isLoggedIn ? userMenuItems : guestMenuItems;
+  const currentKey = items?.find((opt) => opt && location.pathname.startsWith(opt.key as string))?.key || "/gallery";
 
   return (
     <Layout style={{ minHeight: "100vh", background: "var(--ant-color-bg-layout)" }} hasSider={isDesktop}>
@@ -52,10 +59,16 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           <Menu
             mode="inline"
             selectedKeys={[currentKey as string]}
-            items={menuItems}
+            items={items}
             onClick={({ key }) => navigate(key)}
             style={{ borderRight: "none", marginTop: 8 }}
           />
+          {!isLoggedIn && (
+            <div style={{ padding: "8px 16px" }}>
+              <Button type="primary" block icon={<LoginOutlined />} onClick={startLogin}
+                style={{ borderRadius: 8 }}>登录 / 注册</Button>
+            </div>
+          )}
         </Sider>
       )}
       <Layout style={{ marginLeft: isDesktop ? 180 : 0, transition: "margin-left 0.2s" }}>
@@ -79,7 +92,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           <Menu
             mode="horizontal"
             selectedKeys={[currentKey as string]}
-            items={menuItems}
+            items={items}
             onClick={({ key }) => navigate(key)}
             style={{ justifyContent: "center", borderBottom: "none", background: "transparent" }}
           />

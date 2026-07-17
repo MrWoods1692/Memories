@@ -9,17 +9,21 @@ import GalleryPage from "@/pages/Gallery";
 import UploadPage from "@/pages/Upload";
 import ProfilePage from "@/pages/Profile";
 
-function ProtectedRoutes() {
+/** 需要登录才能访问的页面包裹 */
+function RequireAuth({ children }: { children: React.ReactNode }) {
   const { isLoggedIn, loading } = useAuth();
   if (loading) return null;
   if (!isLoggedIn) return <LoginPage />;
+  return <>{children}</>;
+}
 
+function AppRoutes() {
   return (
     <AppLayout>
       <Routes>
         <Route path="/gallery" element={<GalleryPage />} />
-        <Route path="/upload" element={<UploadPage />} />
-        <Route path="/profile" element={<ProfilePage />} />
+        <Route path="/upload" element={<RequireAuth><UploadPage /></RequireAuth>} />
+        <Route path="/profile" element={<RequireAuth><ProfilePage /></RequireAuth>} />
         <Route path="*" element={<Navigate to="/gallery" replace />} />
       </Routes>
     </AppLayout>
@@ -40,7 +44,7 @@ function ThemedApp() {
         <BrowserRouter>
           <AuthProvider>
             <Routes>
-              <Route path="/*" element={<ProtectedRoutes />} />
+              <Route path="/*" element={<AppRoutes />} />
             </Routes>
           </AuthProvider>
         </BrowserRouter>
