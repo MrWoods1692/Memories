@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { AuthProvider, useAuth } from './AuthContext';
 import { ThemeProvider, useTheme } from './ThemeContext';
 import { LoginPage } from './pages/Login';
@@ -14,12 +14,12 @@ import './App.css';
 
 type Tab = 'home' | 'images' | 'users' | 'bans' | 'settings';
 
-const tabs: { key: Tab; label: string; Icon: React.ComponentType<{size?:number}> }[] = [
-  { key: 'home', label: '服务状态', Icon: IconHome },
-  { key: 'images', label: '图片管理', Icon: IconImage },
-  { key: 'users', label: '用户管理', Icon: IconUsers },
-  { key: 'bans', label: '封禁管理', Icon: IconBan },
-  { key: 'settings', label: '网站配置', Icon: IconSettings },
+const allTabs: { key: Tab; label: string; Icon: React.ComponentType<{size?:number}>; roles: (1|2)[] }[] = [
+  { key: 'home', label: '服务状态', Icon: IconHome, roles: [1, 2] },
+  { key: 'images', label: '图片管理', Icon: IconImage, roles: [1, 2] },
+  { key: 'users', label: '用户管理', Icon: IconUsers, roles: [2] },
+  { key: 'bans', label: '封禁管理', Icon: IconBan, roles: [1, 2] },
+  { key: 'settings', label: '网站配置', Icon: IconSettings, roles: [2] },
 ];
 
 export default function App() {
@@ -55,8 +55,16 @@ function AppShell() {
 
   const roleLabel = user.role === 2 ? '管理员' : '审核员';
 
+  const visibleTabs = useMemo(
+    () => allTabs.filter(t => t.roles.includes(user.role)),
+    [user.role],
+  );
+
   const renderPage = () => {
-    switch (tab) {
+    // 审核员不能访问管理员专属页面
+    const canAccess = visibleTabs.some(t => t.key === tab);
+    const activeTab = canAccess ? tab : 'home';
+    switch (activeTab) {
       case 'home': return <DashboardPage toast={toast} />;
       case 'images': return <ImagesPage toast={toast} />;
       case 'users': return <UsersPage toast={toast} />;
@@ -82,7 +90,7 @@ function AppShell() {
         </div>
 
         <nav className="sidebar-nav">
-          {tabs.map(({ key, label, Icon }) => (
+          {visibleTabs.map(({ key, label, Icon }) => (
             <button
               key={key}
               className={`sidebar-item ${tab === key ? 'active' : ''}`}
@@ -117,7 +125,7 @@ function AppShell() {
         <header className="topbar">
           <div className="topbar-left">
             <span className="topbar-page-title">
-              {tabs.find(t => t.key === tab)?.label || ''}
+              {visibleTabs.find(t => t.key === tab)?.label || ''}
             </span>
           </div>
           <div className="topbar-right">
