@@ -3,7 +3,7 @@ import {
   Button, Card, Descriptions, Empty, Image, Modal, Segmented, Spin, Tag, Tooltip, Typography, App,
 } from "antd";
 import {
-  AppstoreOutlined, ArrowDownOutlined, CheckCircleOutlined, CheckSquareOutlined,
+  AppstoreOutlined, ArrowDownOutlined, BarsOutlined, BorderOutlined, CheckCircleOutlined, CheckSquareOutlined,
   CloseCircleOutlined, CopyOutlined, DownloadOutlined, EyeOutlined, InfoCircleOutlined, PictureOutlined,
   PlayCircleOutlined, PauseCircleOutlined, CaretRightOutlined,
   UnorderedListOutlined,
@@ -53,7 +53,7 @@ export default function GalleryPage() {
   const SLIDESHOW_INTERVAL = 4000;
 
   // 视图模式
-  type GalleryView = "grid" | "compact" | "list";
+  type GalleryView = "grid" | "compact" | "list" | "simple" | "river";
   const [viewMode, setViewMode] = useState<GalleryView>("grid");
 
   const toggleSelect = useCallback((id: number) => {
@@ -417,6 +417,8 @@ export default function GalleryPage() {
                 { value: "grid", icon: <AppstoreOutlined /> },
                 { value: "compact", icon: <PictureOutlined /> },
                 { value: "list", icon: <UnorderedListOutlined /> },
+                { value: "simple", icon: <BarsOutlined /> },
+                ...(isDesktop ? [{ value: "river" as const, icon: <BorderOutlined /> }] : []),
               ] as any}
               style={{ marginRight: 4 }}
             />
@@ -509,17 +511,84 @@ export default function GalleryPage() {
 
       {images.length === 0 && !loading ? (
         <Empty description="还没有人分享回忆，快来上传第一张吧！" />
-      ) : (
+      ) : viewMode === "river" ? (
         <>
-          <div className={`gallery-grid ${viewMode === "list" ? "gallery-grid-list" : ""}`} style={{
+        <Image.PreviewGroup
+          preview={{
+            toolbarRender: (originalNode: React.ReactNode, info: { current: number; actions: Record<string, unknown> }) => {
+              if (isSlideshowRef.current) return originalNode;
+              const idx = (info as any).current ?? 0;
+              const url = images[idx]?.url || "";
+              const btnStyle: React.CSSProperties = { cursor: "pointer", color: "#fff", fontSize: 18, lineHeight: 1, padding: "2px 6px" };
+              return (
+                <div style={{ display: "flex", alignItems: "center", background: "rgba(0,0,0,0.45)", backdropFilter: "blur(10px)", borderRadius: 10, padding: "4px 8px", gap: 2 }}>
+                  <Tooltip title="下载"><span onClick={() => url && downloadOne(url)} style={btnStyle}><DownloadOutlined /></span></Tooltip>
+                  <Tooltip title="复制链接"><span onClick={() => url && copyOne(url)} style={btnStyle}><CopyOutlined /></span></Tooltip>
+                  <Tooltip title="图片信息"><span onClick={() => url && handleQueryInfo(url)} style={btnStyle}><InfoCircleOutlined /></span></Tooltip>
+                  {originalNode}
+                </div>
+              );
+            },
+          } as any}
+        >
+          <div style={{
+            display: "flex", flexWrap: "wrap",
+            columnGap: 1, rowGap: 12,
+            padding: 0,
+          }}>
+            {images.map((img) => {
+              const dateStr = new Date(img.created_at).toLocaleDateString("zh-CN");
+              return (
+                <div key={img.id} style={{
+                  display: "flex", flexDirection: "column",
+                  background: "var(--ant-color-bg-container)",
+                  flex: "1 0 auto",
+                  overflow: "hidden",
+                }}>
+                  <div style={{
+                    height: 180, overflow: "hidden",
+                    background: "var(--ant-color-fill-quaternary)",
+                  }}>
+                    <Image src={img.url} alt={dateStr}
+                      style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                      preview={{ mask: <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", background: "rgba(0,0,0,0.12)", backdropFilter: "blur(2px)" }}><Text style={{ color: "#fff", fontSize: 11 }}>查看</Text></div> }}
+                      {...getImgProps(img)} />
+                  </div>
+                  <Text type="secondary" style={{
+                    fontSize: 10, textAlign: "center",
+                    padding: "2px 4px", lineHeight: 1.3,
+                    borderTop: "1px solid var(--ant-color-border-secondary)",
+                  }}>{dateStr}</Text>
+                </div>
+              );
+            })}
+          </div>
+        </Image.PreviewGroup>
+        <div ref={observerRef} style={{ textAlign: "center", padding: "24px 16px" }}>
+          {loading && <Spin size="small" />}
+          {!loading && page < totalPages && (
+            <Button type="link" icon={<ArrowDownOutlined />} onClick={() => loadImages(page + 1)} style={{ fontSize: 14 }}>加载更多</Button>
+          )}
+          {!loading && page >= totalPages && images.length > 0 && (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, color: "#999" }}>
+              <CheckCircleOutlined style={{ color: "#52c41a", fontSize: 18 }} />
+              <Text type="secondary">已加载全部照片 🎉</Text>
+            </div>
+          )}
+        </div>
+        </>
+      ) : (
+        /* ===== 普通视图：grid / compact / list ===== */
+        <>
+          <div className={`gallery-grid ${(viewMode === "list" || viewMode === "simple") ? "gallery-grid-list" : ""}`} style={{
             display: "grid",
-            gridTemplateColumns: viewMode === "list"
+            gridTemplateColumns: (viewMode === "list" || viewMode === "simple")
               ? "1fr"
               : viewMode === "compact"
               ? "repeat(auto-fill, minmax(min(180px, 100%), 1fr))"
               : "repeat(auto-fill, minmax(min(280px, 100%), 1fr))",
-            gap: viewMode === "compact" ? 8 : 16,
-            padding: "0 16px",
+            gap: (viewMode === "list" || viewMode === "simple") ? 0 : viewMode === "compact" ? 8 : 16,
+            padding: viewMode === "simple" ? "0" : "0 16px",
           }}>
             <Image.PreviewGroup
               preview={{
@@ -574,12 +643,36 @@ export default function GalleryPage() {
             {images.map((img) => {
               const isSel = selected.has(img.id);
               const dateStr = new Date(img.created_at).toLocaleDateString("zh-CN");
-              const isListView = viewMode === "list";
+              const isListView = viewMode === "list" || viewMode === "simple";
+              const isSimple = viewMode === "simple";
 
               if (isListView) {
                 const filename = img.url.split("/").pop() || "—";
                 const ext = filename.split(".").pop()?.toUpperCase() || "—";
                 const fullDate = new Date(img.created_at).toLocaleString("zh-CN");
+                const dateShort = new Date(img.created_at).toLocaleDateString("zh-CN");
+
+                if (isSimple) {
+                  /* ===== 简洁列表：仅日期 + 文件名 ===== */
+                  return (
+                    <div key={img.id} id={`list-row-${img.id}`}
+                      style={{
+                        display: "flex", alignItems: "center", gap: 10,
+                        padding: "6px 14px",
+                        borderBottom: "1px solid var(--ant-color-border-secondary)",
+                        cursor: batchMode ? "pointer" : "default",
+                      }}>
+                      <Text type="secondary" style={{ fontSize: 12, flexShrink: 0, width: 80 }}>{dateShort}</Text>
+                      <Text
+                        onClick={() => { if (!batchMode) { const el = document.getElementById(`list-row-${img.id}`)?.querySelector(".ant-image-img") as HTMLElement; el?.click(); } }}
+                        style={{
+                          flex: 1, fontSize: 13, cursor: "pointer", color: accentColor,
+                          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                        }}>{filename}</Text>
+                      <Image src={img.url} style={{ display: "none" }} preview={batchMode ? false : undefined} {...getImgProps(img)} />
+                    </div>
+                  );
+                }
                 return (
                   <div key={img.id} id={`list-row-${img.id}`} className="gallery-list-row"
                     onClick={batchMode ? () => toggleSelect(img.id) : undefined}
