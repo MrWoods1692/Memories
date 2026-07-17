@@ -4,7 +4,7 @@ import {
 } from "antd";
 import {
   AppstoreOutlined, ArrowDownOutlined, BarsOutlined, BlockOutlined, BorderOutlined, CheckCircleOutlined, CheckSquareOutlined,
-  CloseCircleOutlined, CopyOutlined, DownloadOutlined, EyeOutlined, FieldTimeOutlined, InfoCircleOutlined, PictureOutlined,
+  CloseCircleOutlined, CopyOutlined, DownloadOutlined, DragOutlined, EyeOutlined, FieldTimeOutlined, InfoCircleOutlined, PictureOutlined,
   PlayCircleOutlined, PauseCircleOutlined, CaretRightOutlined,
   UnorderedListOutlined,
 } from "@ant-design/icons";
@@ -53,7 +53,7 @@ export default function GalleryPage() {
   const SLIDESHOW_INTERVAL = 4000;
 
   // 视图模式
-  type GalleryView = "grid" | "compact" | "list" | "simple" | "river" | "masonry" | "timeline";
+  type GalleryView = "grid" | "compact" | "list" | "simple" | "river" | "masonry" | "timeline" | "free";
   const [viewMode, setViewMode] = useState<GalleryView>("grid");
 
   const toggleSelect = useCallback((id: number) => {
@@ -418,7 +418,7 @@ export default function GalleryPage() {
                 { value: "compact", icon: <PictureOutlined /> },
                 { value: "list", icon: <UnorderedListOutlined /> },
                 { value: "simple", icon: <BarsOutlined /> },
-                ...(isDesktop ? [{ value: "river" as const, icon: <BorderOutlined /> }, { value: "masonry" as const, icon: <BlockOutlined /> }, { value: "timeline" as const, icon: <FieldTimeOutlined /> }] : []),
+                ...(isDesktop ? [{ value: "river" as const, icon: <BorderOutlined /> }, { value: "masonry" as const, icon: <BlockOutlined /> }, { value: "timeline" as const, icon: <FieldTimeOutlined /> }, { value: "free" as const, icon: <DragOutlined /> }] : []),
               ] as any}
               style={{ marginRight: 4 }}
             />
@@ -638,6 +638,15 @@ export default function GalleryPage() {
           downloadOne={downloadOne}
           copyOne={copyOne}
           handleQueryInfo={handleQueryInfo}
+        />
+      ) : viewMode === "free" ? (
+        <FreeView
+          images={images}
+          loading={loading}
+          page={page}
+          totalPages={totalPages}
+          loadImages={loadImages}
+          getImgProps={getImgProps}
         />
       ) : (
         /* ===== 普通视图：grid / compact / list ===== */
@@ -983,36 +992,69 @@ function TimelineView({ images, loading, page, totalPages, loadImages, getImgPro
     <div>
       {/* 时间轴 */}
       <div style={{
-        position: "sticky", top: 0, zIndex: 10,
-        background: "var(--ant-color-bg-layout)",
+        background: "var(--ant-color-bg-container)",
         borderBottom: "1px solid var(--ant-color-border-secondary)",
-        padding: "8px 0",
+        padding: "10px 0 4px",
       }}>
-        <div ref={timelineRef} style={{
-          display: "flex", gap: 0, overflowX: "auto",
-          padding: "0 16px",
-          scrollbarWidth: "thin",
-          WebkitOverflowScrolling: "touch",
+        <div style={{
+          display: "flex", alignItems: "center", padding: "0 16px", marginBottom: 8,
         }}>
-          {dateGroups.map(([date, imgs]) => {
-            const isActive = date === activeDate;
-            return (
-              <div key={date} onClick={() => setActiveDate(date)} style={{
-                flexShrink: 0, cursor: "pointer",
-                padding: "4px 12px", borderRadius: 16,
-                textAlign: "center", fontSize: 13,
-                fontWeight: isActive ? 600 : 400,
-                color: isActive ? "#fff" : "var(--ant-color-text-secondary)",
-                background: isActive ? "var(--ant-color-primary)" : "transparent",
-                transition: "all 0.15s",
-                whiteSpace: "nowrap",
-                userSelect: "none",
-              }}>
-                <div style={{ fontSize: 11, opacity: 0.8 }}>{date.split("/").slice(0, 2).join("/")}</div>
-                <div style={{ fontSize: 11 }}>{imgs.length}张</div>
-              </div>
-            );
-          })}
+          <FieldTimeOutlined style={{ marginRight: 6, color: "var(--ant-color-primary)" }} />
+          <Text strong style={{ fontSize: 14 }}>时间轴</Text>
+          <Text type="secondary" style={{ fontSize: 12, marginLeft: 8 }}>共 {dateGroups.length} 个日期</Text>
+        </div>
+        <div style={{ position: "relative", padding: "0 20px" }}>
+          {/* 时间线 */}
+          <div style={{
+            position: "absolute", top: 28, left: 20, right: 20,
+            height: 2, background: "var(--ant-color-border-secondary)",
+          }} />
+          <div ref={timelineRef} style={{
+            display: "flex", gap: 0, overflowX: "auto",
+            padding: "8px 0 12px",
+            scrollbarWidth: "thin",
+            WebkitOverflowScrolling: "touch",
+            position: "relative",
+          }}>
+            {dateGroups.map(([date, imgs]) => {
+              const isActive = date === activeDate;
+              const parts = date.split("/");
+              return (
+                <div key={date} onClick={() => setActiveDate(date)} style={{
+                  flexShrink: 0, cursor: "pointer",
+                  textAlign: "center",
+                  userSelect: "none",
+                  padding: "0 14px",
+                  position: "relative",
+                }}>
+                  {/* 时间点 */}
+                  <div style={{
+                    width: isActive ? 14 : 10, height: isActive ? 14 : 10,
+                    borderRadius: "50%",
+                    background: isActive ? "var(--ant-color-primary)" : "var(--ant-color-border-secondary)",
+                    border: isActive ? "3px solid var(--ant-color-primary-bg)" : "none",
+                    margin: "0 auto 6px",
+                    transition: "all 0.2s",
+                    position: "relative", zIndex: 1,
+                  }} />
+                  <div style={{
+                    fontSize: isActive ? 15 : 13,
+                    fontWeight: isActive ? 700 : 500,
+                    color: isActive ? "var(--ant-color-primary)" : "var(--ant-color-text)",
+                    lineHeight: 1.2,
+                  }}>{parts[1]}/{parts[2]}</div>
+                  <div style={{
+                    fontSize: 10,
+                    color: isActive ? "var(--ant-color-primary)" : "var(--ant-color-text-secondary)",
+                    marginTop: 1,
+                  }}>{imgs.length}张</div>
+                  {parts[0] !== dateGroups[0]?.[0]?.split("/")[0] && (
+                    <div style={{ fontSize: 9, color: "var(--ant-color-text-quaternary)", marginTop: 1 }}>{parts[0]}年</div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
 
@@ -1054,6 +1096,140 @@ function TimelineView({ images, loading, page, totalPages, loadImages, getImgPro
         {loading && <Spin size="small" />}
         {!loading && page < totalPages && (
           <Button type="link" icon={<ArrowDownOutlined />} onClick={() => loadImages(page + 1)} style={{ fontSize: 14 }}>加载更多</Button>
+        )}
+        {!loading && page >= totalPages && images.length > 0 && (
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, color: "#999" }}>
+            <CheckCircleOutlined style={{ color: "#52c41a", fontSize: 18 }} />
+            <Text type="secondary">已加载全部照片 🎉</Text>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ===== 自由照片视图 ===== */
+
+function FreeView({ images, loading, page, totalPages, loadImages, getImgProps }: {
+  images: ImageItem[];
+  loading: boolean;
+  page: number;
+  totalPages: number;
+  loadImages: (pageNum: number) => void;
+  getImgProps: (img: ImageItem) => any;
+}) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [positions, setPositions] = useState<Map<number, { x: number; y: number; rotate: number }>>(new Map());
+  const dragRef = useRef<{ id: number; startX: number; startY: number; origX: number; origY: number } | null>(null);
+
+  useEffect(() => {
+    if (!containerRef.current || images.length === 0) return;
+    const w = containerRef.current.clientWidth;
+    const h = Math.max(600, window.innerHeight * 0.7);
+    setPositions((prev) => {
+      const next = new Map(prev);
+      images.forEach((img) => {
+        if (!next.has(img.id)) {
+          next.set(img.id, {
+            x: 40 + Math.random() * Math.max(w - 300, 100),
+            y: 20 + Math.random() * Math.max(h - 300, 100),
+            rotate: (Math.random() - 0.5) * 12,
+          });
+        }
+      });
+      return next;
+    });
+  }, [images]);
+
+  const onMouseDown = (id: number, e: React.MouseEvent) => {
+    e.preventDefault();
+    const pos = positions.get(id);
+    if (!pos) return;
+    dragRef.current = { id, startX: e.clientX, startY: e.clientY, origX: pos.x, origY: pos.y };
+  };
+
+  useEffect(() => {
+    const onMove = (e: MouseEvent) => {
+      if (!dragRef.current) return;
+      const dx = e.clientX - dragRef.current.startX;
+      const dy = e.clientY - dragRef.current.startY;
+      setPositions((prev) => {
+        const next = new Map(prev);
+        next.set(dragRef.current!.id, {
+          ...next.get(dragRef.current!.id)!,
+          x: dragRef.current!.origX + dx,
+          y: dragRef.current!.origY + dy,
+        });
+        return next;
+      });
+    };
+    const onUp = () => { dragRef.current = null; };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+  }, []);
+
+  const observerRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!observerRef.current || page >= totalPages || loading) return;
+    const observer = new IntersectionObserver(
+      (entries) => { if (entries[0].isIntersecting && page < totalPages && !loading) loadImages(page + 1); },
+      { threshold: 0.1 },
+    );
+    observer.observe(observerRef.current);
+    return () => observer.disconnect();
+  }, [page, totalPages, loading, loadImages]);
+
+  return (
+    <div ref={containerRef} style={{
+      position: "relative", minHeight: "70vh",
+      background: "var(--ant-color-bg-layout)",
+      overflow: "hidden", userSelect: "none",
+    }}>
+      <Image.PreviewGroup>
+        {images.map((img) => {
+          const pos = positions.get(img.id);
+          if (!pos) return null;
+          return (
+            <div key={img.id}
+              onMouseDown={(e) => onMouseDown(img.id, e)}
+              style={{
+                position: "absolute", left: pos.x, top: pos.y,
+                transform: `rotate(${pos.rotate}deg)`,
+                cursor: "grab", zIndex: 1,
+                padding: "10px 10px 40px 10px",
+                background: "#fff",
+                borderRadius: 2,
+                boxShadow: "1px 2px 8px rgba(0,0,0,0.15)",
+                transition: "box-shadow 0.2s",
+              }}
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLElement).style.boxShadow = "3px 6px 20px rgba(0,0,0,0.25)";
+                (e.currentTarget as HTMLElement).style.zIndex = "10";
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLElement).style.boxShadow = "1px 2px 8px rgba(0,0,0,0.15)";
+                (e.currentTarget as HTMLElement).style.zIndex = "1";
+              }}
+            >
+              <div style={{ width: 200, height: 160, overflow: "hidden", background: "#eee" }}>
+                <Image src={img.url}
+                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                  preview={{ mask: <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", background: "rgba(0,0,0,0.08)" }}><Text style={{ color: "#666", fontSize: 11 }}>查看</Text></div> }}
+                  {...getImgProps(img)} />
+              </div>
+            </div>
+          );
+        })}
+      </Image.PreviewGroup>
+
+      <div ref={observerRef} style={{ position: "absolute", bottom: 0, left: 0, right: 0, textAlign: "center", padding: "24px" }}>
+        {loading && <Spin size="small" />}
+        {!loading && page < totalPages && (
+          <Button type="link" icon={<ArrowDownOutlined />} onClick={() => loadImages(page + 1)}>加载更多</Button>
         )}
         {!loading && page >= totalPages && images.length > 0 && (
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, color: "#999" }}>
