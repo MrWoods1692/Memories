@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { Layout, Menu } from "antd";
 import { PictureOutlined, CloudUploadOutlined, UserOutlined } from "@ant-design/icons";
 import type { MenuProps } from "antd";
+import BackToTop from "./BackToTop";
 
 const { Content, Sider } = Layout;
 
@@ -84,6 +85,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           />
         </div>
       )}
+      <BackToTop />
     </Layout>
   );
 }
