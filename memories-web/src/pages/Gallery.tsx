@@ -4,7 +4,7 @@ import {
 } from "antd";
 import {
   AppstoreOutlined, ArrowDownOutlined, CheckCircleOutlined, CheckSquareOutlined,
-  CopyOutlined, DownloadOutlined, EyeOutlined, InfoCircleOutlined, PictureOutlined,
+  CloseCircleOutlined, CopyOutlined, DownloadOutlined, EyeOutlined, InfoCircleOutlined, PictureOutlined,
   PlayCircleOutlined, PauseCircleOutlined, CaretRightOutlined,
   UnorderedListOutlined,
 } from "@ant-design/icons";
@@ -28,6 +28,16 @@ export default function GalleryPage() {
   const [infoOpen, setInfoOpen] = useState(false);
   const [infoLoading, setInfoLoading] = useState(false);
   const [imageInfo, setImageInfo] = useState<ImageBedInfo | null>(null);
+
+  // 响应式断点
+  const [isDesktop, setIsDesktop] = useState(
+    typeof window !== "undefined" ? window.innerWidth >= 768 : false
+  );
+  useEffect(() => {
+    const onResize = () => setIsDesktop(window.innerWidth >= 768);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
 
   // 批量模式
   const [batchMode, setBatchMode] = useState(false);
@@ -422,18 +432,15 @@ export default function GalleryPage() {
                 style={{ borderRadius: 20, height: 36, fontWeight: 500,
                   borderColor: "var(--ant-color-border-secondary)" }}
               >
-                批量操作
+                {isDesktop ? "批量操作" : ""}
               </Button>
-            ) : (
+            ) : isDesktop ? (
               <div className="batch-capsule" style={{
                 display: "inline-flex", alignItems: "center", gap: 0,
                 background: "var(--ant-color-bg-container)",
                 borderRadius: 24, padding: "4px 6px",
                 boxShadow: "var(--ant-box-shadow-secondary)",
                 border: "1px solid var(--ant-color-border-secondary)",
-                maxWidth: "calc(100vw - 80px)",
-                overflowX: "auto", whiteSpace: "nowrap",
-                WebkitOverflowScrolling: "touch",
               }}>
                 <Button type="text" size="small" onClick={selectAll}
                   style={{ borderRadius: 18, fontWeight: 500 }}>
@@ -462,7 +469,36 @@ export default function GalleryPage() {
                 退出
               </Button>
             </div>
-          )}
+            ) : (
+              <div style={{
+                display: "inline-flex", alignItems: "center", gap: 4,
+                background: "var(--ant-color-bg-container)",
+                borderRadius: 24, padding: "2px 4px",
+                boxShadow: "var(--ant-box-shadow-secondary)",
+                border: "1px solid var(--ant-color-border-secondary)",
+              }}>
+                <Tooltip title={`全选 ${images.length}`}>
+                  <Button type="text" size="small" icon={<CheckSquareOutlined />}
+                    onClick={selectAll} style={{ borderRadius: 18, minWidth: 32 }} />
+                </Tooltip>
+                <Button type="text" size="small" icon={<CloseCircleOutlined />}
+                  onClick={deselectAll} style={{ borderRadius: 18, minWidth: 32 }} />
+                <div style={{ width: 1, height: 18, background: "var(--ant-color-border-secondary)" }} />
+                <Button type="text" size="small" icon={<DownloadOutlined />}
+                  onClick={batchDownload} disabled={selected.size === 0}
+                  style={{ borderRadius: 18, color: accentColor, minWidth: 32 }}>
+                  <span style={{ fontSize: 11, marginLeft: 2 }}>{selected.size}</span>
+                </Button>
+                <Button type="text" size="small" icon={<CopyOutlined />}
+                  onClick={batchCopy} disabled={selected.size === 0}
+                  style={{ borderRadius: 18, color: accentColor, minWidth: 32 }}>
+                  <span style={{ fontSize: 11, marginLeft: 2 }}>{selected.size}</span>
+                </Button>
+                <div style={{ width: 1, height: 18, background: "var(--ant-color-border-secondary)" }} />
+                <Button type="text" size="small" danger icon={<CloseCircleOutlined />}
+                  onClick={toggleBatchMode} style={{ borderRadius: 18, minWidth: 32 }} />
+              </div>
+            )}
         </div>
       </div>
       </div>
@@ -655,11 +691,14 @@ export default function GalleryPage() {
       )}
 
       <Modal title="图片信息" open={infoOpen} onCancel={() => setInfoOpen(false)}
-        footer={null} width={520} destroyOnHidden>
+        footer={null} width={isDesktop ? 520 : "100%"}
+        style={isDesktop ? {} : { maxWidth: "100vw", margin: 0, padding: 0 }}
+        styles={isDesktop ? {} : { body: { padding: "12px 8px" } }}
+        destroyOnHidden>
         {infoLoading ? (
           <div style={{ textAlign: "center", padding: 40 }}><Spin /></div>
         ) : imageInfo ? (
-          <Descriptions column={2} size="small" bordered labelStyle={{ fontWeight: 500, whiteSpace: "nowrap" }}>
+          <Descriptions column={isDesktop ? 2 : 1} size="small" bordered labelStyle={{ fontWeight: 500, whiteSpace: "nowrap" }}>
             <Descriptions.Item label="文件名" span={2}>
               <Text copyable style={{ fontSize: 12 }}>{imageInfo.filename}</Text>
             </Descriptions.Item>
