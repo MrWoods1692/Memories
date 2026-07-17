@@ -21,6 +21,7 @@ function AppRoutes() {
   return (
     <AppLayout>
       <Routes>
+        <Route path="/" element={<GalleryPage />} />
         <Route path="/gallery" element={<GalleryPage />} />
         <Route path="/upload" element={<RequireAuth><UploadPage /></RequireAuth>} />
         <Route path="/profile" element={<RequireAuth><ProfilePage /></RequireAuth>} />

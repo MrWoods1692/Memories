@@ -7,8 +7,8 @@ import type {
   UploadImageResponse,
 } from "@/types";
 
-/** 开发模式走 Vite 代理，生产模式直连 */
-const BASE = import.meta.env.DEV ? "" : "https://api.mrcwoods.com";
+/** API 基地址：开发/生产均直连后端，避免 Vite 代理干扰 OAuth 重定向流程 */
+const BASE = "https://api.mrcwoods.com";
 
 /* ==================== Token 管理 ==================== */
 
