@@ -230,7 +230,7 @@ export default function GalleryPage() {
   // 统一预览工具条：自定义按钮 + antd 原生操作（旋转/缩放/关闭），移动端自动换行
   const makePreviewTools = useCallback((url: string) => {
     const btnStyle: React.CSSProperties = {
-      color: "rgba(255,255,255,0.85)", fontSize: 16, cursor: "pointer",
+      color: "rgba(255,255,255,0.85)", fontSize: 20, cursor: "pointer",
       padding: 6, display: "inline-flex", alignItems: "center",
     };
     return (
@@ -683,6 +683,9 @@ toolbarRender: (originalNode: React.ReactNode, info: { current: number; actions:
           totalPages={totalPages}
           loadImages={loadImages}
           getImgProps={getImgProps}
+          downloadOne={downloadOne}
+          copyOne={copyOne}
+          handleQueryInfo={handleQueryInfo}
         />
       ) : (
         /* ===== 普通视图：grid / compact / list ===== */
@@ -964,9 +967,9 @@ function TimelineView({ images, loading, page, totalPages, loadImages, getImgPro
 
   const makeTools = useCallback((url: string) => (
     <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 2, padding: "0 4px" }}>
-      <Tooltip title="下载图片"><span onClick={() => url && downloadOne(url)} style={{ color: "rgba(255,255,255,0.85)", fontSize: 16, cursor: "pointer", padding: 6, display: "inline-flex", alignItems: "center" }}><DownloadOutlined /></span></Tooltip>
-      <Tooltip title="复制链接"><span onClick={() => url && copyOne(url)} style={{ color: "rgba(255,255,255,0.85)", fontSize: 16, cursor: "pointer", padding: 6, display: "inline-flex", alignItems: "center" }}><CopyOutlined /></span></Tooltip>
-      <Tooltip title="图片信息"><span onClick={() => url && handleQueryInfo(url)} style={{ color: "rgba(255,255,255,0.85)", fontSize: 16, cursor: "pointer", padding: 6, display: "inline-flex", alignItems: "center" }}><InfoCircleOutlined /></span></Tooltip>
+      <Tooltip title="下载图片"><span onClick={() => url && downloadOne(url)} style={{ color: "rgba(255,255,255,0.85)", fontSize: 20, cursor: "pointer", padding: 6, display: "inline-flex", alignItems: "center" }}><DownloadOutlined /></span></Tooltip>
+      <Tooltip title="复制链接"><span onClick={() => url && copyOne(url)} style={{ color: "rgba(255,255,255,0.85)", fontSize: 20, cursor: "pointer", padding: 6, display: "inline-flex", alignItems: "center" }}><CopyOutlined /></span></Tooltip>
+      <Tooltip title="图片信息"><span onClick={() => url && handleQueryInfo(url)} style={{ color: "rgba(255,255,255,0.85)", fontSize: 20, cursor: "pointer", padding: 6, display: "inline-flex", alignItems: "center" }}><InfoCircleOutlined /></span></Tooltip>
     </div>
   ), [downloadOne, copyOne, handleQueryInfo]);
 
@@ -1116,13 +1119,16 @@ toolbarRender: (originalNode: React.ReactNode, info: { current: number }) => {
 
 /* ===== 自由照片视图 ===== */
 
-function FreeView({ images, loading, page, totalPages, loadImages, getImgProps }: {
+function FreeView({ images, loading, page, totalPages, loadImages, getImgProps, downloadOne, copyOne, handleQueryInfo }: {
   images: ImageItem[];
   loading: boolean;
   page: number;
   totalPages: number;
   loadImages: (pageNum: number) => void;
   getImgProps: (img: ImageItem) => any;
+  downloadOne: (url: string) => void;
+  copyOne: (url: string) => void;
+  handleQueryInfo: (url: string) => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [positions, setPositions] = useState<Map<number, { x: number; y: number; rotate: number }>>(new Map());
@@ -1216,7 +1222,28 @@ function FreeView({ images, loading, page, totalPages, loadImages, getImgProps }
       background: "var(--ant-color-bg-layout)",
       overflow: "hidden", userSelect: "none",
     }}>
-      <Image.PreviewGroup>
+      <Image.PreviewGroup
+        preview={{
+          mask: (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", background: "rgba(0,0,0,0.12)", backdropFilter: "blur(2px)" }}>
+              <EyeOutlined style={{ color: "#fff", fontSize: 20, marginRight: 6 }} />
+              <Text style={{ color: "#fff", fontSize: 12, opacity: 0.85 }}>点击预览</Text>
+            </div>
+          ),
+          toolbarRender: (originalNode: React.ReactNode, info: { current: number; actions: Record<string, unknown> }) => {
+            const url = images[(info as any).current ?? 0]?.url || "";
+            const btnStyle: React.CSSProperties = { color: "rgba(255,255,255,0.85)", fontSize: 20, cursor: "pointer", padding: 6, display: "inline-flex", alignItems: "center" };
+            return (
+              <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 2, padding: "0 4px" }}>
+                <Tooltip title="下载图片"><span onClick={() => url && downloadOne(url)} style={btnStyle}><DownloadOutlined /></span></Tooltip>
+                <Tooltip title="复制链接"><span onClick={() => url && copyOne(url)} style={btnStyle}><CopyOutlined /></span></Tooltip>
+                <Tooltip title="图片信息"><span onClick={() => url && handleQueryInfo(url)} style={btnStyle}><InfoCircleOutlined /></span></Tooltip>
+                {originalNode}
+              </div>
+            );
+          },
+        } as any}
+      >
         {images.map((img) => {
           const pos = positions.get(img.id);
           if (!pos) return null;
@@ -1243,12 +1270,10 @@ function FreeView({ images, loading, page, totalPages, loadImages, getImgProps }
               onMouseEnter={(e) => {
                 if (draggingId) return;
                 (e.currentTarget as HTMLElement).style.boxShadow = "3px 6px 20px rgba(0,0,0,0.25)";
-                (e.currentTarget as HTMLElement).style.zIndex = "10";
               }}
               onMouseLeave={(e) => {
                 if (draggingId) return;
                 (e.currentTarget as HTMLElement).style.boxShadow = "1px 2px 8px rgba(0,0,0,0.15)";
-                (e.currentTarget as HTMLElement).style.zIndex = "1";
               }}
             >
               <div style={{ width: 200, height: 160, overflow: "hidden", background: "#eee" }}>
