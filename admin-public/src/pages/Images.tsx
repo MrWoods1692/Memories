@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import { apiGet, apiPost } from '../api';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { IconImage, IconCheck, IconX, IconTrash, IconRefresh, IconArrowLeft, IconArrowRight, IconGrid, IconList } from '../components/Icons';
-import type { ImageItem } from '../types';
+import type { ImageItem, PaginatedResponse } from '../types';
 
 interface Props { toast: (m: string, t?: 'success' | 'error') => void; }
 
@@ -21,8 +21,8 @@ export function ImagesPage({ toast }: Props) {
   const load = async () => {
     setLoading(true);
     try {
-      const data = await apiGet<ImageItem[]>('/images');
-      setImages(Array.isArray(data) ? data : []);
+      const data = await apiGet<PaginatedResponse<ImageItem>>('/images');
+      setImages(data?.items ?? []);
     } catch { toast('加载失败', 'error'); }
     finally { setLoading(false); }
   };

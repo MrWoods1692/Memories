@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { apiGet } from '../api';
 import { IconImage, IconRefresh, IconBattery, IconCpu, IconMemory, IconDisk } from '../components/Icons';
-import type { ServerStatus, ImageItem, ResourceInfo, MemoryDiskInfo } from '../types';
+import type { ServerStatus, ImageItem, ResourceInfo, MemoryDiskInfo, PaginatedResponse } from '../types';
 
 interface Props { toast: (m: string, t?: 'success' | 'error') => void; }
 
@@ -134,7 +134,7 @@ export function DashboardPage({ toast: _toast }: Props) {
     try {
       const [s, imgs, sysInfo] = await Promise.all([
         apiGet<ServerStatus>('/status'),
-        apiGet<ImageItem[]>('/images'),
+        apiGet<PaginatedResponse<ImageItem>>('/images'),
         apiGet<any>('/sysinfo').catch(() => null),
       ]);
       // 将 /sysinfo 数据合并到 status 中
@@ -179,7 +179,7 @@ export function DashboardPage({ toast: _toast }: Props) {
         }
       }
       setStatus(s);
-      setRecent(Array.isArray(imgs) ? imgs.slice(0, 6) : []);
+      setRecent((imgs?.items ?? []).slice(0, 6));
     } catch { /* ignore */ }
     finally { setLoading(false); }
   };
