@@ -228,6 +228,7 @@ export default function GalleryPage() {
   const lastLoadTime = useRef(0);
   const pendingPage = useRef<number | null>(null);
   const retryCount = useRef<Map<number, number>>(new Map()); // API 请求重试计数
+  const loadingRef = useRef(false);
   const LOAD_INTERVAL = 1100;
   const MAX_RETRY = 5;
 
@@ -238,13 +239,14 @@ export default function GalleryPage() {
     if (elapsed < LOAD_INTERVAL && !isRetry) {
       // 冷却中，排队等待
       pendingPage.current = pageNum;
-      if (!loading) setLoading(true);
+      if (!loadingRef.current) { setLoading(true); loadingRef.current = true; }
       return;
     }
 
     lastLoadTime.current = now;
     pendingPage.current = null;
     setLoading(true);
+    loadingRef.current = true;
 
     try {
       const res = await fetchImages(pageNum, 20, forceRefresh);
@@ -271,16 +273,18 @@ export default function GalleryPage() {
         retryCount.current.delete(pageNum);
         message.error("加载失败: " + (err instanceof Error ? err.message : "未知错误"));
         setLoading(false);
+        loadingRef.current = false;
         setInitialLoading(false);
       }
       return;
     } finally {
       if (!retryCount.current.has(pageNum)) {
         setLoading(false);
+        loadingRef.current = false;
         setInitialLoading(false);
       }
     }
-  }, [message, loading]);
+  }, [message]); // 移除 loading 依赖，避免无限重入
 
   // 单张图片 onError 重试
   const imgRetryCount = useRef<Map<number, number>>(new Map());
