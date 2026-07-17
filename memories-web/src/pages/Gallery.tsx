@@ -122,7 +122,8 @@ export default function GalleryPage() {
   const stopSlideshow = useCallback(() => {
     setSlideshow(false);
     setSlideshowPaused(false);
-    isSlideshowRef.current = false;
+    // 延迟关闭 ref，避免退出时工具栏闪现
+    setTimeout(() => { isSlideshowRef.current = false; }, 400);
     document.body.classList.remove("slideshow-active");
     if (slideshowTimer.current) {
       clearInterval(slideshowTimer.current);
@@ -419,14 +420,13 @@ export default function GalleryPage() {
               ] as any}
               style={{ marginRight: 4 }}
             />
-            <Tooltip title={slideshow ? "停止幻灯" : "幻灯播放"}>
-              <Button
-                onClick={toggleSlideshow}
-                type={slideshow ? "primary" : "default"}
-                icon={slideshow ? <PauseCircleOutlined /> : <PlayCircleOutlined />}
-                style={{ borderRadius: 20, height: 36 }}
-              />
-            </Tooltip>
+            <Button
+              onClick={toggleSlideshow}
+              type={slideshow ? "primary" : "default"}
+              icon={slideshow ? <PauseCircleOutlined /> : <PlayCircleOutlined />}
+              title={slideshow ? "停止幻灯" : "幻灯播放"}
+              style={{ borderRadius: 20, height: 36 }}
+            />
               </>
             )}
             {!batchMode ? (
