@@ -1155,6 +1155,7 @@ function FreeView({ images, loading, page, totalPages, loadImages, getImgProps }
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [positions, setPositions] = useState<Map<number, { x: number; y: number; rotate: number }>>(new Map());
+  const [draggingId, setDraggingId] = useState<number | null>(null);
   const dragRef = useRef<{ id: number; startX: number; startY: number; origX: number; origY: number } | null>(null);
 
   useEffect(() => {
@@ -1176,18 +1177,32 @@ function FreeView({ images, loading, page, totalPages, loadImages, getImgProps }
     });
   }, [images]);
 
-  const onMouseDown = (id: number, e: React.MouseEvent) => {
-    e.preventDefault();
+  const startDrag = (id: number, clientX: number, clientY: number) => {
     const pos = positions.get(id);
     if (!pos) return;
-    dragRef.current = { id, startX: e.clientX, startY: e.clientY, origX: pos.x, origY: pos.y };
+    dragRef.current = { id, startX: clientX, startY: clientY, origX: pos.x, origY: pos.y };
+    setDraggingId(id);
+  };
+
+  const onMouseDown = (id: number, e: React.MouseEvent) => {
+    e.preventDefault();
+    startDrag(id, e.clientX, e.clientY);
+  };
+
+  const onTouchStart = (id: number, e: React.TouchEvent) => {
+    const t = e.touches[0];
+    if (!t) return;
+    startDrag(id, t.clientX, t.clientY);
   };
 
   useEffect(() => {
-    const onMove = (e: MouseEvent) => {
+    const onMove = (e: MouseEvent | TouchEvent) => {
       if (!dragRef.current) return;
-      const dx = e.clientX - dragRef.current.startX;
-      const dy = e.clientY - dragRef.current.startY;
+      const clientX = 'touches' in e ? e.touches[0]?.clientX : e.clientX;
+      const clientY = 'touches' in e ? e.touches[0]?.clientY : e.clientY;
+      if (clientX == null || clientY == null) return;
+      const dx = clientX - dragRef.current.startX;
+      const dy = clientY - dragRef.current.startY;
       setPositions((prev) => {
         const next = new Map(prev);
         next.set(dragRef.current!.id, {
@@ -1198,12 +1213,16 @@ function FreeView({ images, loading, page, totalPages, loadImages, getImgProps }
         return next;
       });
     };
-    const onUp = () => { dragRef.current = null; };
+    const onUp = () => { dragRef.current = null; setDraggingId(null); };
     window.addEventListener("mousemove", onMove);
     window.addEventListener("mouseup", onUp);
+    window.addEventListener("touchmove", onMove, { passive: false });
+    window.addEventListener("touchend", onUp);
     return () => {
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
+      window.removeEventListener("touchmove", onMove);
+      window.removeEventListener("touchend", onUp);
     };
   }, []);
 
@@ -1231,21 +1250,28 @@ function FreeView({ images, loading, page, totalPages, loadImages, getImgProps }
           return (
             <div key={img.id}
               onMouseDown={(e) => onMouseDown(img.id, e)}
+              onTouchStart={(e) => onTouchStart(img.id, e)}
               style={{
                 position: "absolute", left: pos.x, top: pos.y,
                 transform: `rotate(${pos.rotate}deg)`,
-                cursor: "grab", zIndex: 1,
+                cursor: draggingId === img.id ? "grabbing" : "grab",
+                zIndex: draggingId === img.id ? 1000 : 1,
                 padding: "10px 10px 40px 10px",
                 background: "#fff",
                 borderRadius: 2,
-                boxShadow: "1px 2px 8px rgba(0,0,0,0.15)",
-                transition: "box-shadow 0.2s",
+                boxShadow: draggingId === img.id
+                  ? "4px 8px 24px rgba(0,0,0,0.3)"
+                  : "1px 2px 8px rgba(0,0,0,0.15)",
+                transition: draggingId === img.id ? "none" : "box-shadow 0.2s",
+                touchAction: "none",
               }}
               onMouseEnter={(e) => {
+                if (draggingId) return;
                 (e.currentTarget as HTMLElement).style.boxShadow = "3px 6px 20px rgba(0,0,0,0.25)";
                 (e.currentTarget as HTMLElement).style.zIndex = "10";
               }}
               onMouseLeave={(e) => {
+                if (draggingId) return;
                 (e.currentTarget as HTMLElement).style.boxShadow = "1px 2px 8px rgba(0,0,0,0.15)";
                 (e.currentTarget as HTMLElement).style.zIndex = "1";
               }}
