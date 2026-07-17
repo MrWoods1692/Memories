@@ -407,6 +407,8 @@ export default function GalleryPage() {
             共 {images.length} 张
           </Text>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            {!batchMode && (
+              <>
             <Segmented size="small"
               value={viewMode}
               onChange={(v) => setViewMode(v as GalleryView)}
@@ -425,6 +427,8 @@ export default function GalleryPage() {
                 style={{ borderRadius: 20, height: 36 }}
               />
             </Tooltip>
+              </>
+            )}
             {!batchMode ? (
               <Button
                 onClick={toggleBatchMode}
