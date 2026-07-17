@@ -1082,6 +1082,23 @@ public class EmbeddedServer extends NanoHTTPD {
                 // 检查该 QQ 是否在审核员/管理员列表中
                 int role = db.getUserRole(userQq);
 
+                // 管理面板登录：仅管理员/审核员可访问；其他前端接入：任何用户均可登录
+                boolean isAdminLogin = isAdminRedirect(frontendRedirect);
+                if (isAdminLogin && role < 1) {
+                    if (frontendRedirect != null && !frontendRedirect.isEmpty()) {
+                        String sep2 = frontendRedirect.contains("?") ? "&" : "?";
+                        String loc2 = frontendRedirect + sep2 + "error=access_denied";
+                        Response r2 = NanoHTTPD.newFixedLengthResponse(Status.REDIRECT, "text/html",
+                            "<html><body>权限不足，正在跳转...<script>location.replace('" + loc2 + "');</script></body></html>");
+                        r2.addHeader("Location", loc2);
+                        return r2;
+                    }
+                    JSONObject err2 = new JSONObject();
+                    err2.put("error", "access_denied");
+                    err2.put("message", "非管理员或审核员，无权访问管理面板");
+                    return NanoHTTPD.newFixedLengthResponse(Status.FORBIDDEN, "application/json", err2.toString());
+                }
+
                 JSONObject result = new JSONObject();
                 result.put("qq", userQq);
                 result.put("username", userName);
@@ -1194,6 +1211,23 @@ public class EmbeddedServer extends NanoHTTPD {
         }
 
         return NanoHTTPD.newFixedLengthResponse(Status.NOT_IMPLEMENTED, "text/plain", "Not Implemented");
+    }
+
+    /**
+     * 判断前端重定向 URL 是否为管理面板（域名以 admin 开头）
+     */
+    private static boolean isAdminRedirect(String redirectUrl) {
+        if (redirectUrl == null || redirectUrl.isEmpty()) return false;
+        try {
+            if (redirectUrl.startsWith("http://") || redirectUrl.startsWith("https://")) {
+                java.net.URL url = new java.net.URL(redirectUrl);
+                String host = url.getHost();
+                return host.startsWith("admin") || host.startsWith("admin.");
+            }
+            return redirectUrl.startsWith("/admin");
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     private static String urlEncode(String s) {

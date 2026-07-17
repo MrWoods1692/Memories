@@ -11,8 +11,13 @@ export function LoginPage() {
     const params = new URLSearchParams(window.location.search);
     const hasToken = params.get('token');
     const hasQq = params.get('qq');
+    const error = params.get('error');
 
-    if (hasToken || hasQq) {
+    // 后端拒绝访问（管理面板但非管理员/审核员）
+    if (error === 'access_denied') {
+      setPhase('denied');
+      window.history.replaceState({}, '', window.location.pathname);
+    } else if (hasToken || hasQq) {
       setPhase('checking');
       const ok = handleCallback();
       if (!ok) setPhase('denied');
