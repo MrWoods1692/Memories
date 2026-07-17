@@ -39,6 +39,11 @@ function AppShell() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const { list, toast } = useToast();
 
+  const visibleTabs = useMemo(
+    () => allTabs.filter(t => t.roles.includes(user?.role ?? 1)),
+    [user?.role],
+  );
+
   if (loading) {
     return (
       <div className="login-page">
@@ -54,11 +59,6 @@ function AppShell() {
   if (!user) return <LoginPage />;
 
   const roleLabel = user.role === 2 ? '管理员' : '审核员';
-
-  const visibleTabs = useMemo(
-    () => allTabs.filter(t => t.roles.includes(user.role)),
-    [user.role],
-  );
 
   const renderPage = () => {
     // 审核员不能访问管理员专属页面
