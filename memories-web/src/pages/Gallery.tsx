@@ -317,7 +317,42 @@ export default function GalleryPage() {
     fallback: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2VlZSIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSIgZmlsbD0iIzk5OSIgZm9udC1zaXplPSIxNiI+5Zu+54mH5Yqg6L295aSx6LSlPC90ZXh0Pjwvc3ZnPg==",
   }), [handleImgError]);
 
-  useEffect(() => { loadImages(1, false, true); }, [loadImages]);
+  // 初次加载：缓存优先 → 后台同步 → 有新增则提示
+  const cachedIdsRef = useRef<Set<number>>(new Set());
+
+  useEffect(() => {
+    const init = async () => {
+      // 1. 先从缓存加载，立即显示
+      try {
+        const cached = await fetchImages(1, 20, false);
+        if (cached.items.length > 0) {
+          setImages(cached.items);
+          setTotalPages(cached.totalPages);
+          cachedIdsRef.current = new Set(cached.items.map((i) => i.id));
+          setInitialLoading(false); // 有缓存，立即显示
+        }
+      } catch { /* 无缓存或出错，继续等待网络请求 */ }
+
+      // 2. 后台同步最新数据
+      try {
+        const fresh = await fetchImages(1, 20, true);
+        const newItems = fresh.items.filter((i) => !cachedIdsRef.current.has(i.id));
+        if (newItems.length > 0 && cachedIdsRef.current.size > 0) {
+          message.info(`📷 有 ${newItems.length} 张新照片`);
+        }
+        setImages(fresh.items);
+        setTotalPages(fresh.totalPages);
+        setPage(1);
+      } catch {
+        // 网络失败，保持缓存数据
+      } finally {
+        setInitialLoading(false);
+        setLoading(false);
+        loadingRef.current = false;
+      }
+    };
+    init();
+  }, []); // 仅挂载时运行一次
 
   useEffect(() => {
     if (!observerRef.current || page >= totalPages || loading) return;
