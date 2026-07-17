@@ -199,7 +199,7 @@ export default function UploadPage() {
     <div style={{ padding: "0 0 24px" }}>
       <div style={{ textAlign: "center", padding: "32px 16px 20px" }}>
         <Title level={3} style={{ margin: 0, fontWeight: 700, color: accentColor }}>
-          <PlusCircleOutlined style={{ marginRight: 6 }} />上传回忆
+          <PlusCircleOutlined style={{ marginRight: 6 }} />上传照片
         </Title>
         <Text type="secondary" style={{ display: "block", marginTop: 8 }}>选择图片，多选自动加入上传队列</Text>
       </div>
