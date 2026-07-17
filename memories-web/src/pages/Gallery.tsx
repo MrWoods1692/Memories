@@ -543,6 +543,12 @@ export default function GalleryPage() {
         <>
         <Image.PreviewGroup
           preview={{
+            mask: (
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", background: "rgba(0,0,0,0.12)", backdropFilter: "blur(2px)" }}>
+                <EyeOutlined style={{ color: "#fff", fontSize: 20, marginRight: 6 }} />
+                <Text style={{ color: "#fff", fontSize: 12, opacity: 0.85 }}>点击预览</Text>
+              </div>
+            ),
             toolbarRender: (originalNode: React.ReactNode, info: { current: number; actions: Record<string, unknown> }) => {
               if (isSlideshowRef.current) return originalNode;
               const idx = (info as any).current ?? 0;
@@ -580,7 +586,6 @@ export default function GalleryPage() {
                   }}>
                     <Image src={img.url} alt={dateStr}
                       style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-                      preview={{ mask: <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", background: "rgba(0,0,0,0.12)", backdropFilter: "blur(2px)" }}><Text style={{ color: "#fff", fontSize: 11 }}>预览</Text></div> }}
                       {...getImgProps(img)} />
                   </div>
                   <Text type="secondary" style={{
@@ -610,7 +615,8 @@ export default function GalleryPage() {
         <>
         <Image.PreviewGroup
           preview={{
-            toolbarRender: (originalNode: React.ReactNode, info: { current: number; actions: Record<string, unknown> }) => {
+            mask: (              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", background: "rgba(0,0,0,0.12)", backdropFilter: "blur(2px)" }}>                <EyeOutlined style={{ color: "#fff", fontSize: 20, marginRight: 6 }} />                <Text style={{ color: "#fff", fontSize: 12, opacity: 0.85 }}>点击预览</Text>              </div>            ),
+toolbarRender: (originalNode: React.ReactNode, info: { current: number; actions: Record<string, unknown> }) => {
               const idx = (info as any).current ?? 0;
               const url = images[idx]?.url || "";
               const btnStyle: React.CSSProperties = { cursor: "pointer", color: "#fff", fontSize: 18, lineHeight: 1, padding: "2px 6px" };
@@ -637,7 +643,6 @@ export default function GalleryPage() {
               }}>
                 <Image src={img.url}
                   style={{ width: "100%", height: "auto", display: "block", verticalAlign: "top" }}
-                  preview={{ mask: <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", background: "rgba(0,0,0,0.12)", backdropFilter: "blur(2px)" }}><Text style={{ color: "#fff", fontSize: 11 }}>预览</Text></div> }}
                   {...getImgProps(img)} />
               </div>
             ))}
@@ -699,6 +704,7 @@ export default function GalleryPage() {
                     background: "rgba(0,0,0,0.12)",
                     backdropFilter: "blur(2px)",
                   }}>
+                    <EyeOutlined style={{ color: "#fff", fontSize: 20, marginRight: 6 }} />
                     <Text style={{ color: "#fff", fontSize: 12, opacity: 0.85 }}>
                       点击预览
                     </Text>
@@ -1090,7 +1096,8 @@ function TimelineView({ images, loading, page, totalPages, loadImages, getImgPro
       {/* 图片区 */}
       <Image.PreviewGroup
         preview={{
-          toolbarRender: (originalNode: React.ReactNode, info: { current: number }) => {
+            mask: (              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", background: "rgba(0,0,0,0.12)", backdropFilter: "blur(2px)" }}>                <EyeOutlined style={{ color: "#fff", fontSize: 20, marginRight: 6 }} />                <Text style={{ color: "#fff", fontSize: 12, opacity: 0.85 }}>点击预览</Text>              </div>            ),
+toolbarRender: (originalNode: React.ReactNode, info: { current: number }) => {
             const idx = (info as any).current ?? 0;
             const url = activeImages[idx]?.url || "";
             const btnStyle: React.CSSProperties = { cursor: "pointer", color: "#fff", fontSize: 18, lineHeight: 1, padding: "2px 6px" };
@@ -1114,7 +1121,6 @@ function TimelineView({ images, loading, page, totalPages, loadImages, getImgPro
             <div key={img.id} style={{ borderRadius: 8, overflow: "hidden", background: "var(--ant-color-fill-quaternary)" }}>
               <Image src={img.url}
                 style={{ width: "100%", height: "auto", display: "block", maxHeight: 300, objectFit: "cover" }}
-                preview={{ mask: <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", background: "rgba(0,0,0,0.12)", backdropFilter: "blur(2px)" }}><Text style={{ color: "#fff", fontSize: 11 }}>预览</Text></div> }}
                 {...getImgProps(img)} />
             </div>
           ))}
@@ -1247,7 +1253,6 @@ function FreeView({ images, loading, page, totalPages, loadImages, getImgProps }
               <div style={{ width: 200, height: 160, overflow: "hidden", background: "#eee" }}>
                 <Image src={img.url}
                   style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                  preview={{ mask: <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", background: "rgba(0,0,0,0.08)" }}><Text style={{ color: "#666", fontSize: 11 }}>预览</Text></div> }}
                   {...getImgProps(img)} />
               </div>
             </div>
