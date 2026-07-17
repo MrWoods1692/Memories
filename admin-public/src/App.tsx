@@ -8,7 +8,7 @@ import { UsersPage } from './pages/Users';
 import { BansPage } from './pages/Bans';
 import { SettingsPage } from './pages/Settings';
 import { useToast, ToastContainer } from './components/Toast';
-import { IconHome, IconImage, IconUsers, IconBan, IconSettings, IconLogout, IconSun, IconMoon } from './components/Icons';
+import { IconHome, IconImage, IconUsers, IconBan, IconSettings, IconLogout, IconSun, IconMoon, IconArrowLeft } from './components/Icons';
 import { API_BASE_URL } from './config';
 import './App.css';
 
@@ -36,6 +36,7 @@ function AppShell() {
   const { loading, user, logout } = useAuth();
   const { theme, toggle } = useTheme();
   const [tab, setTab] = useState<Tab>('home');
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const { list, toast } = useToast();
 
   if (loading) {
@@ -65,37 +66,70 @@ function AppShell() {
   };
 
   return (
-    <>
-      <header className="header">
-        <div className="header-left">
+    <div className={`app-layout ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
+      {/* ---- 侧边栏 ---- */}
+      <aside className="sidebar">
+        <div className="sidebar-brand">
           <LogoSmall />
-          <h1>Memories</h1>
-        </div>
-        <div className="header-right">
-          <span className="user-info">
-            <span className={`badge ${user.role === 2 ? 'b-admin' : 'b-reviewer'}`}>{roleLabel}</span>
-            <span className="user-qq">QQ: {user.qq}</span>
-          </span>
-          <span className="api-url">{API_BASE_URL}</span>
-          <button className="theme-btn" onClick={toggle} title={theme === 'dark' ? '切换到亮色' : '切换到暗色'}>
-            {theme === 'dark' ? <IconSun size={15} /> : <IconMoon size={15} />}
+          {!sidebarCollapsed && <h1 className="sidebar-title">Memories</h1>}
+          <button
+            className="sidebar-toggle"
+            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+            title={sidebarCollapsed ? '展开侧栏' : '收起侧栏'}
+          >
+            <IconArrowLeft size={16} />
           </button>
-          <button className="btn ghost sm" onClick={logout} title="退出"><IconLogout size={14} /></button>
         </div>
-      </header>
 
-      <nav className="tabs">
-        {tabs.map(({ key, label, Icon }) => (
-          <button key={key} className={`tab ${tab === key ? 'active' : ''}`} onClick={() => setTab(key)}>
-            <Icon size={16} /><span>{label}</span>
+        <nav className="sidebar-nav">
+          {tabs.map(({ key, label, Icon }) => (
+            <button
+              key={key}
+              className={`sidebar-item ${tab === key ? 'active' : ''}`}
+              onClick={() => setTab(key)}
+              title={sidebarCollapsed ? label : undefined}
+            >
+              <Icon size={20} />
+              {!sidebarCollapsed && <span>{label}</span>}
+              {tab === key && <span className="sidebar-indicator" />}
+            </button>
+          ))}
+        </nav>
+
+        <div className="sidebar-footer">
+          {!sidebarCollapsed && (
+            <div className="sidebar-user">
+              <span className={`badge ${user.role === 2 ? 'b-admin' : 'b-reviewer'}`}>{roleLabel}</span>
+              <span className="sidebar-qq">QQ: {user.qq}</span>
+            </div>
+          )}
+          <button className="sidebar-theme-btn" onClick={toggle} title={theme === 'dark' ? '亮色模式' : '暗色模式'}>
+            {theme === 'dark' ? <IconSun size={16} /> : <IconMoon size={16} />}
           </button>
-        ))}
-      </nav>
+          <button className="sidebar-logout" onClick={logout} title="退出登录">
+            <IconLogout size={16} />
+          </button>
+        </div>
+      </aside>
 
-      <main className="content">{renderPage()}</main>
+      {/* ---- 主区域 ---- */}
+      <div className="main-area">
+        <header className="topbar">
+          <div className="topbar-left">
+            <span className="topbar-page-title">
+              {tabs.find(t => t.key === tab)?.label || ''}
+            </span>
+          </div>
+          <div className="topbar-right">
+            <span className="api-url-badge">{API_BASE_URL}</span>
+          </div>
+        </header>
+
+        <main className="content">{renderPage()}</main>
+      </div>
 
       <ToastContainer list={list} />
-    </>
+    </div>
   );
 }
 

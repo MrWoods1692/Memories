@@ -27,3 +27,7 @@ export const IconMemory    = (p: P) => <S {...p}><rect x="2" y="4" width="20" he
 export const IconDisk      = (p: P) => <S {...p}><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></S>;
 export const IconArrowLeft  = (p: P) => <S {...p}><polyline points="15 18 9 12 15 6"/></S>;
 export const IconArrowRight = (p: P) => <S {...p}><polyline points="9 18 15 12 9 6"/></S>;
+
+/* ---- 视图切换图标 ---- */
+export const IconGrid  = (p: P) => <S {...p}><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></S>;
+export const IconList  = (p: P) => <S {...p}><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="3" y1="14" x2="21" y2="14"/><line x1="3" y1="18" x2="21" y2="18"/></S>;
