@@ -3,7 +3,7 @@ import {
   Button, Card, Descriptions, Empty, Image, Modal, Segmented, Spin, Tag, Tooltip, Typography, App,
 } from "antd";
 import {
-  AppstoreOutlined, ArrowDownOutlined, BarsOutlined, BorderOutlined, CheckCircleOutlined, CheckSquareOutlined,
+  AppstoreOutlined, ArrowDownOutlined, BarsOutlined, BlockOutlined, BorderOutlined, CheckCircleOutlined, CheckSquareOutlined,
   CloseCircleOutlined, CopyOutlined, DownloadOutlined, EyeOutlined, InfoCircleOutlined, PictureOutlined,
   PlayCircleOutlined, PauseCircleOutlined, CaretRightOutlined,
   UnorderedListOutlined,
@@ -53,7 +53,7 @@ export default function GalleryPage() {
   const SLIDESHOW_INTERVAL = 4000;
 
   // 视图模式
-  type GalleryView = "grid" | "compact" | "list" | "simple" | "river";
+  type GalleryView = "grid" | "compact" | "list" | "simple" | "river" | "masonry";
   const [viewMode, setViewMode] = useState<GalleryView>("grid");
 
   const toggleSelect = useCallback((id: number) => {
@@ -418,7 +418,7 @@ export default function GalleryPage() {
                 { value: "compact", icon: <PictureOutlined /> },
                 { value: "list", icon: <UnorderedListOutlined /> },
                 { value: "simple", icon: <BarsOutlined /> },
-                ...(isDesktop ? [{ value: "river" as const, icon: <BorderOutlined /> }] : []),
+                ...(isDesktop ? [{ value: "river" as const, icon: <BorderOutlined /> }, { value: "masonry" as const, icon: <BlockOutlined /> }] : []),
               ] as any}
               style={{ marginRight: 4 }}
             />
@@ -559,6 +559,63 @@ export default function GalleryPage() {
                     fontSize: 10, textAlign: "center",
                     padding: "2px 4px", lineHeight: 1.3,
                     borderTop: "1px solid var(--ant-color-border-secondary)",
+                  }}>{dateStr}</Text>
+                </div>
+              );
+            })}
+          </div>
+        </Image.PreviewGroup>
+        <div ref={observerRef} style={{ textAlign: "center", padding: "24px 16px" }}>
+          {loading && <Spin size="small" />}
+          {!loading && page < totalPages && (
+            <Button type="link" icon={<ArrowDownOutlined />} onClick={() => loadImages(page + 1)} style={{ fontSize: 14 }}>加载更多</Button>
+          )}
+          {!loading && page >= totalPages && images.length > 0 && (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, color: "#999" }}>
+              <CheckCircleOutlined style={{ color: "#52c41a", fontSize: 18 }} />
+              <Text type="secondary">已加载全部照片 🎉</Text>
+            </div>
+          )}
+        </div>
+        </>
+      ) : viewMode === "masonry" ? (
+        <>
+        <Image.PreviewGroup
+          preview={{
+            toolbarRender: (originalNode: React.ReactNode, info: { current: number; actions: Record<string, unknown> }) => {
+              const idx = (info as any).current ?? 0;
+              const url = images[idx]?.url || "";
+              const btnStyle: React.CSSProperties = { cursor: "pointer", color: "#fff", fontSize: 18, lineHeight: 1, padding: "2px 6px" };
+              return (
+                <div style={{ display: "flex", alignItems: "center", background: "rgba(0,0,0,0.45)", backdropFilter: "blur(10px)", borderRadius: 10, padding: "4px 8px", gap: 2 }}>
+                  <Tooltip title="下载"><span onClick={() => url && downloadOne(url)} style={btnStyle}><DownloadOutlined /></span></Tooltip>
+                  <Tooltip title="复制链接"><span onClick={() => url && copyOne(url)} style={btnStyle}><CopyOutlined /></span></Tooltip>
+                  <Tooltip title="图片信息"><span onClick={() => url && handleQueryInfo(url)} style={btnStyle}><InfoCircleOutlined /></span></Tooltip>
+                  {originalNode}
+                </div>
+              );
+            },
+          } as any}
+        >
+          <div style={{
+            columnCount: 4, columnGap: 4,
+            padding: "0 4px",
+          }}>
+            {images.map((img) => {
+              const dateStr = new Date(img.created_at).toLocaleDateString("zh-CN");
+              return (
+                <div key={img.id} style={{
+                  breakInside: "avoid", marginBottom: 4,
+                  borderRadius: 4, overflow: "hidden",
+                  background: "var(--ant-color-bg-container)",
+                }}>
+                  <Image src={img.url} alt={dateStr}
+                    style={{ width: "100%", height: "auto", display: "block" }}
+                    preview={{ mask: <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", background: "rgba(0,0,0,0.12)", backdropFilter: "blur(2px)" }}><Text style={{ color: "#fff", fontSize: 11 }}>查看</Text></div> }}
+                    {...getImgProps(img)} />
+                  <Text type="secondary" style={{
+                    fontSize: 10, textAlign: "center",
+                    display: "block", padding: "2px 0",
                   }}>{dateStr}</Text>
                 </div>
               );
