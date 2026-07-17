@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  Button, Card, Descriptions, Empty, Image, Modal, Segmented, Spin, Tag, Tooltip, Typography, App,
+  Button, Card, Descriptions, Dropdown, Empty, Image, Modal, Segmented, Spin, Tag, Tooltip, Typography, App,
 } from "antd";
 import {
   AppstoreOutlined, ArrowDownOutlined, BarsOutlined, BlockOutlined, BorderOutlined, CheckCircleOutlined, CheckSquareOutlined,
@@ -55,6 +55,18 @@ export default function GalleryPage() {
   // 视图模式
   type GalleryView = "grid" | "compact" | "list" | "simple" | "river" | "masonry" | "timeline" | "free";
   const [viewMode, setViewMode] = useState<GalleryView>("grid");
+
+  const viewOptions: { value: GalleryView; label: string; icon: React.ReactNode }[] = [
+    { value: "grid", label: "网格", icon: <AppstoreOutlined /> },
+    { value: "compact", label: "紧凑", icon: <PictureOutlined /> },
+    { value: "list", label: "详情列表", icon: <UnorderedListOutlined /> },
+    { value: "simple", label: "简洁列表", icon: <BarsOutlined /> },
+    { value: "river", label: "河视图", icon: <BorderOutlined /> },
+    { value: "masonry", label: "瀑布流", icon: <BlockOutlined /> },
+    { value: "timeline", label: "时间线", icon: <FieldTimeOutlined /> },
+    { value: "free", label: "自由照片", icon: <DragOutlined /> },
+  ];
+  const currentView = viewOptions.find((v) => v.value === viewMode)!;
 
   const toggleSelect = useCallback((id: number) => {
     setSelected((prev) => {
@@ -410,18 +422,34 @@ export default function GalleryPage() {
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             {!batchMode && (
               <>
-            <Segmented size="small"
-              value={viewMode}
-              onChange={(v) => setViewMode(v as GalleryView)}
-              options={[
-                { value: "grid", icon: <AppstoreOutlined /> },
-                { value: "compact", icon: <PictureOutlined /> },
-                { value: "list", icon: <UnorderedListOutlined /> },
-                { value: "simple", icon: <BarsOutlined /> },
-                ...(isDesktop ? [{ value: "river" as const, icon: <BorderOutlined /> }, { value: "masonry" as const, icon: <BlockOutlined /> }, { value: "timeline" as const, icon: <FieldTimeOutlined /> }, { value: "free" as const, icon: <DragOutlined /> }] : []),
-              ] as any}
-              style={{ marginRight: 4 }}
-            />
+            {isDesktop ? (
+              <Segmented size="small"
+                value={viewMode}
+                onChange={(v) => setViewMode(v as GalleryView)}
+                options={viewOptions.map((v) => ({ value: v.value, icon: v.icon })) as any}
+                style={{ marginRight: 4 }}
+              />
+            ) : (
+              <Dropdown
+                menu={{
+                  items: viewOptions.map((v) => ({
+                    key: v.value,
+                    icon: v.icon,
+                    label: v.label,
+                    onClick: () => setViewMode(v.value),
+                  })),
+                  selectedKeys: [viewMode],
+                }}
+                trigger={["click"]}
+                placement="bottomLeft"
+              >
+                <Button size="small"
+                  icon={currentView.icon}
+                  style={{ borderRadius: 6, marginRight: 4 }}>
+                  {currentView.label}
+                </Button>
+              </Dropdown>
+            )}
             <Button
               onClick={toggleSlideshow}
               type={slideshow ? "primary" : "default"}
@@ -552,7 +580,7 @@ export default function GalleryPage() {
                   }}>
                     <Image src={img.url} alt={dateStr}
                       style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-                      preview={{ mask: <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", background: "rgba(0,0,0,0.12)", backdropFilter: "blur(2px)" }}><Text style={{ color: "#fff", fontSize: 11 }}>查看</Text></div> }}
+                      preview={{ mask: <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", background: "rgba(0,0,0,0.12)", backdropFilter: "blur(2px)" }}><Text style={{ color: "#fff", fontSize: 11 }}>预览</Text></div> }}
                       {...getImgProps(img)} />
                   </div>
                   <Text type="secondary" style={{
@@ -598,17 +626,18 @@ export default function GalleryPage() {
           } as any}
         >
           <div style={{
-            columnCount: 4, columnGap: 0,
-            padding: 0,
+            columnCount: 4, columnGap: 0, columnRule: "none",
+            columnFill: "balance",
+            padding: 0, fontSize: 0,
           }}>
             {images.map((img) => (
               <div key={img.id} style={{
                 breakInside: "avoid", marginBottom: 0,
-                lineHeight: 0,
+                lineHeight: 0, fontSize: 0,
               }}>
                 <Image src={img.url}
-                  style={{ width: "100%", height: "auto", display: "block" }}
-                  preview={{ mask: <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", background: "rgba(0,0,0,0.12)", backdropFilter: "blur(2px)" }}><Text style={{ color: "#fff", fontSize: 11 }}>查看</Text></div> }}
+                  style={{ width: "100%", height: "auto", display: "block", verticalAlign: "top" }}
+                  preview={{ mask: <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", background: "rgba(0,0,0,0.12)", backdropFilter: "blur(2px)" }}><Text style={{ color: "#fff", fontSize: 11 }}>预览</Text></div> }}
                   {...getImgProps(img)} />
               </div>
             ))}
@@ -671,7 +700,7 @@ export default function GalleryPage() {
                     backdropFilter: "blur(2px)",
                   }}>
                     <Text style={{ color: "#fff", fontSize: 12, opacity: 0.85 }}>
-                      点击查看
+                      点击预览
                     </Text>
                   </div>
                 ),
@@ -1085,7 +1114,7 @@ function TimelineView({ images, loading, page, totalPages, loadImages, getImgPro
             <div key={img.id} style={{ borderRadius: 8, overflow: "hidden", background: "var(--ant-color-fill-quaternary)" }}>
               <Image src={img.url}
                 style={{ width: "100%", height: "auto", display: "block", maxHeight: 300, objectFit: "cover" }}
-                preview={{ mask: <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", background: "rgba(0,0,0,0.12)", backdropFilter: "blur(2px)" }}><Text style={{ color: "#fff", fontSize: 11 }}>查看</Text></div> }}
+                preview={{ mask: <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", background: "rgba(0,0,0,0.12)", backdropFilter: "blur(2px)" }}><Text style={{ color: "#fff", fontSize: 11 }}>预览</Text></div> }}
                 {...getImgProps(img)} />
             </div>
           ))}
@@ -1218,7 +1247,7 @@ function FreeView({ images, loading, page, totalPages, loadImages, getImgProps }
               <div style={{ width: 200, height: 160, overflow: "hidden", background: "#eee" }}>
                 <Image src={img.url}
                   style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                  preview={{ mask: <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", background: "rgba(0,0,0,0.08)" }}><Text style={{ color: "#666", fontSize: 11 }}>查看</Text></div> }}
+                  preview={{ mask: <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", background: "rgba(0,0,0,0.08)" }}><Text style={{ color: "#666", fontSize: 11 }}>预览</Text></div> }}
                   {...getImgProps(img)} />
               </div>
             </div>
