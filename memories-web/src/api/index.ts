@@ -120,23 +120,26 @@ interface CacheEntry {
   timestamp: number;
 }
 
-/** GET /images?page=1&limit=20 — 带本地缓存 */
+/** GET /images?page=1&limit=20 — 带本地缓存，forceRefresh 可跳过缓存 */
 export async function fetchImages(
   page: number,
-  limit: number = 20
+  limit: number = 20,
+  forceRefresh: boolean = false
 ): Promise<PaginatedResponse> {
   const cacheKey = `${IMAGES_CACHE_KEY}_${page}_${limit}`;
 
-  // 尝试读取缓存
-  try {
-    const raw = localStorage.getItem(cacheKey);
-    if (raw) {
-      const entry: CacheEntry = JSON.parse(raw);
-      if (Date.now() - entry.timestamp < CACHE_TTL) {
-        return entry.data;
+  // 尝试读取缓存（forceRefresh 时跳过）
+  if (!forceRefresh) {
+    try {
+      const raw = localStorage.getItem(cacheKey);
+      if (raw) {
+        const entry: CacheEntry = JSON.parse(raw);
+        if (Date.now() - entry.timestamp < CACHE_TTL) {
+          return entry.data;
+        }
       }
-    }
-  } catch { /* ignore */ }
+    } catch { /* ignore */ }
+  }
 
   // 请求新数据
   const data = await getRequest<PaginatedResponse>(`/images?page=${page}&limit=${limit}`);

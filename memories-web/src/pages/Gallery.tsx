@@ -231,7 +231,7 @@ export default function GalleryPage() {
   const LOAD_INTERVAL = 1100;
   const MAX_RETRY = 5;
 
-  const loadImages = useCallback(async (pageNum: number, isRetry = false) => {
+  const loadImages = useCallback(async (pageNum: number, isRetry = false, forceRefresh = false) => {
     const now = Date.now();
     const elapsed = now - lastLoadTime.current;
 
@@ -247,7 +247,7 @@ export default function GalleryPage() {
     setLoading(true);
 
     try {
-      const res = await fetchImages(pageNum);
+      const res = await fetchImages(pageNum, 20, forceRefresh);
       if (pageNum === 1) setImages(res.items);
       else setImages((prev) => [...prev, ...res.items]);
       setTotalPages(res.totalPages); setPage(pageNum);
@@ -313,7 +313,7 @@ export default function GalleryPage() {
     fallback: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2VlZSIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSIgZmlsbD0iIzk5OSIgZm9udC1zaXplPSIxNiI+5Zu+54mH5Yqg6L295aSx6LSlPC90ZXh0Pjwvc3ZnPg==",
   }), [handleImgError]);
 
-  useEffect(() => { loadImages(1); }, [loadImages]);
+  useEffect(() => { loadImages(1, false, true); }, [loadImages]);
 
   useEffect(() => {
     if (!observerRef.current || page >= totalPages || loading) return;
