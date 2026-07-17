@@ -83,7 +83,7 @@ export default function LoginPage() {
 
           <div style={{ marginTop: 20 }}>
             <Text type="secondary" style={{ fontSize: 13 }}>
-              <HeartOutlined /> 登录即表示同意服务协议 · 安全授权不泄露密码
+              <HeartOutlined /> 登录即表示同意服务协议
             </Text>
           </div>
         </div>

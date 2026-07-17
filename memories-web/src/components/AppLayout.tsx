@@ -8,7 +8,7 @@ import BackToTop from "./BackToTop";
 const { Content, Sider } = Layout;
 
 const menuItems: MenuProps["items"] = [
-  { label: "回忆广场", key: "/gallery", icon: <PictureOutlined /> },
+  { label: "广场", key: "/gallery", icon: <PictureOutlined /> },
   { label: "上传", key: "/upload", icon: <CloudUploadOutlined /> },
   { label: "个人中心", key: "/profile", icon: <UserOutlined /> },
 ];
@@ -85,7 +85,6 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           />
         </div>
       )}
-      <BackToTop />
     </Layout>
   );
 }

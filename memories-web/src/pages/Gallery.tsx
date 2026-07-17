@@ -345,7 +345,7 @@ export default function GalleryPage() {
             margin: 0, fontWeight: 700, color: accentColor,
             fontSize: 22,
           }}>
-            回忆广场 <PictureOutlined />
+            广场 <PictureOutlined />
           </Title>
         </div>
 
