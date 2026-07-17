@@ -868,8 +868,11 @@ toolbarRender: (originalNode: React.ReactNode, info: { current: number; actions:
 
       <Modal title="图片信息" open={infoOpen} onCancel={() => setInfoOpen(false)}
         footer={null} width={isDesktop ? 520 : "100%"}
+        zIndex={2100}
         style={isDesktop ? {} : { maxWidth: "100vw", margin: 0, padding: 0 }}
-        styles={isDesktop ? {} : { body: { padding: "12px 8px" } }}
+        styles={{
+          body: { padding: isDesktop ? 16 : "12px 8px", maxHeight: "70vh", overflowY: "auto" },
+        }}
         destroyOnHidden>
         {infoLoading ? (
           <div style={{ textAlign: "center", padding: 40 }}><Spin /></div>
