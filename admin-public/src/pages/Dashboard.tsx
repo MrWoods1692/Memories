@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { apiGet } from '../api';
 import { IconImage, IconRefresh, IconBattery, IconCpu, IconMemory, IconDisk } from '../components/Icons';
-import type { ServerStatus, ImageItem, ResourceInfo, MemoryDiskInfo, PaginatedResponse } from '../types';
+import type { ServerStatus, ImageItem, ResourceInfo, MemoryDiskInfo, PaginatedResponse, ApiRequestLog, ApiDailyStat } from '../types';
 
 interface Props { toast: (m: string, t?: 'success' | 'error') => void; }
 
@@ -128,14 +128,18 @@ function DiskCard({ disk }: { disk: MemoryDiskInfo }) {
 export function DashboardPage({ toast: _toast }: Props) {
   const [status, setStatus] = useState<ServerStatus | null>(null);
   const [recent, setRecent] = useState<ImageItem[]>([]);
+  const [requestLogs, setRequestLogs] = useState<ApiRequestLog[]>([]);
+  const [dailyStats, setDailyStats] = useState<ApiDailyStat[]>([]);
   const [loading, setLoading] = useState(true);
 
   const load = async () => {
     try {
-      const [s, imgs, sysInfo] = await Promise.all([
+      const [s, imgs, sysInfo, logs, stats] = await Promise.all([
         apiGet<ServerStatus>('/status'),
         apiGet<PaginatedResponse<ImageItem>>('/images?status=all'),
         apiGet<any>('/sysinfo').catch(() => null),
+        apiGet<ApiRequestLog[]>('/logs?limit=6').catch(() => []),
+        apiGet<ApiDailyStat[]>('/stats?days=7').catch(() => []),
       ]);
       // 将 /sysinfo 数据合并到 status 中
       if (sysInfo) {
@@ -180,6 +184,8 @@ export function DashboardPage({ toast: _toast }: Props) {
       }
       setStatus(s);
       setRecent((imgs?.items ?? []).slice(0, 6));
+      setRequestLogs(Array.isArray(logs) ? logs : []);
+      setDailyStats(Array.isArray(stats) ? stats : []);
     } catch { /* ignore */ }
     finally { setLoading(false); }
   };
@@ -202,7 +208,7 @@ export function DashboardPage({ toast: _toast }: Props) {
           <div className="stat-icon green">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="9 12 11 14 15 10"/></svg>
           </div>
-          <div><div className="num" style={{fontSize:18}}><span className="dot green" /> 运行中</div><div className="label">服务状态</div></div>
+          <div><div className="num" style={{fontSize:18}}>{status?.today_request_count ?? 0}</div><div className="label">今日调用</div></div>
         </div>
         <div className="stat-card">
           <div className="stat-icon">
@@ -221,6 +227,34 @@ export function DashboardPage({ toast: _toast }: Props) {
           {status.disk && <DiskCard disk={status.disk} />}
         </div>
       )}
+
+      <div className="card">
+        <h2>📈 API 调用趋势</h2>
+        {dailyStats.length === 0 ? <div className="empty">暂无统计数据</div> : (
+          <div className="table-wrap">
+            <table>
+              <thead><tr><th>日期</th><th>总请求</th><th>成功</th><th>失败</th></tr></thead>
+              <tbody>
+                {dailyStats.map(item => <tr key={item.day}><td>{item.day}</td><td>{item.total_requests}</td><td>{item.success_count}</td><td>{item.error_count}</td></tr>)}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      <div className="card">
+        <h2>🧾 最近请求</h2>
+        {requestLogs.length === 0 ? <div className="empty">暂无日志</div> : (
+          <div className="table-wrap">
+            <table>
+              <thead><tr><th>时间</th><th>方法</th><th>路径</th><th>状态</th><th>用户</th></tr></thead>
+              <tbody>
+                {requestLogs.map(item => <tr key={item.id}><td>{fmt(item.timestamp_ms)}</td><td>{item.method}</td><td className="url" title={item.path}>{item.path}</td><td>{item.status_code}</td><td>{item.user_qq || '-'}</td></tr>)}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
 
       <div className="card">
         <h2><IconImage size={16} /> 最近图片</h2>
@@ -257,4 +291,8 @@ function uptime(ms: number) {
   if (h > 0) return `${h}时 ${m}分`;
   return `${m}分`;
 }
-function fmt(ts?: string) { return ts ? new Date(ts).toLocaleString('zh-CN') : '-'; }
+function fmt(ts?: string | number) {
+  if (ts === undefined || ts === null || ts === '') return '-';
+  const value = typeof ts === 'number' ? new Date(ts) : new Date(ts);
+  return Number.isNaN(value.getTime()) ? '-' : value.toLocaleString('zh-CN');
+}

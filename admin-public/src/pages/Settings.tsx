@@ -28,6 +28,7 @@ export function SettingsPage({ toast }: Props) {
     await save('platform_name', cfg.platform_name || '');
     await save('platform_logo', cfg.platform_logo || '');
     await save('auto_cleanup_rejected', cfg.auto_cleanup_rejected || 'true');
+    await save('admin_token', cfg.admin_token || '');
     toast('保存成功');
   };
 
@@ -46,6 +47,10 @@ export function SettingsPage({ toast }: Props) {
         <div className="fg">
           <label>平台 Logo URL</label>
           <input value={cfg.platform_logo || ''} onChange={e => set('platform_logo', e.target.value)} placeholder="https://..." />
+        </div>
+        <div className="fg">
+          <label>管理员令牌（可选）</label>
+          <input type="password" value={cfg.admin_token || ''} onChange={e => set('admin_token', e.target.value)} placeholder="留空则使用 QQ 角色鉴权" />
         </div>
         <div className="fg" style={{display:'flex',alignItems:'center',gap:10,flexDirection:'row'}}>
           <input type="checkbox" checked={cfg.auto_cleanup_rejected !== 'false'}

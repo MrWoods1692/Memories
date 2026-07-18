@@ -78,8 +78,27 @@ public class EmbeddedServer extends NanoHTTPD {
      */
     private boolean isAdmin(IHTTPSession session, DatabaseHelper db) {
         if (isLanRequest(session)) return true;
+
+        String adminToken = db.getConfig("admin_token");
+        if (adminToken != null && !adminToken.isEmpty()) {
+            String authHeader = session.getHeaders().get("authorization");
+            String xAdminToken = session.getHeaders().get("x-admin-token");
+            if (matchesAdminToken(authHeader, adminToken) || matchesAdminToken(xAdminToken, adminToken)) {
+                return true;
+            }
+        }
+
         String qq = session.getHeaders().get("x-user-qq");
         return db.getUserRole(qq) >= 2;
+    }
+
+    private boolean matchesAdminToken(String headerValue, String expectedToken) {
+        if (headerValue == null || headerValue.isEmpty()) return false;
+        String candidate = headerValue.trim();
+        if (candidate.regionMatches(true, 0, "Bearer ", 0, 7)) {
+            candidate = candidate.substring(7).trim();
+        }
+        return expectedToken.equals(candidate);
     }
 
     /**
@@ -110,6 +129,7 @@ public class EmbeddedServer extends NanoHTTPD {
     public Response serve(IHTTPSession session) {
         Method method = session.getMethod();
         String uri = session.getUri();
+        long start = System.currentTimeMillis();
         Log.i(TAG, "CORS check: method=" + method + " uri=" + uri);
 
         // CORS 预检请求：兼容 method 为 null 的情况（frp/nginx 代理可能丢失 method）
@@ -118,11 +138,34 @@ public class EmbeddedServer extends NanoHTTPD {
             Log.i(TAG, "Handling CORS preflight: " + uri);
             Response r = NanoHTTPD.newFixedLengthResponse(Status.OK, "text/plain", "");
             addCorsHeaders(r);
+            logRequest(session, r, start, System.currentTimeMillis() - start);
             return r;
         }
         Response response = doServe(session);
         addCorsHeaders(response);
+        logRequest(session, response, start, System.currentTimeMillis() - start);
         return response;
+    }
+
+    private void logRequest(IHTTPSession session, Response response, long startMs, long elapsedMs) {
+        try {
+            int statusCode = response != null && response.getStatus() != null
+                    ? response.getStatus().getRequestStatus()
+                    : Status.INTERNAL_ERROR.getRequestStatus();
+            String remoteIp = session.getRemoteIpAddress();
+            String userQq = session.getHeaders().get("x-user-qq");
+            new DatabaseHelper(context).logRequest(
+                    session.getMethod() == null ? "" : session.getMethod().name(),
+                    session.getUri(),
+                    statusCode,
+                    remoteIp,
+                    userQq,
+                    System.currentTimeMillis(),
+                    elapsedMs
+            );
+        } catch (Exception e) {
+            Log.w(TAG, "logRequest failed", e);
+        }
     }
 
     private Response doServe(IHTTPSession session) {
@@ -150,6 +193,14 @@ public class EmbeddedServer extends NanoHTTPD {
 
             if (uri.equals("/status") && Method.GET.equals(session.getMethod())) {
                 return handleStatus(session);
+            }
+
+            if (uri.equals("/logs") && Method.GET.equals(session.getMethod())) {
+                return handleLogs(session);
+            }
+
+            if (uri.equals("/stats") && Method.GET.equals(session.getMethod())) {
+                return handleStats(session);
             }
 
             if (uri.equals("/sysinfo") && Method.GET.equals(session.getMethod())) {
@@ -362,10 +413,52 @@ public class EmbeddedServer extends NanoHTTPD {
             JSONObject o = new JSONObject();
             o.put("db_path", db.getDatabasePathString());
             o.put("image_count", db.getImageCount());
+            o.put("request_count", db.getApiRequestCount());
+            o.put("today_request_count", db.getTodayRequestCount());
             o.put("uptime", System.currentTimeMillis() - startTime);
             return NanoHTTPD.newFixedLengthResponse(Status.OK, "application/json", o.toString());
         } catch (Exception e) {
             Log.e(TAG, "status error", e);
+            return NanoHTTPD.newFixedLengthResponse(Status.INTERNAL_ERROR, "text/plain", "error");
+        }
+    }
+
+    private Response handleLogs(IHTTPSession session) {
+        DatabaseHelper db = new DatabaseHelper(context);
+        if (!isAdmin(session, db)) {
+            return NanoHTTPD.newFixedLengthResponse(Status.UNAUTHORIZED, "text/plain", "admin required");
+        }
+        try {
+            Map<String, String> params = session.getParms();
+            int limit = 20;
+            try {
+                String limitStr = params.get("limit");
+                if (limitStr != null && !limitStr.isEmpty()) limit = Integer.parseInt(limitStr);
+            } catch (NumberFormatException ignored) {}
+            String json = db.listRequestLogsJson(limit);
+            return NanoHTTPD.newFixedLengthResponse(Status.OK, "application/json", json);
+        } catch (Exception e) {
+            Log.e(TAG, "handleLogs error", e);
+            return NanoHTTPD.newFixedLengthResponse(Status.INTERNAL_ERROR, "text/plain", "error");
+        }
+    }
+
+    private Response handleStats(IHTTPSession session) {
+        DatabaseHelper db = new DatabaseHelper(context);
+        if (!isAdmin(session, db)) {
+            return NanoHTTPD.newFixedLengthResponse(Status.UNAUTHORIZED, "text/plain", "admin required");
+        }
+        try {
+            Map<String, String> params = session.getParms();
+            int days = 7;
+            try {
+                String daysStr = params.get("days");
+                if (daysStr != null && !daysStr.isEmpty()) days = Integer.parseInt(daysStr);
+            } catch (NumberFormatException ignored) {}
+            String json = db.listDailyStatsJson(days);
+            return NanoHTTPD.newFixedLengthResponse(Status.OK, "application/json", json);
+        } catch (Exception e) {
+            Log.e(TAG, "handleStats error", e);
             return NanoHTTPD.newFixedLengthResponse(Status.INTERNAL_ERROR, "text/plain", "error");
         }
     }

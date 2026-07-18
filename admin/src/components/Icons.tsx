@@ -43,6 +43,8 @@ export const IconBattery     = (p: IconProps) => <S {...p}><rect x="1" y="6" wid
 export const IconWrench      = (p: IconProps) => <S {...p}><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></S>;
 export const IconDatabase    = (p: IconProps) => <S {...p}><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></S>;
 export const IconPlay        = (p: IconProps) => <S {...p}><polygon points="5 3 19 12 5 21 5 3" fill="currentColor" stroke="none"/></S>;
+export const IconSun         = (p: IconProps) => <S {...p}><circle cx="12" cy="12" r="5"/><path d="M12 1v2"/><path d="M12 21v2"/><path d="M4.22 4.22l1.42 1.42"/><path d="M18.36 18.36l1.42 1.42"/><path d="M1 12h2"/><path d="M21 12h2"/><path d="M4.22 19.78l1.42-1.42"/><path d="M18.36 5.64l1.42-1.42"/></S>;
+export const IconMoon        = (p: IconProps) => <S {...p}><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z"/></S>;
 
 // Colored status icon
 export const IconStatusOn    = (p: IconProps) => <S {...p} stroke="#22c55e"><circle cx="12" cy="12" r="10"/><polyline points="9 12 11 14 15 10"/></S>;

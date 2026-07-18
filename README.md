@@ -51,7 +51,7 @@ Memories/
 │   └── src/main/java/com/example/memories/
 │       ├── EmbeddedServer.java   # API 服务器 (NanoHTTPD)
 │       ├── AdminServer.java      # 管理面板静态文件服务
-│       ├── DatabaseHelper.java   # SQLite 数据库操作（外部存储持久化）
+│       ├── DatabaseHelper.java   # SQLite 数据库操作（外部存储持久化 + 日志统计）
 │       ├── WriteQueue.java       # 数据库写入队列（高并发优化）
 │       ├── WebDavBackup.java     # WebDAV 自动备份
 │       ├── OAuthHelper.java      # OAuth PKCE S256 认证
@@ -136,8 +136,10 @@ npm run build
 | 端点 | 方法 | 说明 | 权限 |
 |------|------|------|------|
 | `/health` | GET | 健康检查 | 公开 |
-| `/status` | GET | 服务状态 (图片数/运行时间) | 公开 |
+| `/status` | GET | 服务状态 (图片数/总调用数/今日调用数/运行时间) | 公开 |
 | `/sysinfo` | GET | 系统信息 (CPU/内存/磁盘/网络/电池) | 公开 |
+| `/logs` | GET | 最近 API 请求日志 | 管理员 |
+| `/stats` | GET | 最近几日 API 调用统计 | 管理员 |
 | `/images` | GET/POST | 图片列表/上传 | GET公开, POST需审核员 |
 | `/images/{id}` | DELETE | 删除图片 | 管理员 |
 | `/images/{id}/audit` | POST | 审核图片 (status=1通过,2拒绝) | 审核员+ |
@@ -215,6 +217,8 @@ sequenceDiagram
 | `users` | id, qq, role (1审核员/2管理员) | 用户权限 |
 | `config` | k (主键), v | 键值配置（含 OAuth state 临时数据） |
 | `banned_users` | qq (主键), reason, banned_at | 封禁用户 |
+| `api_requests` | id, method, path, status_code, remote_ip, user_qq, timestamp_ms, elapsed_ms | API 请求日志 |
+| `api_stats_daily` | day (主键), total_requests, success_count, error_count, last_seen_at | 每日调用统计 |
 
 ## 高并发写入优化
 

@@ -27,6 +27,27 @@ export interface ServerStatus {
   image_count: number;
   db_path: string;
   uptime: number;
+  request_count?: number;
+  today_request_count?: number;
+}
+
+export interface ApiRequestLog {
+  id: number;
+  method: string;
+  path: string;
+  status_code: number;
+  remote_ip?: string;
+  user_qq?: string;
+  timestamp_ms: number;
+  elapsed_ms: number;
+}
+
+export interface ApiDailyStat {
+  day: string;
+  total_requests: number;
+  success_count: number;
+  error_count: number;
+  last_seen_at: number;
 }
 
 export interface AppConfig {
@@ -43,6 +64,7 @@ export interface AppConfig {
   oauth_domain?: string;
   frpc_config?: string;
   auto_cleanup_rejected?: string;
+  admin_token?: string;
 }
 
 export interface FrpcStatus {

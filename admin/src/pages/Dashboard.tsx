@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { apiGet } from '../api';
 import { IconImage, IconCpu, IconStatusOn, IconRefresh, IconServer, IconInbox, IconCheckCircle, IconHardDrive, IconChip, IconGlobe, IconSmartphone, IconBattery, IconWrench } from '../components/Icons';
-import type { ServerStatus, ImageItem, AppConfig, SysInfo } from '../types';
+import type { ServerStatus, ImageItem, AppConfig, SysInfo, ApiRequestLog, ApiDailyStat } from '../types';
 
 interface DashboardProps {
   toast: (msg: string, type?: 'success' | 'error') => void;
@@ -38,20 +38,26 @@ export function Dashboard({ toast: _toast }: DashboardProps) {
   const [sysinfo, setSysinfo] = useState<SysInfo | null>(null);
   const [config, setConfig] = useState<AppConfig>({});
   const [recentImages, setRecentImages] = useState<ImageItem[]>([]);
+  const [requestLogs, setRequestLogs] = useState<ApiRequestLog[]>([]);
+  const [dailyStats, setDailyStats] = useState<ApiDailyStat[]>([]);
   const [loading, setLoading] = useState(true);
 
   const load = async () => {
     try {
-      const [s, si, c, imgs] = await Promise.all([
+      const [s, si, c, imgs, logs, stats] = await Promise.all([
         apiGet<ServerStatus>('/status'),
         apiGet<SysInfo>('/sysinfo'),
         apiGet<AppConfig>('/config'),
         apiGet<ImageItem[]>('/images?status=all'),
+        apiGet<ApiRequestLog[]>('/logs?limit=8').catch(() => []),
+        apiGet<ApiDailyStat[]>('/stats?days=7').catch(() => []),
       ]);
       setStatus(s);
       setSysinfo(si);
       setConfig(c);
       setRecentImages(Array.isArray(imgs) ? imgs.slice(0, 8) : []);
+      setRequestLogs(Array.isArray(logs) ? logs : []);
+      setDailyStats(Array.isArray(stats) ? stats : []);
     } catch (e) {
       console.error(e);
     } finally {
@@ -139,8 +145,8 @@ export function Dashboard({ toast: _toast }: DashboardProps) {
         <div className="stat-card">
           <div className="stat-icon status"><IconCheckCircle size={20} /></div>
           <div className="stat-info">
-            <div className="num" style={{fontSize:18}}>{si?.cpu.model || si?.cpu.arch || '-'}</div>
-            <div className="label">{si ? `${si.cpu.cores} 核 · ${si.battery.device_model}` : 'CPU'}</div>
+            <div className="num" style={{fontSize:18}}>{status?.today_request_count ?? 0}</div>
+            <div className="label">今日调用</div>
           </div>
         </div>
       </div>
@@ -319,6 +325,57 @@ export function Dashboard({ toast: _toast }: DashboardProps) {
       )}
 
       <div className="card">
+        <h2><IconImage size={16} /> API 调用趋势</h2>
+        {dailyStats.length === 0 ? (
+          <div className="empty">暂无统计数据</div>
+        ) : (
+          <div className="table-wrapper">
+            <table>
+              <thead>
+                <tr><th>日期</th><th>总请求</th><th>成功</th><th>失败</th></tr>
+              </thead>
+              <tbody>
+                {dailyStats.map(item => (
+                  <tr key={item.day}>
+                    <td>{item.day}</td>
+                    <td>{item.total_requests}</td>
+                    <td>{item.success_count}</td>
+                    <td>{item.error_count}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      <div className="card">
+        <h2><IconImage size={16} /> 最近请求</h2>
+        {requestLogs.length === 0 ? (
+          <div className="empty">暂无请求日志</div>
+        ) : (
+          <div className="table-wrapper">
+            <table>
+              <thead>
+                <tr><th>时间</th><th>方法</th><th>路径</th><th>状态</th><th>用户</th></tr>
+              </thead>
+              <tbody>
+                {requestLogs.map(item => (
+                  <tr key={item.id}>
+                    <td>{fmtTs(String(item.timestamp_ms))}</td>
+                    <td>{item.method}</td>
+                    <td className="url" title={item.path}>{item.path}</td>
+                    <td>{item.status_code}</td>
+                    <td>{item.user_qq || '-'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      <div className="card">
         <h2><IconImage size={16} /> 最近图片</h2>
         {recentImages.length === 0 ? (
           <div className="empty">
@@ -348,8 +405,17 @@ export function Dashboard({ toast: _toast }: DashboardProps) {
 
       <div className="card">
         <h2><IconWrench size={16} /> 快捷操作</h2>
+        <div className="info-rows" style={{maxWidth:420}}>
+          <div className="info-row">
+            <span className="info-key">状态</span>
+            <span>实时刷新中，数据每秒自动更新</span>
+          </div>
+          <div className="info-row">
+            <span className="info-key">建议</span>
+            <span>可通过顶部标签切换到图片、用户和设置页面</span>
+          </div>
+        </div>
         <div className="form-actions">
-
           <button className="btn btn-ghost" onClick={load}>
             <IconRefresh size={15} /> 刷新数据
           </button>

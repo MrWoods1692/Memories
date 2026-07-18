@@ -168,6 +168,18 @@ export function Settings({ toast }: SettingsProps) {
         </div>
       </div>
 
+      {/* 安全配置 */}
+      <div className="card">
+        <h2><IconKey size={16} /> 安全配置</h2>
+        <div className="form-group">
+          <label>管理员令牌（可选）</label>
+          <input type="password" value={config.admin_token || ''} onChange={e => updateConfig('admin_token', e.target.value)} placeholder="留空则仅使用 QQ 角色鉴权" />
+        </div>
+        <div className="form-actions">
+          <button className="btn btn-primary" onClick={() => saveConfig('admin_token', config.admin_token || '')}><IconKey size={14} /> 保存安全配置</button>
+        </div>
+      </div>
+
       {/* OAuth 配置 */}
       <div className="card">
         <h2><IconKey size={16} /> OAuth 配置</h2>

@@ -12,49 +12,157 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
+import java.util.Locale;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
 
 public class DatabaseHelper extends SQLiteOpenHelper {
     private static final String DB_NAME = "memories.db";
-    private static final int DB_VERSION = 1;
+    private static final int DB_VERSION = 2;
     private static String dbPath = null;
     private static SQLiteDatabase sharedDb = null;
+    private static final ExecutorService requestLogExecutor = Executors.newFixedThreadPool(
+            2,
+            new ThreadFactory() {
+                private int counter = 0;
+                @Override
+                public Thread newThread(Runnable r) {
+                    Thread t = new Thread(r, "memories-request-log-" + (++counter));
+                    t.setDaemon(true);
+                    return t;
+                }
+            }
+    );
 
     /**
-     * 获取数据库路径：优先外部存储（卸载不丢失），回退内部存储
+     * 获取数据库路径：统一使用内部存储。
+     * Android 11+ 的 Scoped Storage 禁止 SQLite 直接打开外部路径，
+     * 数据持久化通过 {@link #backupToExternal()} 实现。
      */
     public static String resolveDatabasePath(Context ctx) {
         if (dbPath != null) return dbPath;
+        dbPath = ctx.getDatabasePath(DB_NAME).getAbsolutePath();
+        return dbPath;
+    }
+
+    /** 外部备份文件路径（卸载后保留） */
+    public static File getExternalBackupFile() {
+        return new File(Environment.getExternalStorageDirectory(), "Memories/" + DB_NAME);
+    }
+
+    private static volatile boolean restoring = false;
+
+    /**
+     * 从外部备份恢复数据（内部库为空且有外部备份时自动执行）。
+     * 应在首次 getSharedDb() 之后调用。
+     */
+    public void ensureRestoredFromExternal() {
+        if (restoring) return; // 防止递归
+        restoring = true;
         try {
-            // 优先外部公共目录（卸载不丢失），在 Android 11+ 需授予"所有文件访问"权限
-            File dir = new File(Environment.getExternalStorageDirectory(), "Memories");
-            if (!dir.exists()) dir.mkdirs();
-            File f = new File(dir, DB_NAME);
-            // 实际写入测试，而非依赖 canWrite()
-            boolean writable = f.exists();
-            if (!writable) {
-                try { writable = f.createNewFile() || f.exists(); } catch (Exception ignored) {}
-            }
-            if (writable) {
-                dbPath = f.getAbsolutePath();
-                Log.i("DatabaseHelper", "Using external DB: " + dbPath);
-                return dbPath;
+            SQLiteDatabase db = getSharedDb();
+            Cursor c = db.rawQuery("SELECT COUNT(*) FROM images", null);
+            boolean isEmpty = !c.moveToFirst() || c.getInt(0) == 0;
+            c.close();
+
+            if (isEmpty) {
+                File ext = getExternalBackupFile();
+                if (ext.exists() && ext.length() > 0) {
+                    if (sharedDb != null && sharedDb.isOpen()) {
+                        sharedDb.close();
+                    }
+                    sharedDb = null;
+                    try {
+                        copyFile(ext, new File(dbPath));
+                        Log.i("DatabaseHelper", "Restored DB from external backup (" + ext.length() + " bytes)");
+                    } catch (Exception e) {
+                        Log.w("DatabaseHelper", "Failed to restore from external backup, will use empty DB", e);
+                    }
+                    // 确保数据库连接已重新打开（无论恢复成功与否）
+                    getSharedDb();
+                }
             }
         } catch (Exception e) {
-            Log.w("DatabaseHelper", "External storage unavailable", e);
+            Log.w("DatabaseHelper", "Failed to check/restore from external backup", e);
+        } finally {
+            restoring = false;
         }
-        dbPath = ctx.getDatabasePath(DB_NAME).getAbsolutePath();
-        Log.i("DatabaseHelper", "Using internal DB: " + dbPath);
-        return dbPath;
+    }
+
+    private static volatile long lastBackupTime = 0;
+    private static final long BACKUP_COOLDOWN_MS = 10_000; // 10 秒冷却
+
+    /** 备份内部数据库到外部存储（异步，带冷却，卸载后数据保留） */
+    public void backupToExternal() {
+        long now = System.currentTimeMillis();
+        if (now - lastBackupTime < BACKUP_COOLDOWN_MS) return;
+        lastBackupTime = now;
+
+        requestLogExecutor.execute(() -> {
+            try {
+                SQLiteDatabase db = getSharedDb();
+                if (db != null && db.isOpen()) {
+                    db.execSQL("PRAGMA wal_checkpoint(FULL)");
+                }
+                File ext = getExternalBackupFile();
+                File extDir = ext.getParentFile();
+                if (extDir != null && !extDir.exists()) {
+                    extDir.mkdirs();
+                }
+                copyFile(new File(dbPath), ext);
+            } catch (Exception e) {
+                Log.w("DatabaseHelper", "Failed to backup to external", e);
+            }
+        });
+    }
+
+    private static void copyFile(File src, File dest) throws Exception {
+        if (src == null || !src.exists()) return;
+        File parent = dest.getParentFile();
+        if (parent != null && !parent.exists()) parent.mkdirs();
+        try (InputStream in = new FileInputStream(src); OutputStream out = new FileOutputStream(dest)) {
+            byte[] buffer = new byte[8192];
+            int read;
+            while ((read = in.read(buffer)) != -1) {
+                out.write(buffer, 0, read);
+            }
+            out.flush();
+        }
     }
 
     public DatabaseHelper(Context ctx) {
         super(ctx, resolveDatabasePath(ctx), null, DB_VERSION);
+        // 每次数据库写入后自动备份到外部存储
+        WriteQueue.setOnAfterWrite(this::backupToExternal);
     }
 
     /** 共享连接，确保 WriteQueue 写入对所有实例可见 */
-    private SQLiteDatabase getSharedDb() {
+    private synchronized SQLiteDatabase getSharedDb() {
         if (sharedDb == null || !sharedDb.isOpen()) {
+            boolean firstOpen = (sharedDb == null);
             sharedDb = super.getWritableDatabase();
+            try {
+                sharedDb.execSQL("PRAGMA journal_mode=WAL");
+                sharedDb.execSQL("PRAGMA synchronous=NORMAL");
+                sharedDb.execSQL("PRAGMA temp_store=MEMORY");
+                sharedDb.execSQL("PRAGMA locking_mode=NORMAL");
+                sharedDb.execSQL("PRAGMA busy_timeout=3000");
+                // 针对 256MB heap 设备 (vivo V2046A / Android 13) 优化
+                sharedDb.execSQL("PRAGMA cache_size=-8000");
+                sharedDb.execSQL("PRAGMA mmap_size=33554432");
+            } catch (Exception ignored) {
+                // WAL 对部分设备/路径可能不支持，降级为普通模式即可
+            }
+            if (firstOpen) {
+                ensureRestoredFromExternal();
+            }
         }
         return sharedDb;
     }
@@ -70,11 +178,16 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         db.execSQL("CREATE TABLE users (id INTEGER PRIMARY KEY AUTOINCREMENT, qq TEXT, role INTEGER)");
         db.execSQL("CREATE TABLE config (k TEXT PRIMARY KEY, v TEXT)");
         db.execSQL("CREATE TABLE banned_users (qq TEXT PRIMARY KEY, reason TEXT, banned_at INTEGER)");
+        db.execSQL("CREATE TABLE api_requests (id INTEGER PRIMARY KEY AUTOINCREMENT, method TEXT, path TEXT, status_code INTEGER, remote_ip TEXT, user_qq TEXT, timestamp_ms INTEGER, elapsed_ms REAL)");
+        db.execSQL("CREATE TABLE api_stats_daily (day TEXT PRIMARY KEY, total_requests INTEGER DEFAULT 0, success_count INTEGER DEFAULT 0, error_count INTEGER DEFAULT 0, last_seen_at INTEGER)");
     }
 
     @Override
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
-        // noop for now
+        if (oldVersion < 2) {
+            db.execSQL("CREATE TABLE IF NOT EXISTS api_requests (id INTEGER PRIMARY KEY AUTOINCREMENT, method TEXT, path TEXT, status_code INTEGER, remote_ip TEXT, user_qq TEXT, timestamp_ms INTEGER, elapsed_ms REAL)");
+            db.execSQL("CREATE TABLE IF NOT EXISTS api_stats_daily (day TEXT PRIMARY KEY, total_requests INTEGER DEFAULT 0, success_count INTEGER DEFAULT 0, error_count INTEGER DEFAULT 0, last_seen_at INTEGER)");
+        }
     }
 
     public long addImage(String url) {
@@ -90,6 +203,129 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             Log.e("DatabaseHelper", "addImage error", e);
             return -1;
         }
+    }
+
+    public void logRequest(String method, String path, int statusCode, String remoteIp, String userQq, long timestamp, long elapsedMs) {
+        requestLogExecutor.execute(() -> {
+            try {
+                SQLiteDatabase db = getSharedDb();
+                ContentValues cv = new ContentValues();
+                cv.put("method", method == null ? "" : method);
+                cv.put("path", path == null ? "" : path);
+                cv.put("status_code", statusCode);
+                cv.put("remote_ip", remoteIp == null ? "" : remoteIp);
+                cv.put("user_qq", userQq == null ? "" : userQq);
+                cv.put("timestamp_ms", timestamp);
+                cv.put("elapsed_ms", elapsedMs);
+                db.insert("api_requests", null, cv);
+                updateDailyStats(db, statusCode, timestamp);
+            } catch (Exception e) {
+                Log.e("DatabaseHelper", "logRequest error", e);
+            }
+        });
+    }
+
+    private void updateDailyStats(SQLiteDatabase db, int statusCode, long timestamp) {
+        String day = formatDay(timestamp);
+        Cursor c = db.rawQuery("SELECT total_requests, success_count, error_count FROM api_stats_daily WHERE day=?", new String[]{day});
+        ContentValues cv = new ContentValues();
+        cv.put("day", day);
+        cv.put("last_seen_at", timestamp);
+        if (c.moveToFirst()) {
+            int total = c.getInt(0) + 1;
+            int success = c.getInt(1) + (statusCode < 400 ? 1 : 0);
+            int error = c.getInt(2) + (statusCode >= 400 ? 1 : 0);
+            cv.put("total_requests", total);
+            cv.put("success_count", success);
+            cv.put("error_count", error);
+            db.update("api_stats_daily", cv, "day=?", new String[]{day});
+        } else {
+            cv.put("total_requests", 1);
+            cv.put("success_count", statusCode < 400 ? 1 : 0);
+            cv.put("error_count", statusCode >= 400 ? 1 : 0);
+            db.insertWithOnConflict("api_stats_daily", null, cv, SQLiteDatabase.CONFLICT_REPLACE);
+        }
+        c.close();
+    }
+
+    public String listRequestLogsJson(int limit) {
+        if (limit < 1) limit = 20;
+        SQLiteDatabase db = getSharedDb();
+        Cursor c = db.rawQuery(
+            "SELECT id, method, path, status_code, remote_ip, user_qq, timestamp_ms, elapsed_ms FROM api_requests ORDER BY id DESC LIMIT ?",
+            new String[]{String.valueOf(limit)}
+        );
+        JSONArray arr = new JSONArray();
+        while (c.moveToNext()) {
+            JSONObject o = new JSONObject();
+            try {
+                o.put("id", c.getLong(0));
+                o.put("method", c.getString(1));
+                o.put("path", c.getString(2));
+                o.put("status_code", c.getInt(3));
+                o.put("remote_ip", c.getString(4));
+                o.put("user_qq", c.getString(5));
+                o.put("timestamp_ms", c.getLong(6));
+                o.put("elapsed_ms", c.getDouble(7));
+                arr.put(o);
+            } catch (Exception ignored) {}
+        }
+        c.close();
+        return arr.toString();
+    }
+
+    public String listDailyStatsJson(int days) {
+        if (days < 1) days = 7;
+        SQLiteDatabase db = getSharedDb();
+        long cutoff = System.currentTimeMillis() - ((long) days - 1) * 24L * 60L * 60L * 1000L;
+        String cutoffDay = formatDay(cutoff);
+        Cursor c = db.rawQuery(
+            "SELECT day, total_requests, success_count, error_count, last_seen_at FROM api_stats_daily WHERE day >= ? ORDER BY day ASC",
+            new String[]{cutoffDay}
+        );
+        JSONArray arr = new JSONArray();
+        while (c.moveToNext()) {
+            JSONObject o = new JSONObject();
+            try {
+                o.put("day", c.getString(0));
+                o.put("total_requests", c.getInt(1));
+                o.put("success_count", c.getInt(2));
+                o.put("error_count", c.getInt(3));
+                o.put("last_seen_at", c.getLong(4));
+                arr.put(o);
+            } catch (Exception ignored) {}
+        }
+        c.close();
+        return arr.toString();
+    }
+
+    public long getApiRequestCount() {
+        SQLiteDatabase db = getSharedDb();
+        Cursor c = db.rawQuery("SELECT COUNT(*) FROM api_requests", null);
+        long cnt = 0;
+        if (c.moveToFirst()) cnt = c.getLong(0);
+        c.close();
+        return cnt;
+    }
+
+    public long getTodayRequestCount() {
+        SQLiteDatabase db = getSharedDb();
+        Calendar cal = Calendar.getInstance();
+        cal.set(Calendar.HOUR_OF_DAY, 0);
+        cal.set(Calendar.MINUTE, 0);
+        cal.set(Calendar.SECOND, 0);
+        cal.set(Calendar.MILLISECOND, 0);
+        long startOfToday = cal.getTimeInMillis();
+        Cursor c = db.rawQuery("SELECT COUNT(*) FROM api_requests WHERE timestamp_ms >= ?", new String[]{String.valueOf(startOfToday)});
+        long cnt = 0;
+        if (c.moveToFirst()) cnt = c.getLong(0);
+        c.close();
+        return cnt;
+    }
+
+    private String formatDay(long timestamp) {
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd", Locale.US);
+        return sdf.format(timestamp);
     }
 
     public String listImagesJson() {

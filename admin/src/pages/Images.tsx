@@ -130,25 +130,25 @@ export function Images({ toast, refreshKey }: ImagesProps) {
   };
 
   // ---- 图片预览导航 ----
-  const pendingIds = new Set(images.filter(i => i.status === 0).map(i => i.id));
+  const previewIds = new Set(images.map(i => i.id));
 
   const openPreview = (idx: number) => { if (idx >= 0 && idx < images.length) setPreviewIdx(idx); };
 
   const previewPrev = () => {
     for (let i = previewIdx - 1; i >= 0; i--) {
-      if (pendingIds.has(images[i].id)) { setPreviewIdx(i); return; }
+      if (previewIds.has(images[i].id)) { setPreviewIdx(i); return; }
     }
   };
 
   const previewNext = () => {
     for (let i = previewIdx + 1; i < images.length; i++) {
-      if (pendingIds.has(images[i].id)) { setPreviewIdx(i); return; }
+      if (previewIds.has(images[i].id)) { setPreviewIdx(i); return; }
     }
   };
 
   const previewItem = previewIdx >= 0 && previewIdx < images.length ? images[previewIdx] : null;
-  const hasPrev = previewIdx > 0 && images.slice(0, previewIdx).some(i => pendingIds.has(i.id));
-  const hasNext = previewIdx < images.length - 1 && images.slice(previewIdx + 1).some(i => pendingIds.has(i.id));
+  const hasPrev = previewIdx > 0 && images.slice(0, previewIdx).some(i => previewIds.has(i.id));
+  const hasNext = previewIdx < images.length - 1 && images.slice(previewIdx + 1).some(i => previewIds.has(i.id));
 
   const handlePreviewAudit = async (status: 1 | 2) => {
     if (!previewItem) return;
@@ -180,6 +180,12 @@ export function Images({ toast, refreshKey }: ImagesProps) {
   const isSearching = search !== debouncedSearch;
   const statusLabels: Record<number, string> = { 0: '待审核', 1: '已通过', 2: '已拒绝' };
   const statusBadge: Record<number, string> = { 0: 'badge-0', 1: 'badge-1', 2: 'badge-2' };
+  const statusCounts = useMemo(() => ({
+    all: rawImages.length,
+    pending: rawImages.filter(i => i.status === 0).length,
+    approved: rawImages.filter(i => i.status === 1).length,
+    rejected: rawImages.filter(i => i.status === 2).length,
+  }), [rawImages]);
 
   // 分页按钮生成
   const pageButtons = useMemo(() => {
@@ -213,6 +219,12 @@ export function Images({ toast, refreshKey }: ImagesProps) {
             onChange={e => setSearch(e.target.value)}
             className="search-input"
           />
+        </div>
+        <div className="status-pills">
+          <button className={`status-pill ${filter === '' ? 'active' : ''}`} onClick={() => setFilter('')}>全部 {statusCounts.all}</button>
+          <button className={`status-pill ${filter === '0' ? 'active' : ''}`} onClick={() => setFilter('0')}>待审 {statusCounts.pending}</button>
+          <button className={`status-pill ${filter === '1' ? 'active' : ''}`} onClick={() => setFilter('1')}>已过 {statusCounts.approved}</button>
+          <button className={`status-pill ${filter === '2' ? 'active' : ''}`} onClick={() => setFilter('2')}>已拒 {statusCounts.rejected}</button>
         </div>
         {selected.size > 0 && (
           <button className="btn btn-danger btn-sm" onClick={batchDelete}>
@@ -282,11 +294,11 @@ export function Images({ toast, refreshKey }: ImagesProps) {
                   <td><span className={`badge ${statusBadge[i.status]}`}>{statusLabels[i.status]}</span></td>
                   <td style={{whiteSpace:'nowrap',fontSize:'0.73rem'}} title={fmtTs(i.created_at)}>{relativeTime(i.created_at)}</td>
                   <td onClick={e => e.stopPropagation()}>
-                    <button className="btn btn-success btn-xs" onClick={() => auditImage(i.id, 1)} title="通过" disabled={busy}>{busy ? <span className="spin">⟳</span> : <IconCheck size={12} />}</button>
-                    {' '}
-                    <button className="btn btn-warn btn-xs" onClick={() => auditImage(i.id, 2)} title="拒绝" disabled={busy}>{busy ? <span className="spin">⟳</span> : <IconX size={12} />}</button>
-                    {' '}
-                    <button className="btn btn-danger btn-xs" onClick={() => deleteImage(i.id)} title="删除"><IconTrash size={12} /></button>
+                    <div className="table-actions">
+                      <button className="btn btn-success btn-xs" onClick={() => auditImage(i.id, 1)} title="通过" disabled={busy}>{busy ? <span className="spin">⟳</span> : <IconCheck size={12} />}</button>
+                      <button className="btn btn-warn btn-xs" onClick={() => auditImage(i.id, 2)} title="拒绝" disabled={busy}>{busy ? <span className="spin">⟳</span> : <IconX size={12} />}</button>
+                      <button className="btn btn-danger btn-xs" onClick={() => deleteImage(i.id)} title="删除"><IconTrash size={12} /></button>
+                    </div>
                   </td>
                 </tr>
               )})}
@@ -341,7 +353,7 @@ export function Images({ toast, refreshKey }: ImagesProps) {
                   <IconChevronLeft size={14} /> 上一张
                 </button>
                 <span className="preview-pos">
-                  {images.filter(i => i.status === 0).findIndex(i => i.id === previewItem.id) + 1} / {images.filter(i => i.status === 0).length} 待审
+                  {images.findIndex(i => i.id === previewItem.id) + 1} / {images.length} 项
                 </span>
                 <button className="btn btn-ghost btn-sm" disabled={!hasNext} onClick={previewNext} title="下一张 (→)">
                   下一张 <IconChevronRight size={14} />
@@ -358,7 +370,14 @@ export function Images({ toast, refreshKey }: ImagesProps) {
                     </button>
                   </>
                 ) : (
-                  <span className="preview-done">该图片已{previewItem.status === 1 ? '通过' : '拒绝'}</span>
+                  <>
+                    <button className="btn btn-success" disabled={acting.has(previewItem.id)} onClick={() => handlePreviewAudit(1)} title="改为通过">
+                      <IconCheck size={16} /> 设为通过
+                    </button>
+                    <button className="btn btn-danger" disabled={acting.has(previewItem.id)} onClick={() => handlePreviewAudit(2)} title="改为拒绝">
+                      <IconX size={16} /> 设为拒绝
+                    </button>
+                  </>
                 )}
               </div>
             </div>

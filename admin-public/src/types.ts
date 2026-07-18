@@ -55,10 +55,31 @@ export interface ServerStatus {
   image_count: number;
   db_path: string;
   uptime: number;
+  request_count?: number;
+  today_request_count?: number;
   battery?: ResourceInfo;
   cpu?: ResourceInfo;
   memory?: MemoryDiskInfo;
   disk?: MemoryDiskInfo;
+}
+
+export interface ApiRequestLog {
+  id: number;
+  method: string;
+  path: string;
+  status_code: number;
+  remote_ip?: string;
+  user_qq?: string;
+  timestamp_ms: number;
+  elapsed_ms: number;
+}
+
+export interface ApiDailyStat {
+  day: string;
+  total_requests: number;
+  success_count: number;
+  error_count: number;
+  last_seen_at: number;
 }
 
 export interface SiteConfig {
@@ -67,4 +88,5 @@ export interface SiteConfig {
   server_port?: string;
   admin_port?: string;
   auto_cleanup_rejected?: string;
+  admin_token?: string;
 }

@@ -32,13 +32,26 @@ public class WriteQueue {
         // 工具类，禁止实例化
     }
 
+    /** 每次写入完成后调用的回调（用于触发外部备份等操作） */
+    private static volatile Runnable onAfterWrite;
+
+    public static void setOnAfterWrite(Runnable callback) {
+        onAfterWrite = callback;
+    }
+
     /**
      * 提交一个有返回值的写任务，返回 Future 供调用方等待结果。
      * 调用方需要调用 future.get() 来阻塞等待写入完成并获取返回值。
      */
     public static <T> Future<T> submit(Callable<T> task) {
         try {
-            return executor.submit(task);
+            return executor.submit(() -> {
+                try {
+                    return task.call();
+                } finally {
+                    if (onAfterWrite != null) onAfterWrite.run();
+                }
+            });
         } catch (RejectedExecutionException e) {
             Log.e(TAG, "Write queue rejected task", e);
             throw new RuntimeException("数据库写入队列已关闭", e);

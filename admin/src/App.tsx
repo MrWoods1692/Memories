@@ -6,8 +6,9 @@ import { Bans } from './pages/Bans';
 import { Settings } from './pages/Settings';
 import { Database } from './pages/Database';
 import { useToast, ToastContainer } from './components/Toast';
-import { IconDashboard, IconImage, IconUsers, IconBan, IconSettings, IconDatabase } from './components/Icons';
+import { IconDashboard, IconImage, IconUsers, IconBan, IconSettings, IconDatabase, IconSun, IconMoon } from './components/Icons';
 import { API_BASE } from './api';
+import { ThemeProvider, useTheme } from './ThemeContext';
 import './App.css';
 
 type TabName = 'dashboard' | 'images' | 'users' | 'bans' | 'settings' | 'database';
@@ -22,10 +23,19 @@ const tabs: { key: TabName; label: string; Icon: React.ComponentType<{size?:numb
 ];
 
 export default function App() {
+  return (
+    <ThemeProvider>
+      <AppShell />
+    </ThemeProvider>
+  );
+}
+
+function AppShell() {
   const [activeTab, setActiveTab] = useState<TabName>('dashboard');
   const { toasts, toast } = useToast();
   const [refreshKey, setRefreshKey] = useState(0);
   const [animKey, setAnimKey] = useState(0);
+  const { theme, toggle } = useTheme();
 
   const switchTab = (tab: TabName) => {
     if (tab !== activeTab) {
@@ -64,7 +74,12 @@ export default function App() {
           </svg>
           <h1>Memories</h1>
         </div>
-        <div className="info">{API_BASE}</div>
+        <div className="header-actions">
+          <div className="info">{API_BASE}</div>
+          <button className="theme-toggle" onClick={toggle} title={theme === 'dark' ? '切换到亮色' : '切换到暗色'}>
+            {theme === 'dark' ? <IconSun size={16} /> : <IconMoon size={16} />}
+          </button>
+        </div>
       </div>
 
       <div className="tabs">
