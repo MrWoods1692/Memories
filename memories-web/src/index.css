@@ -222,16 +222,53 @@ body.dark-theme {
   --border-muted: rgba(255, 255, 255, 0.25);
 }
 
-/* 暗色下侧边栏菜单文字 */
+/* 暗色下侧边栏菜单 */
 body.dark-theme .ant-layout-sider .ant-menu-item {
-  color: rgba(255, 255, 255, 0.75) !important;
+  color: rgba(255, 255, 255, 0.7) !important;
+  border-radius: 8px !important;
+  margin: 2px 8px !important;
+  width: calc(100% - 16px) !important;
+}
+body.dark-theme .ant-layout-sider .ant-menu-item:hover {
+  color: #fff !important;
+  background: rgba(255, 255, 255, 0.08) !important;
 }
 body.dark-theme .ant-layout-sider .ant-menu-item-selected {
   color: #fff !important;
   font-weight: 600;
+  background: rgba(255, 255, 255, 0.12) !important;
 }
-body.dark-theme .ant-layout-sider .ant-menu-item:hover {
+body.dark-theme .ant-layout-sider .ant-menu-item-selected .anticon {
   color: #fff !important;
+}
+
+/* 亮色下侧边栏菜单 */
+body:not(.dark-theme) .ant-layout-sider .ant-menu-item {
+  border-radius: 8px !important;
+  margin: 2px 8px !important;
+  width: calc(100% - 16px) !important;
+  color: rgba(0, 0, 0, 0.7) !important;
+}
+body:not(.dark-theme) .ant-layout-sider .ant-menu-item:hover {
+  background: rgba(0, 0, 0, 0.04) !important;
+  color: rgba(0, 0, 0, 0.88) !important;
+}
+body:not(.dark-theme) .ant-layout-sider .ant-menu-item-selected {
+  background: rgba(0, 0, 0, 0.06) !important;
+  color: rgba(0, 0, 0, 0.88) !important;
+  font-weight: 600;
+}
+
+/* 亮色/暗色下侧边栏收起模式菜单 */
+.ant-layout-sider .ant-menu-inline-collapsed .ant-menu-item {
+  border-radius: 8px !important;
+  margin: 4px 8px !important;
+  width: calc(100% - 16px) !important;
+  justify-content: center !important;
+  padding: 0 !important;
+}
+.ant-layout-sider .ant-menu-inline-collapsed .ant-menu-item .anticon {
+  font-size: 18px !important;
 }
 
 /* 暗色下 Modal 弹窗 */
