@@ -180,7 +180,6 @@ public class MainActivity extends android.app.Activity {
     private void tryAutoStartFrpc() {
         String config = dbHelper.getConfig("frpc_config");
         if (config == null || config.trim().isEmpty()) return;
-        if (frpcManager.isRunning()) return;
 
         String portStr = dbHelper.getConfig("server_port");
         int serverPort = 8080;
@@ -189,7 +188,7 @@ public class MainActivity extends android.app.Activity {
         }
         String portError = FrpcManager.validatePort(config, serverPort);
         if (portError != null) return;
-        frpcManager.startFrpc(config);
+        frpcManager.ensureRunning(config);
     }
 
     @Override

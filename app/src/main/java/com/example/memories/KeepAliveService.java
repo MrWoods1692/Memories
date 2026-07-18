@@ -12,6 +12,9 @@ import android.os.Build;
 import android.os.IBinder;
 import android.util.Log;
 
+import java.net.HttpURLConnection;
+import java.net.URL;
+
 /**
  * 周期性保活看门狗服务。
  * 每 15 分钟通过 AlarmManager 唤醒自己，检查主服务和悬浮窗是否存活，
@@ -26,7 +29,7 @@ public class KeepAliveService extends Service {
     private static final String TAG = "KeepAliveService";
     private static final String CHANNEL_ID = "keepalive_channel";
     private static final int NOTIFICATION_ID = 999;
-    private static final long KEEP_ALIVE_INTERVAL_MS = 15 * 60 * 1000L; // 15 分钟
+    private static final long KEEP_ALIVE_INTERVAL_MS = 30 * 1000L; // 每 30 秒检查一次
     private static final String ALARM_ACTION = "com.example.memories.KEEP_ALIVE";
 
     @Override
@@ -82,19 +85,30 @@ public class KeepAliveService extends Service {
 
     /** 检查各服务是否存活，如果挂了就重启 */
     private void checkAndRestartServices() {
-        // 检查主服务是否在运行
-        if (!ServiceChecker.isServiceRunning(this, ServerService.class)) {
-            Log.w(TAG, "ServerService not running, restarting...");
-            try {
-                Intent svc = new Intent(this, ServerService.class);
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    startForegroundService(svc);
-                } else {
-                    startService(svc);
+        boolean apiHealthy = false;
+        int serverPort = 8080;
+        try {
+            DatabaseHelper db = new DatabaseHelper(this);
+            String portStr = db.getConfig("server_port");
+            if (portStr != null) {
+                try {
+                    serverPort = Integer.parseInt(portStr);
+                } catch (NumberFormatException ignored) {
                 }
-            } catch (Exception e) {
-                Log.e(TAG, "Failed to restart ServerService", e);
             }
+        } catch (Exception e) {
+            Log.w(TAG, "Failed to read server port, using default", e);
+        }
+
+        boolean serverRunning = ServiceChecker.isServiceRunning(this, ServerService.class);
+        if (!serverRunning) {
+            Log.w(TAG, "ServerService not running, restarting...");
+            restartServerService();
+        } else if (!isApiHealthy(serverPort)) {
+            Log.w(TAG, "API health check failed on port " + serverPort + ", restarting ServerService...");
+            restartServerService();
+        } else {
+            apiHealthy = true;
         }
 
         // 检查悬浮窗是否在运行
@@ -110,6 +124,87 @@ public class KeepAliveService extends Service {
             } catch (Exception e) {
                 Log.e(TAG, "Failed to restart FloatingWindow", e);
             }
+        }
+
+        if (!apiHealthy && !serverRunning) {
+            Log.w(TAG, "ServerService restart attempted but API still unhealthy");
+        }
+
+        ensureFrpcRunning();
+    }
+
+    private void restartServerService() {
+        try {
+            Intent svc = new Intent(this, ServerService.class);
+            stopService(svc);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                startForegroundService(svc);
+            } else {
+                startService(svc);
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to restart ServerService", e);
+        }
+    }
+
+    private boolean isApiHealthy(int port) {
+        HttpURLConnection conn = null;
+        try {
+            URL url = new URL("http://127.0.0.1:" + port + "/health");
+            conn = (HttpURLConnection) url.openConnection();
+            conn.setConnectTimeout(2000);
+            conn.setReadTimeout(2000);
+            conn.setRequestMethod("GET");
+            int code = conn.getResponseCode();
+            return code >= 200 && code < 500;
+        } catch (Exception e) {
+            Log.w(TAG, "API health check failed", e);
+            return false;
+        } finally {
+            if (conn != null) {
+                conn.disconnect();
+            }
+        }
+    }
+
+    private void ensureFrpcRunning() {
+        try {
+            DatabaseHelper db = new DatabaseHelper(this);
+            String config = db.getConfig("frpc_config");
+            if (config == null || config.trim().isEmpty()) {
+                FrpcManager manager = FrpcManager.getInstance();
+                if (manager != null) {
+                    manager.stopFrpc();
+                }
+                return;
+            }
+
+            String portStr = db.getConfig("server_port");
+            int serverPort = 8080;
+            if (portStr != null) {
+                try {
+                    serverPort = Integer.parseInt(portStr);
+                } catch (NumberFormatException ignored) {
+                }
+            }
+
+            String portError = FrpcManager.validatePort(config, serverPort);
+            if (portError != null) {
+                Log.w(TAG, "Skip FRPC watchdog: " + portError);
+                return;
+            }
+
+            FrpcManager manager = FrpcManager.getInstance();
+            if (manager == null) {
+                manager = new FrpcManager(this);
+            }
+
+            boolean ok = manager.ensureRunning(config);
+            if (!ok) {
+                Log.w(TAG, "FRPC watchdog failed to ensure running");
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to check FRPC status", e);
         }
     }
 
@@ -160,7 +255,7 @@ public class KeepAliveService extends Service {
                 }
 
                 Log.i(TAG, "Keep-alive alarm scheduled (interval: "
-                    + (KEEP_ALIVE_INTERVAL_MS / 60000) + " min)");
+                    + (KEEP_ALIVE_INTERVAL_MS / 1000) + " s)");
             } catch (Exception e) {
                 Log.e(TAG, "Failed to schedule keep-alive alarm", e);
             }

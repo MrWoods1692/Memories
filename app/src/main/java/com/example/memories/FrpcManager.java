@@ -58,6 +58,40 @@ public class FrpcManager {
     }
 
     /**
+     * 检查并确保 frpc 处于运行状态；如果进程实际已退出，则自动重启。
+     */
+    public boolean ensureRunning(String configContent) {
+        if (configContent == null || configContent.trim().isEmpty()) {
+            stopFrpc();
+            return false;
+        }
+
+        try {
+            frpandroid.FrpcConfig cfg = buildFrpcConfig(configContent);
+            if (running) {
+                try {
+                    Frpandroid.reload(cfg);
+                    currentConfigContent = configContent;
+                    Log.i(TAG, "frpc checked/reloaded successfully");
+                    return true;
+                } catch (Exception e) {
+                    Log.w(TAG, "frpc reload check failed, attempting restart", e);
+                }
+            }
+
+            Frpandroid.start(cfg);
+            running = true;
+            currentConfigContent = configContent;
+            Log.i(TAG, "frpc ensured running via frp_android");
+            return true;
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to ensure frpc is running", e);
+            running = false;
+            return false;
+        }
+    }
+
+    /**
      * 重新加载配置
      */
     public boolean reload(String configContent) {
