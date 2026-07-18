@@ -203,6 +203,14 @@ export default function GalleryPage() {
     };
   }, []);
 
+  // 自由视图不支持批量操作：自动退出
+  useEffect(() => {
+    if (viewMode === "free" && batchMode) {
+      setBatchMode(false);
+      setSelected(new Set());
+    }
+  }, [viewMode, batchMode]);
+
   const handleQueryInfo = useCallback(async (url: string) => {
     const filename = extractImageBedFilename(url);
     if (!filename) { message.warning("无法解析图片文件名"); return; }
@@ -444,7 +452,10 @@ export default function GalleryPage() {
             {isDesktop ? (
               <Segmented size="small"
                 value={viewMode}
-                onChange={(v) => setViewMode(v as GalleryView)}
+                onChange={(v) => {
+                  if (v === "free") setBatchMode(false);
+                  setViewMode(v as GalleryView);
+                }}
                 options={viewOptions.map((v) => ({ value: v.value, icon: v.icon })) as any}
                 style={{ marginRight: 4 }}
               />
@@ -455,7 +466,10 @@ export default function GalleryPage() {
                     key: v.value,
                     icon: v.icon,
                     label: v.label,
-                    onClick: () => setViewMode(v.value),
+                    onClick: () => {
+                      if (v.value === "free") setBatchMode(false);
+                      setViewMode(v.value);
+                    },
                   })),
                   selectedKeys: [viewMode],
                 }}
@@ -479,6 +493,7 @@ export default function GalleryPage() {
               </>
             )}
             {!batchMode ? (
+              viewMode !== "free" ? (
               <Button
                 onClick={toggleBatchMode}
                 icon={<CheckSquareOutlined />}
@@ -487,6 +502,7 @@ export default function GalleryPage() {
               >
                 {isDesktop ? "批量操作" : ""}
               </Button>
+              ) : null
             ) : isDesktop ? (
               <div className="batch-capsule" style={{
                 display: "inline-flex", alignItems: "center", gap: 0,
@@ -583,18 +599,34 @@ export default function GalleryPage() {
           }}>
             {images.map((img) => {
               const dateStr = new Date(img.created_at).toLocaleDateString("zh-CN");
+              const isSel = selected.has(img.id);
               return (
                 <div key={img.id} style={{
                   display: "flex", flexDirection: "column",
                   background: "var(--ant-color-bg-container)",
                   overflow: "hidden",
-                }}>
+                }}
+                  onClick={batchMode ? () => toggleSelect(img.id) : undefined}
+                >
                   <div style={{
                     flex: 1, overflow: "hidden",
                     background: "var(--ant-color-fill-quaternary)",
+                    position: "relative",
+                    cursor: batchMode ? "pointer" : undefined,
                   }}>
+                    {batchMode && (
+                      <div style={{
+                        position: "absolute", top: 6, right: 6, zIndex: 5,
+                        width: 22, height: 22, borderRadius: 4,
+                        background: isSel ? accentColor : "rgba(255,255,255,0.9)",
+                        border: `2px solid ${isSel ? accentColor : "#ccc"}`,
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        color: "#fff", fontSize: 12, fontWeight: 700,
+                      }}>{isSel ? "✓" : ""}</div>
+                    )}
                     <Image src={img.url} alt={dateStr}
                       style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                      preview={batchMode ? false : undefined}
                       {...getImgProps(img)} />
                   </div>
                   <Text type="secondary" style={{
@@ -636,16 +668,33 @@ toolbarRender: (originalNode: React.ReactNode, info: { current: number; actions:
             columnFill: "balance",
             padding: 0, fontSize: 0,
           }}>
-            {images.map((img) => (
+            {images.map((img) => {
+              const isSel = selected.has(img.id);
+              return (
               <div key={img.id} style={{
                 breakInside: "avoid", marginBottom: 0,
                 lineHeight: 0, fontSize: 0,
-              }}>
+                position: "relative",
+                cursor: batchMode ? "pointer" : undefined,
+              }}
+                onClick={batchMode ? () => toggleSelect(img.id) : undefined}
+              >
+                {batchMode && (
+                  <div style={{
+                    position: "absolute", top: 6, right: 6, zIndex: 5,
+                    width: 22, height: 22, borderRadius: 4,
+                    background: isSel ? accentColor : "rgba(255,255,255,0.9)",
+                    border: `2px solid ${isSel ? accentColor : "#ccc"}`,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    color: "#fff", fontSize: 12, fontWeight: 700,
+                  }}>{isSel ? "✓" : ""}</div>
+                )}
                 <Image src={img.url}
                   style={{ width: "100%", height: "auto", display: "block", verticalAlign: "top" }}
+                  preview={batchMode ? false : undefined}
                   {...getImgProps(img)} />
               </div>
-            ))}
+            )})}
           </div>
         </Image.PreviewGroup>
         <div ref={observerRef} style={{ textAlign: "center", padding: "24px 16px" }}>
@@ -672,6 +721,10 @@ toolbarRender: (originalNode: React.ReactNode, info: { current: number; actions:
           downloadOne={downloadOne}
           copyOne={copyOne}
           handleQueryInfo={handleQueryInfo}
+          batchMode={batchMode}
+          selected={selected}
+          toggleSelect={toggleSelect}
+          accentColor={accentColor}
         />
       ) : viewMode === "free" ? (
         <FreeView
@@ -952,7 +1005,7 @@ toolbarRender: (originalNode: React.ReactNode, info: { current: number; actions:
 
 /* ===== 时间线视图组件 ===== */
 
-function TimelineView({ images, loading, page, totalPages, loadImages, getImgProps, downloadOne, copyOne, handleQueryInfo }: {
+function TimelineView({ images, loading, page, totalPages, loadImages, getImgProps, downloadOne, copyOne, handleQueryInfo, batchMode, selected, toggleSelect, accentColor }: {
   images: ImageItem[];
   loading: boolean;
   page: number;
@@ -962,6 +1015,10 @@ function TimelineView({ images, loading, page, totalPages, loadImages, getImgPro
   downloadOne: (url: string) => void;
   copyOne: (url: string) => void;
   handleQueryInfo: (url: string) => void;
+  batchMode: boolean;
+  selected: Set<number>;
+  toggleSelect: (id: number) => void;
+  accentColor: string;
 }) {
   const timelineRef = useRef<HTMLDivElement>(null);
   const [activeDate, setActiveDate] = useState<string>("");
@@ -1092,13 +1149,35 @@ toolbarRender: (originalNode: React.ReactNode, info: { current: number }) => {
           gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
           gap: 8, padding: "12px 16px",
         }}>
-          {activeImages.map((img) => (
-            <div key={img.id} style={{ borderRadius: 8, overflow: "hidden", background: "var(--ant-color-fill-quaternary)" }}>
+          {activeImages.map((img) => {
+            const isSel = selected.has(img.id);
+            return (
+            <div key={img.id} style={{
+              borderRadius: 8, overflow: "hidden",
+              background: "var(--ant-color-fill-quaternary)",
+              position: "relative",
+              outline: batchMode && isSel ? `2px solid ${accentColor}` : undefined,
+              outlineOffset: -2,
+              cursor: batchMode ? "pointer" : undefined,
+            }}
+              onClick={batchMode ? () => toggleSelect(img.id) : undefined}
+            >
+              {batchMode && (
+                <div style={{
+                  position: "absolute", top: 6, right: 6, zIndex: 5,
+                  width: 22, height: 22, borderRadius: 4,
+                  background: isSel ? accentColor : "rgba(255,255,255,0.9)",
+                  border: `2px solid ${isSel ? accentColor : "#ccc"}`,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  color: "#fff", fontSize: 12, fontWeight: 700,
+                }}>{isSel ? "✓" : ""}</div>
+              )}
               <Image src={img.url}
                 style={{ width: "100%", height: "auto", display: "block", maxHeight: 300, objectFit: "cover" }}
+                preview={batchMode ? false : undefined}
                 {...getImgProps(img)} />
             </div>
-          ))}
+          )})}
         </div>
       </Image.PreviewGroup>
 
@@ -1170,6 +1249,7 @@ function FreeView({ images, loading, page, totalPages, loadImages, getImgProps, 
   };
 
   const onTouchStart = (id: number, e: React.TouchEvent) => {
+    e.preventDefault();
     const t = e.touches[0];
     if (!t) return;
     startDrag(id, t.clientX, t.clientY);
