@@ -104,9 +104,9 @@ class UploadEngine {
       this.queue[idx] = { ...record, imageBedUrl, status: "uploading_server" as const };
       this.notify();
 
-      const serverRes = await uploadImageToServer(imageBedUrl);
+      await uploadImageToServer(imageBedUrl);
       clearImagesCache();
-      this.queue[idx] = { ...record, imageBedUrl, serverId: serverRes.id, status: "done" as const };
+      this.queue[idx] = { ...record, imageBedUrl, status: "done" as const };
       this.retryMap.delete(record.id);
       this.notify();
     } catch (err) {

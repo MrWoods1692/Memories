@@ -6,8 +6,8 @@
 export const authMatrix = [
   { endpoint: '/images', method: 'GET', role: '无限制（默认仅返回已通过）；审核员 (≥1) 带 ?status=all' },
   { endpoint: '/images', method: 'POST', role: '无限制' },
-  { endpoint: '/images/{id}/audit', method: 'POST', role: '审核员 (≥1)' },
-  { endpoint: '/images/{id}', method: 'DELETE', role: '管理员 (≥2)' },
+  { endpoint: '/images/audit', method: 'POST', role: '审核员 (≥1)' },
+  { endpoint: '/images/delete', method: 'DELETE', role: '管理员 (≥2)' },
   { endpoint: '/users/*', method: '全部', role: '管理员 (≥2)' },
   { endpoint: '/bans/*', method: '全部', role: '管理员 (≥2)' },
   { endpoint: '/config', method: 'POST', role: '管理员 (≥2)' },
@@ -54,7 +54,6 @@ export const endpointGroups = [
           content: `{
   "items": [
     {
-      "id": 1,
       "url": "https://example.com/photo.jpg",
       "status": 0,
       "created_at": 1721000000000
@@ -67,7 +66,6 @@ export const endpointGroups = [
 }`,
         },
         responseFields: [
-          { name: 'items[].id', type: 'number', desc: '图片唯一标识' },
           { name: 'items[].url', type: 'string', desc: '图片 URL 地址' },
           { name: 'items[].status', type: 'number', desc: '0=待审核, 1=已通过, 2=已拒绝' },
           { name: 'items[].created_at', type: 'number', desc: '创建时间（Unix 毫秒时间戳）' },
@@ -87,18 +85,18 @@ export const endpointGroups = [
         bodyParams: [
           { name: 'url', type: 'string', required: true, desc: '图片 URL 地址' },
         ],
-        response: { type: 'json', content: '{"id": 42}' },
+        response: { type: 'json', content: '{}' },
         notes: '写入成功后自动触发 WebDAV 后台同步（如已配置）。',
       },
       {
         id: 'images-audit',
         method: 'POST',
-        path: '/images/{id}/audit',
+        path: '/images/audit',
         summary: '审核图片',
         auth: 'reviewer',
-        description: '审核图片，将其标记为通过或拒绝。',
-        pathParams: [{ name: 'id', type: 'number', desc: '图片 ID' }],
-        bodyParams: [
+        description: '审核图片，将其标记为通过或拒绝。通过 URL 查询参数传递图片 URL。',
+        queryParams: [
+          { name: 'url', type: 'string', required: true, desc: '图片 URL（需 URL 编码）' },
           { name: 'status', type: 'string', required: true, desc: '"1"=通过，"2"=拒绝' },
         ],
         responseDesc: '成功: updated | 不存在: not found',
@@ -106,11 +104,11 @@ export const endpointGroups = [
       {
         id: 'images-delete',
         method: 'DELETE',
-        path: '/images/{id}',
+        path: '/images/delete',
         summary: '删除图片',
         auth: 'admin',
-        description: '删除指定图片。',
-        pathParams: [{ name: 'id', type: 'number', desc: '图片 ID' }],
+        description: '删除指定图片。通过 URL 查询参数传递图片 URL。',
+        queryParams: [{ name: 'url', type: 'string', required: true, desc: '图片 URL（需 URL 编码）' }],
         responseDesc: '成功: deleted | 不存在: not found',
       },
     ],

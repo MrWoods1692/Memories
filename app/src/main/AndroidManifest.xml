@@ -37,6 +37,9 @@
         android:usesCleartextTraffic="true"
         android:theme="@android:style/Theme.DeviceDefault.NoActionBar">
 
+        <!-- Apache HTTP Legacy 库：Sardine WebDAV 依赖，解决 NoSuchFieldError -->
+        <uses-library android:name="org.apache.http.legacy" android:required="false" />
+
         <activity
             android:name="com.example.memories.MainActivity"
             android:exported="true"

@@ -99,12 +99,14 @@ public class OAuthHelper {
     }
 
     /**
-     * 用授权码换取 access token
+     * 用授权码换取 access token。
+     * 注意：state 仅在 token 交换成功后删除，失败时保留以便重试，
+     * 避免并发回调或代理重试导致 code_verifier 丢失。
      */
     public static JSONObject exchangeToken(String prefix, String clientId, String clientSecret,
                                            String code, String redirectUri, String state, DatabaseHelper db) {
         try {
-            // 从数据库获取 code_verifier
+            // 从数据库获取 code_verifier（不提前删除，防止并发/重试时丢失）
             String stateJson = db.getConfig(STATE_PREFIX + state);
             String codeVerifier = "";
             if (stateJson != null) {
@@ -113,8 +115,15 @@ public class OAuthHelper {
                     codeVerifier = st.optString("code_verifier", "");
                 } catch (Exception ignored) {}
             }
-            // 用完删除
-            db.setConfig(STATE_PREFIX + state, null);
+
+            if (codeVerifier.isEmpty()) {
+                Log.e(TAG, "code_verifier is empty for state=" + state + ", stateJson exists=" + (stateJson != null)
+                    + (stateJson != null ? ", stateJson=" + stateJson : ""));
+                JSONObject err = new JSONObject();
+                err.put("error", "missing_code_verifier");
+                err.put("detail", "PKCE code_verifier not found for state " + state + ". Please try logging in again.");
+                return err;
+            }
 
             String tokenUrl = "https://" + prefix + ".campux.top/oauth/token";
             URL url = new URL(tokenUrl);
@@ -143,6 +152,8 @@ public class OAuthHelper {
 
             int responseCode = conn.getResponseCode();
             if (responseCode == 200) {
+                // 仅在成功后才删除 state，防止并发回调或代理重试导致第二次请求丢失 code_verifier
+                db.setConfig(STATE_PREFIX + state, null);
                 BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream()));
                 StringBuilder resp = new StringBuilder();
                 String line;
@@ -160,7 +171,7 @@ public class OAuthHelper {
                     br.close();
                     errBody = sb.toString();
                 } catch (Exception ignored) {}
-                Log.e(TAG, "Token exchange failed: HTTP " + responseCode + " body: " + errBody);
+                Log.e(TAG, "Token exchange failed: HTTP " + responseCode + " body: " + errBody + " state=" + state);
                 JSONObject err = new JSONObject();
                 err.put("error", "token_exchange_failed");
                 err.put("http_status", responseCode);

@@ -58,7 +58,9 @@ public class FrpcManager {
     }
 
     /**
-     * 检查并确保 frpc 处于运行状态；如果进程实际已退出，则自动重启。
+     * 检查并确保 frpc 处于运行状态；如果 reload 失败则强制重启。
+     * 相比 startFrpc，此方法会先尝试 reload（热更新配置），
+     * 失败后强制 stop + start 确保进程真正存活。
      */
     public boolean ensureRunning(String configContent) {
         if (configContent == null || configContent.trim().isEmpty()) {
@@ -72,20 +74,58 @@ public class FrpcManager {
                 try {
                     Frpandroid.reload(cfg);
                     currentConfigContent = configContent;
-                    Log.i(TAG, "frpc checked/reloaded successfully");
                     return true;
                 } catch (Exception e) {
-                    Log.w(TAG, "frpc reload check failed, attempting restart", e);
+                    // reload 失败说明进程可能已死，重置标志后走重启流程
+                    Log.w(TAG, "frpc reload failed (process likely dead), forcing restart", e);
+                    running = false;
                 }
             }
 
+            // 真正启动（running 为 false 或 reload 失败后重置）
             Frpandroid.start(cfg);
             running = true;
             currentConfigContent = configContent;
-            Log.i(TAG, "frpc ensured running via frp_android");
+            Log.i(TAG, "frpc started/restarted via frp_android");
             return true;
         } catch (Exception e) {
             Log.e(TAG, "Failed to ensure frpc is running", e);
+            running = false;
+            return false;
+        }
+    }
+
+    /**
+     * 强制重启 FRPC：无条件停止再启动，用于深度保活检查。
+     * 解决 FRPC 进程"假在线"（running=true 但隧道已断开）的问题。
+     */
+    public boolean forceRestart(String configContent) {
+        if (configContent == null || configContent.trim().isEmpty()) {
+            stopFrpc();
+            return false;
+        }
+
+        try {
+            // 先停止
+            try {
+                Frpandroid.stop();
+            } catch (Exception e) {
+                Log.w(TAG, "Error stopping frpc during force restart", e);
+            }
+            running = false;
+
+            // 短暂等待确保进程完全退出
+            try { Thread.sleep(500); } catch (InterruptedException ignored) {}
+
+            // 重新启动
+            frpandroid.FrpcConfig cfg = buildFrpcConfig(configContent);
+            Frpandroid.start(cfg);
+            running = true;
+            currentConfigContent = configContent;
+            Log.i(TAG, "frpc force restarted successfully");
+            return true;
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to force restart frpc", e);
             running = false;
             return false;
         }

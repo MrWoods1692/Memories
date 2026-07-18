@@ -2,7 +2,6 @@
 export type ImageStatus = 0 | 1 | 2;
 
 export interface ImageItem {
-  id: number;
   url: string;
   status: ImageStatus;
   created_at: string;

@@ -68,13 +68,13 @@ export function Images({ toast, refreshKey }: ImagesProps) {
 
   const toggleSelectAll = (checked: boolean) => {
     if (checked) {
-      setSelected(new Set(images.map(i => i.url)));
+      setSelected(new Set(images.map(i => i.id)));
     } else {
       setSelected(new Set());
     }
   };
 
-  const toggleSelect = (url: string) => {
+  const toggleSelect = (id: number) => {
     setSelected(prev => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
@@ -86,7 +86,7 @@ export function Images({ toast, refreshKey }: ImagesProps) {
   const auditImage = async (id: number, status: ImageStatus) => {
     setActing(prev => new Set(prev).add(id));
     try {
-      await apiPost(`/images/audit?url=${encodeURIComponent(url)}\apiPost(`/images/${id}/audit`, { status: String(status) });
+      await apiPost(`/images/${id}/audit`, { status: String(status) });
       toast(status === 1 ? '已通过' : '已拒绝');
       loadPage(page);
     } catch {
@@ -96,11 +96,11 @@ export function Images({ toast, refreshKey }: ImagesProps) {
     }
   };
 
-  const deleteImage = (url: string) => {
-    setConfirmMsg(`确定删除图片？`);
+  const deleteImage = (id: number) => {
+    setConfirmMsg(`确定删除图片 #${id}？`);
     setConfirmAction(() => async () => {
       try {
-        await apiPost(`/images/delete?url=${encodeURIComponent(url)}`);
+        await apiDelete(`/images/${id}`);
         toast('已删除');
         loadPage(page);
       } catch {
@@ -115,7 +115,7 @@ export function Images({ toast, refreshKey }: ImagesProps) {
     setConfirmMsg(`确定删除选中的 ${selected.size} 张图片？`);
     setConfirmAction(() => async () => {
       for (const id of selected) {
-        try { await apiPost(`/images/delete?url=${encodeURIComponent(url)}`); } catch { /* continue */ }
+        try { await apiDelete(`/images/${id}`); } catch { /* continue */ }
       }
       setSelected(new Set());
       toast('批量删除完成');
@@ -130,37 +130,37 @@ export function Images({ toast, refreshKey }: ImagesProps) {
   };
 
   // ---- 图片预览导航 ----
-  const previewIds = new Set(images.map(i => i.url));
+  const previewIds = new Set(images.map(i => i.id));
 
   const openPreview = (idx: number) => { if (idx >= 0 && idx < images.length) setPreviewIdx(idx); };
 
   const previewPrev = () => {
     for (let i = previewIdx - 1; i >= 0; i--) {
-      if (previewIds.has(images[i].url)) { setPreviewIdx(i); return; }
+      if (previewIds.has(images[i].id)) { setPreviewIdx(i); return; }
     }
   };
 
   const previewNext = () => {
     for (let i = previewIdx + 1; i < images.length; i++) {
-      if (previewIds.has(images[i].url)) { setPreviewIdx(i); return; }
+      if (previewIds.has(images[i].id)) { setPreviewIdx(i); return; }
     }
   };
 
   const previewItem = previewIdx >= 0 && previewIdx < images.length ? images[previewIdx] : null;
-  const hasPrev = previewIdx > 0 && images.slice(0, previewIdx).some(i => previewIds.has(i.url));
-  const hasNext = previewIdx < images.length - 1 && images.slice(previewIdx + 1).some(i => previewIds.has(i.url));
+  const hasPrev = previewIdx > 0 && images.slice(0, previewIdx).some(i => previewIds.has(i.id));
+  const hasNext = previewIdx < images.length - 1 && images.slice(previewIdx + 1).some(i => previewIds.has(i.id));
 
   const handlePreviewAudit = async (status: 1 | 2) => {
     if (!previewItem) return;
-    setActing(p => new Set(p).add(previewItem.url));
+    setActing(p => new Set(p).add(previewItem.id));
     try {
-      await apiPost(`/images/audit?url=${encodeURIComponent(previewItem.url)}\apiPost(`/images/${previewItem.url}/audit`, { status: String(status) });
+      await apiPost(`/images/${previewItem.id}/audit`, { status: String(status) });
       toast(status === 1 ? '已通过' : '已拒绝');
       loadPage(page);
       if (hasNext) { setTimeout(() => previewNext(), 100); }
       else setPreviewIdx(-1);
     } catch { toast('操作失败', 'error'); }
-    finally { setActing(p => { const n = new Set(p); n.delete(previewItem.url); return n; }); }
+    finally { setActing(p => { const n = new Set(p); n.delete(previewItem.id); return n; }); }
   };
 
   // 键盘快捷键
@@ -280,13 +280,13 @@ export function Images({ toast, refreshKey }: ImagesProps) {
             </thead>
             <tbody>
               {images.map(i => {
-                const busy = acting.has(i.url);
+                const busy = acting.has(i.id);
                 return (
-                <tr key={i.url} className={selected.has(i.url) ? 'row-selected' : ''} onClick={() => toggleSelect(i.url)}>
+                <tr key={i.id} className={selected.has(i.id) ? 'row-selected' : ''} onClick={() => toggleSelect(i.id)}>
                   <td onClick={e => e.stopPropagation()}>
-                    <input type="checkbox" checked={selected.has(i.url)} onChange={() => toggleSelect(i.url)} />
+                    <input type="checkbox" checked={selected.has(i.id)} onChange={() => toggleSelect(i.id)} />
                   </td>
-                  <td style={{color:'var(--accent)',fontWeight:600,fontSize:'0.72rem'}}>#{i.url}</td>
+                  <td style={{color:'var(--accent)',fontWeight:600,fontSize:'0.72rem'}}>#{i.id}</td>
                   <td className="url preview-link" title={i.url} onClick={(e) => { e.stopPropagation(); openPreview(images.indexOf(i)); }}>
                     {i.url}
                     <button className="btn-copy" onClick={e => { e.stopPropagation(); handleCopyUrl(i.url); }} title="复制链接"><IconCopy size={12} /></button>
@@ -295,9 +295,9 @@ export function Images({ toast, refreshKey }: ImagesProps) {
                   <td style={{whiteSpace:'nowrap',fontSize:'0.73rem'}} title={fmtTs(i.created_at)}>{relativeTime(i.created_at)}</td>
                   <td onClick={e => e.stopPropagation()}>
                     <div className="table-actions">
-                      <button className="btn btn-success btn-xs" onClick={() => auditImage(i.url, 1)} title="通过" disabled={busy}>{busy ? <span className="spin">⟳</span> : <IconCheck size={12} />}</button>
-                      <button className="btn btn-warn btn-xs" onClick={() => auditImage(i.url, 2)} title="拒绝" disabled={busy}>{busy ? <span className="spin">⟳</span> : <IconX size={12} />}</button>
-                      <button className="btn btn-danger btn-xs" onClick={() => deleteImage(i.url)} title="删除"><IconTrash size={12} /></button>
+                      <button className="btn btn-success btn-xs" onClick={() => auditImage(i.id, 1)} title="通过" disabled={busy}>{busy ? <span className="spin">⟳</span> : <IconCheck size={12} />}</button>
+                      <button className="btn btn-warn btn-xs" onClick={() => auditImage(i.id, 2)} title="拒绝" disabled={busy}>{busy ? <span className="spin">⟳</span> : <IconX size={12} />}</button>
+                      <button className="btn btn-danger btn-xs" onClick={() => deleteImage(i.id)} title="删除"><IconTrash size={12} /></button>
                     </div>
                   </td>
                 </tr>
@@ -337,14 +337,14 @@ export function Images({ toast, refreshKey }: ImagesProps) {
         <div className="dialog-overlay preview-overlay" onClick={() => setPreviewIdx(-1)}>
           <div className="preview-dialog" onClick={e => e.stopPropagation()}>
             <div className="preview-header">
-              <span className="preview-title">图片预览 #{previewItem.url}</span>
+              <span className="preview-title">图片预览 #{previewItem.id}</span>
               <span className={`badge ${statusBadge[previewItem.status]}`}>{statusLabels[previewItem.status]}</span>
               <button className="preview-close" onClick={() => setPreviewIdx(-1)} title="关闭 (Esc)">
                 <IconX size={18} />
               </button>
             </div>
             <div className="preview-body">
-              <img src={previewItem.url} alt={`#${previewItem.url}`} className="preview-img"
+              <img src={previewItem.url} alt={`#${previewItem.id}`} className="preview-img"
                 onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
             </div>
             <div className="preview-actions">
@@ -353,7 +353,7 @@ export function Images({ toast, refreshKey }: ImagesProps) {
                   <IconChevronLeft size={14} /> 上一张
                 </button>
                 <span className="preview-pos">
-                  {images.findIndex(i => i.url === previewItem.url) + 1} / {images.length} 项
+                  {images.findIndex(i => i.id === previewItem.id) + 1} / {images.length} 项
                 </span>
                 <button className="btn btn-ghost btn-sm" disabled={!hasNext} onClick={previewNext} title="下一张 (→)">
                   下一张 <IconChevronRight size={14} />
@@ -362,19 +362,19 @@ export function Images({ toast, refreshKey }: ImagesProps) {
               <div className="preview-audit">
                 {previewItem.status === 0 ? (
                   <>
-                    <button className="btn btn-success" disabled={acting.has(previewItem.url)} onClick={() => handlePreviewAudit(1)} title="通过 (A)">
+                    <button className="btn btn-success" disabled={acting.has(previewItem.id)} onClick={() => handlePreviewAudit(1)} title="通过 (A)">
                       <IconCheck size={16} /> 通过
                     </button>
-                    <button className="btn btn-danger" disabled={acting.has(previewItem.url)} onClick={() => handlePreviewAudit(2)} title="拒绝 (R)">
+                    <button className="btn btn-danger" disabled={acting.has(previewItem.id)} onClick={() => handlePreviewAudit(2)} title="拒绝 (R)">
                       <IconX size={16} /> 不通过
                     </button>
                   </>
                 ) : (
                   <>
-                    <button className="btn btn-success" disabled={acting.has(previewItem.url)} onClick={() => handlePreviewAudit(1)} title="改为通过">
+                    <button className="btn btn-success" disabled={acting.has(previewItem.id)} onClick={() => handlePreviewAudit(1)} title="改为通过">
                       <IconCheck size={16} /> 设为通过
                     </button>
-                    <button className="btn btn-danger" disabled={acting.has(previewItem.url)} onClick={() => handlePreviewAudit(2)} title="改为拒绝">
+                    <button className="btn btn-danger" disabled={acting.has(previewItem.id)} onClick={() => handlePreviewAudit(2)} title="改为拒绝">
                       <IconX size={16} /> 设为拒绝
                     </button>
                   </>

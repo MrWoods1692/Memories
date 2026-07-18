@@ -25,7 +25,7 @@ import java.util.concurrent.ThreadFactory;
 
 public class DatabaseHelper extends SQLiteOpenHelper {
     private static final String DB_NAME = "memories.db";
-    private static final int DB_VERSION = 2;
+    private static final int DB_VERSION = 3;
     private static String dbPath = null;
     private static SQLiteDatabase sharedDb = null;
     private static final ExecutorService requestLogExecutor = Executors.newFixedThreadPool(
@@ -174,7 +174,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
     @Override
     public void onCreate(SQLiteDatabase db) {
-        db.execSQL("CREATE TABLE images (id INTEGER PRIMARY KEY AUTOINCREMENT, url TEXT, status INTEGER DEFAULT 0, created_at INTEGER)");
+        db.execSQL("CREATE TABLE images (url TEXT, status INTEGER DEFAULT 0, created_at INTEGER)");
         db.execSQL("CREATE TABLE users (id INTEGER PRIMARY KEY AUTOINCREMENT, qq TEXT, role INTEGER)");
         db.execSQL("CREATE TABLE config (k TEXT PRIMARY KEY, v TEXT)");
         db.execSQL("CREATE TABLE banned_users (qq TEXT PRIMARY KEY, reason TEXT, banned_at INTEGER)");
@@ -188,8 +188,19 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             db.execSQL("CREATE TABLE IF NOT EXISTS api_requests (id INTEGER PRIMARY KEY AUTOINCREMENT, method TEXT, path TEXT, status_code INTEGER, remote_ip TEXT, user_qq TEXT, timestamp_ms INTEGER, elapsed_ms REAL)");
             db.execSQL("CREATE TABLE IF NOT EXISTS api_stats_daily (day TEXT PRIMARY KEY, total_requests INTEGER DEFAULT 0, success_count INTEGER DEFAULT 0, error_count INTEGER DEFAULT 0, last_seen_at INTEGER)");
         }
+        if (oldVersion < 3) {
+            // 移除 images 表的显式 id 列，改用隐式 rowid（自动回收）
+            db.execSQL("CREATE TABLE images_new (url TEXT, status INTEGER DEFAULT 0, created_at INTEGER)");
+            db.execSQL("INSERT INTO images_new (url, status, created_at) SELECT url, status, created_at FROM images ORDER BY id");
+            db.execSQL("DROP TABLE images");
+            db.execSQL("ALTER TABLE images_new RENAME TO images");
+        }
     }
 
+    /**
+     * 添加图片，返回 SQLite 自动分配的 rowid。
+     * rowid 在删除后会被 SQLite 自动回收复用，无需手动管理。
+     */
     public long addImage(String url) {
         try {
             return WriteQueue.submit(() -> {
@@ -330,15 +341,14 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
     public String listImagesJson() {
         SQLiteDatabase db = getSharedDb();
-        Cursor c = db.rawQuery("SELECT id, url, status, created_at FROM images ORDER BY created_at DESC", null);
+        Cursor c = db.rawQuery("SELECT url, status, created_at FROM images ORDER BY created_at DESC", null);
         JSONArray arr = new JSONArray();
         while (c.moveToNext()) {
             JSONObject o = new JSONObject();
             try {
-                o.put("id", c.getLong(0));
-                o.put("url", c.getString(1));
-                o.put("status", c.getInt(2));
-                o.put("created_at", c.getLong(3));
+                o.put("url", c.getString(0));
+                o.put("status", c.getInt(1));
+                o.put("created_at", c.getLong(2));
                 arr.put(o);
             } catch (Exception ignored) {}
         }
@@ -383,17 +393,16 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
         // 查分页数据
         Cursor c = db.rawQuery(
-            "SELECT id, url, status, created_at FROM images" + whereClause + " ORDER BY created_at DESC LIMIT ? OFFSET ?",
+            "SELECT url, status, created_at FROM images" + whereClause + " ORDER BY created_at DESC LIMIT ? OFFSET ?",
             new String[]{String.valueOf(limit), String.valueOf(offset)}
         );
         JSONArray items = new JSONArray();
         while (c.moveToNext()) {
             JSONObject o = new JSONObject();
             try {
-                o.put("id", c.getLong(0));
-                o.put("url", c.getString(1));
-                o.put("status", c.getInt(2));
-                o.put("created_at", c.getLong(3));
+                o.put("url", c.getString(0));
+                o.put("status", c.getInt(1));
+                o.put("created_at", c.getLong(2));
                 items.put(o);
             } catch (Exception ignored) {}
         }
@@ -412,11 +421,24 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         return result.toString();
     }
 
+    /**
+     * 删除图片。SQLite 隐式 rowid 会在后续插入时自动回收。
+     */
+    /** 根据 url 查找 rowid，用于 delete/audit 操作 */
+    public long findImageRowId(String url) {
+        SQLiteDatabase db = getSharedDb();
+        Cursor c = db.rawQuery("SELECT rowid FROM images WHERE url=?", new String[]{url});
+        long rowid = -1;
+        if (c.moveToFirst()) rowid = c.getLong(0);
+        c.close();
+        return rowid;
+    }
+
     public boolean deleteImage(long id) {
         try {
             return WriteQueue.submit(() -> {
                 SQLiteDatabase db = getSharedDb();
-                int rows = db.delete("images", "id=?", new String[]{String.valueOf(id)});
+                int rows = db.delete("images", "rowid=?", new String[]{String.valueOf(id)});
                 return rows > 0;
             }).get();
         } catch (Exception e) {
@@ -431,7 +453,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 SQLiteDatabase db = getSharedDb();
                 ContentValues cv = new ContentValues();
                 cv.put("status", status);
-                int rows = db.update("images", cv, "id=?", new String[]{String.valueOf(id)});
+                int rows = db.update("images", cv, "rowid=?", new String[]{String.valueOf(id)});
                 return rows > 0;
             }).get();
         } catch (Exception e) {
@@ -936,6 +958,51 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             }).get();
         } catch (Exception e) {
             Log.e("DatabaseHelper", "cleanupRejectedImages error", e);
+            return 0;
+        }
+    }
+
+    // ==================== 日志自动清理 ====================
+
+    /**
+     * 清空所有请求日志（api_requests 表），返回删除行数。
+     * 每天凌晨 4 点由 KeepAliveService 调用。
+     */
+    public int cleanupRequestLogs() {
+        try {
+            return WriteQueue.submit(() -> {
+                SQLiteDatabase db = getSharedDb();
+                int deleted = db.delete("api_requests", null, null);
+                Log.i("DatabaseHelper", "Cleaned up " + deleted + " request log entries");
+                return deleted;
+            }).get();
+        } catch (Exception e) {
+            Log.e("DatabaseHelper", "cleanupRequestLogs error", e);
+            return 0;
+        }
+    }
+
+    /**
+     * 清理超过保留天数的每日统计数据（api_stats_daily 表），返回删除行数。
+     * 每天凌晨 4 点由 KeepAliveService 调用。
+     * @param retentionDays 保留天数，默认 30 天
+     */
+    public int cleanupOldDailyStats(int retentionDays) {
+        if (retentionDays < 1) retentionDays = 30;
+        try {
+            final int days = retentionDays;
+            return WriteQueue.submit(() -> {
+                SQLiteDatabase db = getSharedDb();
+                // 计算截止日期：今天往前推 retentionDays 天
+                Calendar cal = Calendar.getInstance();
+                cal.add(Calendar.DAY_OF_MONTH, -days);
+                String cutoffDay = formatDay(cal.getTimeInMillis());
+                int deleted = db.delete("api_stats_daily", "day < ?", new String[]{cutoffDay});
+                Log.i("DatabaseHelper", "Cleaned up " + deleted + " daily stats older than " + cutoffDay);
+                return deleted;
+            }).get();
+        } catch (Exception e) {
+            Log.e("DatabaseHelper", "cleanupOldDailyStats error", e);
             return 0;
         }
     }

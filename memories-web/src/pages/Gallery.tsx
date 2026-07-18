@@ -68,15 +68,15 @@ export default function GalleryPage() {
   ];
   const currentView = viewOptions.find((v) => v.value === viewMode)!;
 
-  const toggleSelect = useCallback((id: number) => {
+  const toggleSelect = useCallback((ts: number) => {
     setSelected((prev) => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      next.has(ts) ? next.delete(ts) : next.add(ts);
       return next;
     });
   }, []);
 
-  const selectAll = useCallback(() => setSelected(new Set(images.map((i) => i.id))), [images]);
+  const selectAll = useCallback(() => setSelected(new Set(images.map((i) => i.created_at))), [images]);
   const deselectAll = useCallback(() => setSelected(new Set()), []);
   const toggleBatchMode = useCallback(() => {
     setBatchMode((prev) => { if (prev) setSelected(new Set()); return !prev; });
@@ -261,7 +261,7 @@ export default function GalleryPage() {
   }, [downloadOne, copyOne, handleQueryInfo]);
 
   const batchDownload = useCallback(async () => {
-    const urls = images.filter((i) => selected.has(i.id)).map((i) => i.url);
+    const urls = images.filter((i) => selected.has(i.created_at)).map((i) => i.url);
     if (!urls.length) { message.warning("请先选择图片"); return; }
     message.loading({ content: `下载 ${urls.length} 张...`, key: "bd", duration: 0 });
     for (let i = 0; i < urls.length; i++) {
@@ -273,7 +273,7 @@ export default function GalleryPage() {
   }, [images, selected, downloadOne, message]);
 
   const batchCopy = useCallback(async () => {
-    const urls = images.filter((i) => selected.has(i.id)).map((i) => i.url);
+    const urls = images.filter((i) => selected.has(i.created_at)).map((i) => i.url);
     if (!urls.length) { message.warning("请先选择图片"); return; }
     try { await navigator.clipboard.writeText(urls.join("\n")); message.success(`已复制 ${urls.length} 个链接`); }
     catch { message.warning("复制失败"); }
@@ -357,19 +357,19 @@ export default function GalleryPage() {
     const retryUrl = `${imgUrl}${sep}_retry=${count}`;
 
     setImages((prev) => prev.map((img) =>
-      img.id === imgId ? { ...img, url: retryUrl } : img
+      img.created_at === imgId ? { ...img, url: retryUrl } : img
     ));
 
     // 成功后恢复原始 URL（延迟清理）
     setTimeout(() => {
       setImages((prev) => prev.map((img) =>
-        img.id === imgId && img.url.includes("_retry=") ? { ...img, url: imgUrl } : img
+        img.created_at === imgId && img.url.includes("_retry=") ? { ...img, url: imgUrl } : img
       ));
     }, 3000);
   }, []);
 
   const getImgProps = useCallback((img: ImageItem) => ({
-    onError: () => handleImgError(img.id, img.url),
+    onError: () => handleImgError(img.created_at, img.url),
     fallback: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2VlZSIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSIgZmlsbD0iIzk5OSIgZm9udC1zaXplPSIxNiI+5Zu+54mH5Yqg6L295aSx6LSlPC90ZXh0Pjwvc3ZnPg==",
   }), [handleImgError]);
 
@@ -384,7 +384,7 @@ export default function GalleryPage() {
         if (cached.items.length > 0) {
           setImages(cached.items);
           setTotalPages(cached.totalPages);
-          cachedIdsRef.current = new Set(cached.items.map((i) => i.id));
+          cachedIdsRef.current = new Set(cached.items.map((i) => i.created_at));
           setInitialLoading(false); // 有缓存，立即显示
         }
       } catch { /* 无缓存或出错，继续等待网络请求 */ }
@@ -392,7 +392,7 @@ export default function GalleryPage() {
       // 2. 后台同步最新数据
       try {
         const fresh = await fetchImages(1, 20, true);
-        const newItems = fresh.items.filter((i) => !cachedIdsRef.current.has(i.id));
+        const newItems = fresh.items.filter((i) => !cachedIdsRef.current.has(i.created_at));
         if (newItems.length > 0 && cachedIdsRef.current.size > 0) {
           message.info(`📷 有 ${newItems.length} 张新照片`);
         }
@@ -608,15 +608,15 @@ export default function GalleryPage() {
           }}>
             {images.map((img) => {
               const dateStr = new Date(img.created_at).toLocaleDateString("zh-CN");
-              const isSel = selected.has(img.id);
+              const isSel = selected.has(img.created_at);
               return (
-                <div key={img.id} style={{
+                <div key={img.created_at} style={{
                   display: "inline-block",
                   verticalAlign: "top",
                   height: 200,
                   marginRight: 2,
                 }}
-                  onClick={batchMode ? () => toggleSelect(img.id) : undefined}
+                  onClick={batchMode ? () => toggleSelect(img.created_at) : undefined}
                 >
                   <div style={{
                     height: 176,
@@ -683,15 +683,15 @@ toolbarRender: (originalNode: React.ReactNode, info: { current: number; actions:
             padding: 0, fontSize: 0,
           }}>
             {images.map((img) => {
-              const isSel = selected.has(img.id);
+              const isSel = selected.has(img.created_at);
               return (
-              <div key={img.id} style={{
+              <div key={img.created_at} style={{
                 breakInside: "avoid", marginBottom: 0,
                 lineHeight: 0, fontSize: 0,
                 position: "relative",
                 cursor: batchMode ? "pointer" : undefined,
               }}
-                onClick={batchMode ? () => toggleSelect(img.id) : undefined}
+                onClick={batchMode ? () => toggleSelect(img.created_at) : undefined}
               >
                 {batchMode && (
                   <div style={{
@@ -787,7 +787,7 @@ toolbarRender: (originalNode: React.ReactNode, info: { current: number; actions:
               } as any}
             >
             {images.map((img) => {
-              const isSel = selected.has(img.id);
+              const isSel = selected.has(img.created_at);
               const dateStr = new Date(img.created_at).toLocaleDateString("zh-CN");
               const isListView = viewMode === "list" || viewMode === "simple";
               const isSimple = viewMode === "simple";
@@ -801,8 +801,8 @@ toolbarRender: (originalNode: React.ReactNode, info: { current: number; actions:
                 if (isSimple) {
                   /* ===== 简洁列表：仅日期 + 文件名 ===== */
                   return (
-                    <div key={img.id} id={`list-row-${img.id}`}
-                      onClick={batchMode ? () => toggleSelect(img.id) : undefined}
+                    <div key={img.created_at} id={`list-row-${img.created_at}`}
+                      onClick={batchMode ? () => toggleSelect(img.created_at) : undefined}
                       style={{
                         display: "flex", alignItems: "center", gap: 10,
                         padding: "6px 14px",
@@ -822,7 +822,7 @@ toolbarRender: (originalNode: React.ReactNode, info: { current: number; actions:
                       )}
                       <Text type="secondary" style={{ fontSize: 12, flexShrink: 0, width: 80 }}>{dateShort}</Text>
                       <Text
-                        onClick={batchMode ? undefined : () => { const el = document.getElementById(`list-row-${img.id}`)?.querySelector(".ant-image-img") as HTMLElement; el?.click(); }}
+                        onClick={batchMode ? undefined : () => { const el = document.getElementById(`list-row-${img.created_at}`)?.querySelector(".ant-image-img") as HTMLElement; el?.click(); }}
                         style={{
                           flex: 1, fontSize: 13, cursor: batchMode ? "default" : "pointer", color: accentColor,
                           overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
@@ -832,8 +832,8 @@ toolbarRender: (originalNode: React.ReactNode, info: { current: number; actions:
                   );
                 }
                 return (
-                  <div key={img.id} id={`list-row-${img.id}`} className="gallery-list-row"
-                    onClick={batchMode ? () => toggleSelect(img.id) : undefined}
+                  <div key={img.created_at} id={`list-row-${img.created_at}`} className="gallery-list-row"
+                    onClick={batchMode ? () => toggleSelect(img.created_at) : undefined}
                     style={{
                       display: "flex", alignItems: "center", gap: 12,
                       padding: "10px 16px", borderRadius: 12,
@@ -854,17 +854,16 @@ toolbarRender: (originalNode: React.ReactNode, info: { current: number; actions:
                     <Tag color="blue" style={{ borderRadius: 6, fontSize: 11, margin: 0, flexShrink: 0 }}>{ext}</Tag>
                     <Text type="secondary" className="gallery-list-date" style={{ fontSize: 12, flexShrink: 0, width: 130 }}>{fullDate}</Text>
                     <Text
-                      onClick={() => { if (!batchMode) { const el = document.getElementById(`list-row-${img.id}`)?.querySelector(".ant-image-img") as HTMLElement; el?.click(); } }}
+                      onClick={() => { if (!batchMode) { const el = document.getElementById(`list-row-${img.created_at}`)?.querySelector(".ant-image-img") as HTMLElement; el?.click(); } }}
                       style={{
                       flex: 1, fontSize: 13, cursor: "pointer", color: accentColor,
                       overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                     }}>{filename}</Text>
-                    <Text type="secondary" className="gallery-list-id" style={{ fontSize: 12, flexShrink: 0 }}>#{img.id}</Text>
                     {!batchMode && (
                     <div style={{ display: "flex", gap: 2, flexShrink: 0 }}>
                       <Tooltip title="预览">
                         <Button type="text" size="small" icon={<EyeOutlined />}
-                          onClick={(e) => { e.stopPropagation(); const el = document.getElementById(`list-row-${img.id}`)?.querySelector(".ant-image-img") as HTMLElement; el?.click(); }}
+                          onClick={(e) => { e.stopPropagation(); const el = document.getElementById(`list-row-${img.created_at}`)?.querySelector(".ant-image-img") as HTMLElement; el?.click(); }}
                           style={{ color: accentColor }} />
                       </Tooltip>
                       <Tooltip title="下载">
@@ -890,7 +889,7 @@ toolbarRender: (originalNode: React.ReactNode, info: { current: number; actions:
               }
 
               return (
-                <Card key={img.id} size="small" hoverable
+                <Card key={img.created_at} size="small" hoverable
                   style={{
                     borderRadius: 12, overflow: "hidden",
                     outline: batchMode && isSel ? `2px solid ${accentColor}` : undefined,
@@ -898,7 +897,7 @@ toolbarRender: (originalNode: React.ReactNode, info: { current: number; actions:
                   }}
                   styles={{ body: { padding: 0 } }}
                   cover={
-                    <div onClick={batchMode ? () => toggleSelect(img.id) : undefined}
+                    <div onClick={batchMode ? () => toggleSelect(img.created_at) : undefined}
                       style={{
                         position: "relative", overflow: "hidden",
                         aspectRatio: "4/3", maxHeight: 400,
@@ -1176,9 +1175,9 @@ toolbarRender: (originalNode: React.ReactNode, info: { current: number }) => {
           gap: 8, padding: "12px 16px",
         }}>
           {activeImages.map((img) => {
-            const isSel = selected.has(img.id);
+            const isSel = selected.has(img.created_at);
             return (
-            <div key={img.id} style={{
+            <div key={img.created_at} style={{
               borderRadius: 8, overflow: "hidden",
               background: "var(--ant-color-fill-quaternary)",
               position: "relative",
@@ -1186,7 +1185,7 @@ toolbarRender: (originalNode: React.ReactNode, info: { current: number }) => {
               outlineOffset: -2,
               cursor: batchMode ? "pointer" : undefined,
             }}
-              onClick={batchMode ? () => toggleSelect(img.id) : undefined}
+              onClick={batchMode ? () => toggleSelect(img.created_at) : undefined}
             >
               {batchMode && (
                 <div style={{
@@ -1249,8 +1248,8 @@ function FreeView({ images, loading, page, totalPages, loadImages, getImgProps, 
     setPositions((prev) => {
       const next = new Map(prev);
       images.forEach((img) => {
-        if (!next.has(img.id)) {
-          next.set(img.id, {
+        if (!next.has(img.created_at)) {
+          next.set(img.created_at, {
             x: 40 + Math.random() * Math.max(w - 300, 100),
             y: 40 + Math.random() * Math.max(h - 300, 200),
             rotate: (Math.random() - 0.5) * 12,
@@ -1290,7 +1289,7 @@ function FreeView({ images, loading, page, totalPages, loadImages, getImgProps, 
       if (clientX == null || clientY == null) return;
       const dx = clientX - drag.startX;
       const dy = clientY - drag.startY;
-      const id = drag.id;
+      const id = drag.created_at;
       const origX = drag.origX;
       const origY = drag.origY;
       setPositions((prev) => {
@@ -1354,26 +1353,26 @@ function FreeView({ images, loading, page, totalPages, loadImages, getImgProps, 
         } as any}
       >
         {images.map((img) => {
-          const pos = positions.get(img.id);
+          const pos = positions.get(img.created_at);
           if (!pos) return null;
           return (
-            <div key={img.id}
-              onMouseDown={(e) => onMouseDown(img.id, e)}
-              onTouchStart={(e) => onTouchStart(img.id, e)}
+            <div key={img.created_at}
+              onMouseDown={(e) => onMouseDown(img.created_at, e)}
+              onTouchStart={(e) => onTouchStart(img.created_at, e)}
               style={{
                 position: "absolute", left: pos.x, top: pos.y,
                 transform: `rotate(${pos.rotate}deg)`,
-                cursor: draggingId === img.id ? "grabbing" : "grab",
-                zIndex: draggingId === img.id ? 1000 : topPhotoId === img.id ? 100 : 1,
+                cursor: draggingId === img.created_at ? "grabbing" : "grab",
+                zIndex: draggingId === img.created_at ? 1000 : topPhotoId === img.created_at ? 100 : 1,
                 padding: "10px 10px 40px 10px",
                 background: "#fff",
                 borderRadius: 2,
-                boxShadow: draggingId === img.id
+                boxShadow: draggingId === img.created_at
                   ? "4px 8px 24px rgba(0,0,0,0.3)"
-                  : topPhotoId === img.id
+                  : topPhotoId === img.created_at
                   ? "2px 4px 12px rgba(0,0,0,0.2)"
                   : "1px 2px 8px rgba(0,0,0,0.15)",
-                transition: draggingId === img.id ? "none" : "box-shadow 0.2s",
+                transition: draggingId === img.created_at ? "none" : "box-shadow 0.2s",
                 touchAction: "none",
               }}
               onMouseEnter={(e) => {

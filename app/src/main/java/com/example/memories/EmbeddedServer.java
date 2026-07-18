@@ -319,37 +319,45 @@ public class EmbeddedServer extends NanoHTTPD {
                 return NanoHTTPD.newFixedLengthResponse(Status.OK, "application/json", result.toString());
             }
 
-            // /images/{id}
-            String[] parts = uri.split("/");
-            if (parts.length >= 3) {
-                String idStr = parts[2];
-                long id = Long.parseLong(idStr);
-                if (Method.DELETE.equals(method)) {
-                    if (!isAdmin(session, db)) return NanoHTTPD.newFixedLengthResponse(Status.UNAUTHORIZED, "text/plain", "admin required");
-                    boolean ok = db.deleteImage(id);
-                    return NanoHTTPD.newFixedLengthResponse(ok?Status.OK:Status.NOT_FOUND, "text/plain", ok?"deleted":"not found");
+            // DELETE /images/delete?url=... — 删除图片
+            if ("/images/delete".equals(uri) && Method.DELETE.equals(method)) {
+                if (!isAdmin(session, db)) return NanoHTTPD.newFixedLengthResponse(Status.UNAUTHORIZED, "text/plain", "admin required");
+                Map<String, String> params = session.getParms();
+                String url = params.get("url");
+                if (url == null || url.isEmpty()) {
+                    return NanoHTTPD.newFixedLengthResponse(Status.BAD_REQUEST, "text/plain", "missing url");
                 }
+                long rowid = db.findImageRowId(url);
+                if (rowid < 0) return NanoHTTPD.newFixedLengthResponse(Status.NOT_FOUND, "text/plain", "not found");
+                boolean ok = db.deleteImage(rowid);
+                return NanoHTTPD.newFixedLengthResponse(ok ? Status.OK : Status.NOT_FOUND, "text/plain", ok ? "deleted" : "not found");
+            }
 
-                if (parts.length >= 4 && "audit".equals(parts[3]) && Method.POST.equals(method)) {
-                    String qq = session.getHeaders().get("x-user-qq");
-                    int role = db.getUserRole(qq);
-                    if (!isLanRequest(session) && role < 1) return NanoHTTPD.newFixedLengthResponse(Status.UNAUTHORIZED, "text/plain", "reviewer required");
-                    Map<String, String> files = new java.util.HashMap<>();
-                    session.parseBody(files);
-                    Map<String, String> params = session.getParms();
-                    String statusStr = params.get("status");
-                    int status = Integer.parseInt(statusStr == null ? "0" : statusStr);
-                    // 拒绝时自动删除：检查 auto_cleanup_rejected 配置（默认开启）
-                    if (status == 2) {
-                        String autoCleanup = db.getConfig("auto_cleanup_rejected");
-                        if (autoCleanup == null || "true".equals(autoCleanup)) {
-                            boolean deleted = db.deleteImage(id);
-                            return NanoHTTPD.newFixedLengthResponse(deleted ? Status.OK : Status.NOT_FOUND, "text/plain", "deleted");
-                        }
-                    }
-                    boolean ok = db.updateImageStatus(id, status);
-                    return NanoHTTPD.newFixedLengthResponse(ok?Status.OK:Status.NOT_FOUND, "text/plain", ok?"updated":"not found");
+            // POST /images/audit?url=...&status=... — 审核图片
+            if ("/images/audit".equals(uri) && Method.POST.equals(method)) {
+                String qq = session.getHeaders().get("x-user-qq");
+                int role = db.getUserRole(qq);
+                if (!isLanRequest(session) && role < 1) return NanoHTTPD.newFixedLengthResponse(Status.UNAUTHORIZED, "text/plain", "reviewer required");
+                Map<String, String> files = new java.util.HashMap<>();
+                session.parseBody(files);
+                Map<String, String> params = session.getParms();
+                String url = params.get("url");
+                String statusStr = params.get("status");
+                if (url == null || url.isEmpty()) {
+                    return NanoHTTPD.newFixedLengthResponse(Status.BAD_REQUEST, "text/plain", "missing url");
                 }
+                long rowid = db.findImageRowId(url);
+                if (rowid < 0) return NanoHTTPD.newFixedLengthResponse(Status.NOT_FOUND, "text/plain", "not found");
+                int status = Integer.parseInt(statusStr == null ? "0" : statusStr);
+                if (status == 2) {
+                    String autoCleanup = db.getConfig("auto_cleanup_rejected");
+                    if (autoCleanup == null || "true".equals(autoCleanup)) {
+                        boolean deleted = db.deleteImage(rowid);
+                        return NanoHTTPD.newFixedLengthResponse(deleted ? Status.OK : Status.NOT_FOUND, "text/plain", "deleted");
+                    }
+                }
+                boolean ok = db.updateImageStatus(rowid, status);
+                return NanoHTTPD.newFixedLengthResponse(ok ? Status.OK : Status.NOT_FOUND, "text/plain", ok ? "updated" : "not found");
             }
         } catch (Exception e) {
             Log.e(TAG, "handleImages error", e);
@@ -377,7 +385,8 @@ public class EmbeddedServer extends NanoHTTPD {
                 java.io.File f = new java.io.File(dbPath);
                 boolean ok = WebDavBackup.uploadFile(webdavUrl, webdavUser, webdavPass, f, "memories.db");
                 Log.i(TAG, ok ? "WebDAV auto-sync OK" : "WebDAV auto-sync FAILED");
-            } catch (Exception e) {
+            } catch (Throwable e) {
+                // 使用 Throwable 捕获 Error（如 NoSuchFieldError），防止 Sardine 库崩溃导致进程退出
                 Log.e(TAG, "WebDAV auto-sync error", e);
             }
         }).start();
@@ -1150,8 +1159,27 @@ public class EmbeddedServer extends NanoHTTPD {
                 Map<String, String> params = session.getParms();
                 String code = params.get("code");
                 String state = params.get("state");
+
+                // 如果 params 解析失败，尝试从原始查询字符串中手动提取
+                if (state == null || state.isEmpty()) {
+                    String rawQuery = session.getQueryParameterString();
+                    Log.w(TAG, "OAuth callback: state missing from params, rawQuery=" + rawQuery + " params=" + params);
+                    if (rawQuery != null) {
+                        Map<String, String> fallback = parseQueryString(rawQuery);
+                        if (state == null || state.isEmpty()) state = fallback.get("state");
+                        if (code == null || code.isEmpty()) code = fallback.get("code");
+                    }
+                }
+
+                Log.i(TAG, "OAuth callback: code=" + (code != null ? code.substring(0, Math.min(8, code.length())) + "..." : "null")
+                    + " state=" + (state != null ? state.substring(0, Math.min(8, state.length())) + "..." : "null"));
+
                 if (code == null || code.isEmpty()) {
                     return NanoHTTPD.newFixedLengthResponse(Status.BAD_REQUEST, "text/plain", "missing code");
+                }
+                if (state == null || state.isEmpty()) {
+                    Log.e(TAG, "OAuth callback: state parameter is missing, cannot retrieve code_verifier");
+                    return NanoHTTPD.newFixedLengthResponse(Status.BAD_REQUEST, "text/plain", "missing state parameter - please try logging in again");
                 }
 
                 String prefix = db.getConfig("oauth_prefix");
@@ -1353,6 +1381,32 @@ public class EmbeddedServer extends NanoHTTPD {
         } catch (Exception e) {
             return false;
         }
+    }
+
+    /**
+     * 手动解析 URL 查询字符串为 Map，作为 NanoHTTPD getParms() 的备用方案。
+     * 当代理（frp/nginx）可能影响参数解析时使用。
+     */
+    private static Map<String, String> parseQueryString(String query) {
+        Map<String, String> result = new java.util.HashMap<>();
+        if (query == null || query.isEmpty()) return result;
+        try {
+            String[] pairs = query.split("&");
+            for (String pair : pairs) {
+                int idx = pair.indexOf("=");
+                if (idx > 0) {
+                    String key = java.net.URLDecoder.decode(pair.substring(0, idx), "UTF-8");
+                    String value = java.net.URLDecoder.decode(pair.substring(idx + 1), "UTF-8");
+                    result.put(key, value);
+                } else if (idx < 0 && !pair.isEmpty()) {
+                    String key = java.net.URLDecoder.decode(pair, "UTF-8");
+                    result.put(key, "");
+                }
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Failed to parse query string: " + query, e);
+        }
+        return result;
     }
 
     private static String urlEncode(String s) {

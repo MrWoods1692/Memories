@@ -18,7 +18,6 @@ export interface AuthResponse {
 
 /** 图片资源（来自 GET /images） */
 export interface ImageItem {
-  id: number;
   url: string;
   status: number;      // 0=待审核, 1=已通过, 2=已拒绝
   created_at: number;   // Unix 毫秒时间戳
@@ -40,7 +39,6 @@ export interface UploadRecord {
   fileSize: number;
   localUrl: string;
   imageBedUrl?: string;
-  serverId?: number;
   status: 'pending' | 'uploading_imagebed' | 'uploading_server' | 'done' | 'failed';
   error?: string;
   createdAt: number;
@@ -58,7 +56,7 @@ export interface OAuthStartResponse {
 
 /** 上传响应 */
 export interface UploadImageResponse {
-  id: number;
+  // 不再返回 id，仅确认上传成功
 }
 
 /** 失控图床图片元数据（GET /api/v1.php?q=...） */

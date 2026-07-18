@@ -5,7 +5,6 @@ export interface AuthUser {
 }
 
 export interface ImageItem {
-  id: number;
   url: string;
   status: 0 | 1 | 2; // 0=待审核, 1=已通过, 2=已拒绝
   created_at: string;

@@ -116,6 +116,35 @@ public class MainActivity extends android.app.Activity {
 
         // 加载管理页面（带重试，等待 LAN IP 就绪）
         loadAdminPageWithRetry();
+
+        // 设置全局未捕获异常处理器：捕获 Native/SDK 崩溃并尝试自动恢复
+        setupCrashHandler();
+    }
+
+    /**
+     * 全局崩溃捕获：记录崩溃日志并通过 WorkManager 自动重启服务。
+     * 防止 FRPC Native 库、WebView 或其他组件崩溃导致进程静默退出。
+     */
+    private void setupCrashHandler() {
+        final Thread.UncaughtExceptionHandler defaultHandler = Thread.getDefaultUncaughtExceptionHandler();
+        Thread.setDefaultUncaughtExceptionHandler((thread, throwable) -> {
+            Log.e("MemoriesCrash", "FATAL CRASH in thread " + thread.getName(), throwable);
+            // 通过 WorkManager 延迟重启所有服务
+            try {
+                androidx.work.OneTimeWorkRequest work = new androidx.work.OneTimeWorkRequest
+                    .Builder(BootStartupWorker.class)
+                    .setInitialDelay(3, java.util.concurrent.TimeUnit.SECONDS)
+                    .addTag("memories_crash_restart")
+                    .build();
+                WorkManager.getInstance(getApplicationContext())
+                    .enqueueUniqueWork("memories_crash_restart",
+                        androidx.work.ExistingWorkPolicy.REPLACE, work);
+            } catch (Exception ignored) {}
+            // 交给默认处理器（通常会终止进程，WorkManager 在之后重启）
+            if (defaultHandler != null) {
+                defaultHandler.uncaughtException(thread, throwable);
+            }
+        });
     }
 
     /** 带重试的管理页面加载：先等 LAN IP，再等服务端口就绪 */

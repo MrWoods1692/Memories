@@ -28,7 +28,8 @@ public class WebDavBackup {
             sardine.put(dest, fis);
             fis.close();
             return true;
-        } catch (Exception e) {
+        } catch (Throwable e) {
+            // Throwable 捕获 Error（如 NoSuchFieldError），防止 Sardine/Apache HTTP 库崩溃导致进程退出
             Log.e(TAG, "WebDAV upload failed", e);
             return false;
         }
