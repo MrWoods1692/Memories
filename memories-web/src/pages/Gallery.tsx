@@ -61,7 +61,7 @@ export default function GalleryPage() {
     { value: "compact", label: "紧凑", icon: <PictureOutlined /> },
     { value: "list", label: "详情列表", icon: <UnorderedListOutlined /> },
     { value: "simple", label: "简洁列表", icon: <BarsOutlined /> },
-    { value: "river", label: "河视图", icon: <BorderOutlined /> },
+    ...(isDesktop ? [{ value: "river" as GalleryView, label: "河视图", icon: <BorderOutlined /> }] : []),
     { value: "masonry", label: "瀑布流", icon: <BlockOutlined /> },
     { value: "timeline", label: "时间线", icon: <FieldTimeOutlined /> },
     { value: "free", label: "自由照片", icon: <DragOutlined /> },
@@ -591,38 +591,33 @@ export default function GalleryPage() {
           } as any}
         >
           <div style={{
-            display: "flex",
-            flexWrap: "nowrap",
             overflowX: "auto",
             overflowY: "hidden",
-            gap: 2,
+            whiteSpace: "nowrap",
             padding: "4px 0",
-            height: 220,
-            alignItems: "stretch",
-            scrollbarWidth: "thin",
           }}>
             {images.map((img) => {
               const dateStr = new Date(img.created_at).toLocaleDateString("zh-CN");
               const isSel = selected.has(img.id);
               return (
                 <div key={img.id} style={{
-                  display: "flex", flexDirection: "column",
-                  flexShrink: 0,
-                  height: "100%",
-                  background: "var(--ant-color-bg-container)",
-                  overflow: "hidden",
-                  borderRadius: 4,
+                  display: "inline-block",
+                  verticalAlign: "top",
+                  height: 200,
+                  marginRight: 2,
                 }}
                   onClick={batchMode ? () => toggleSelect(img.id) : undefined}
                 >
                   <div style={{
-                    flex: 1, overflow: "hidden",
+                    height: 176,
+                    overflow: "hidden",
                     background: "var(--ant-color-fill-quaternary)",
                     position: "relative",
                     cursor: batchMode ? "pointer" : undefined,
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    minWidth: 60,
-                  }}>
+                    borderRadius: 4,
+                  }}
+                    className="river-image-wrap"
+                  >
                     {batchMode && (
                       <div style={{
                         position: "absolute", top: 6, right: 6, zIndex: 5,
@@ -634,15 +629,14 @@ export default function GalleryPage() {
                       }}>{isSel ? "✓" : ""}</div>
                     )}
                     <Image src={img.url} alt={dateStr}
-                      style={{ height: "100%", width: "auto", maxWidth: "none", display: "block", objectFit: "contain" }}
+                      style={{ height: "100%", width: "auto", maxWidth: "none", display: "block" }}
                       preview={batchMode ? false : undefined}
                       {...getImgProps(img)} />
                   </div>
                   <Text type="secondary" style={{
                     fontSize: 10, textAlign: "center",
-                    padding: "2px 6px", lineHeight: 1.3,
-                    borderTop: "1px solid var(--ant-color-border-secondary)",
-                    flexShrink: 0,
+                    display: "block",
+                    lineHeight: "24px", height: 24, padding: "0 4px",
                   }}>{dateStr}</Text>
                 </div>
               );

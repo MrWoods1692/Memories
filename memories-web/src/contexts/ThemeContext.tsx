@@ -125,6 +125,7 @@ interface ThemeContextType {
   setFont: (f: FontOption) => void;
   isDark: boolean;
   toggleDark: () => void;
+  resetTheme: () => void;
   antdTheme: ThemeConfig;
 }
 
@@ -133,10 +134,11 @@ const ThemeContext = createContext<ThemeContextType>({
   setPreset: () => {},
   fontSize: 14,
   setFontSize: () => {},
-  font: fontOptions[3],
+  font: fontOptions[0],
   setFont: () => {},
   isDark: false,
   toggleDark: () => {},
+  resetTheme: () => {},
   antdTheme: {},
 });
 
@@ -164,10 +166,21 @@ function loadFontSize(): number {
 
 function loadDark(): boolean {
   try {
-    return localStorage.getItem(DARK_KEY) === "true";
-  } catch {
-    return false;
-  }
+    const stored = localStorage.getItem(DARK_KEY);
+    if (stored !== null) return stored === "true";
+  } catch { /* ignore */ }
+  // 无手动设置时，根据时间自动判断：21:00 - 06:30 暗色
+  return isNightTime();
+}
+
+/** 判断当前是否在夜间时段（21:00 - 06:30） */
+function isNightTime(): boolean {
+  const now = new Date();
+  const hours = now.getHours();
+  const minutes = now.getMinutes();
+  const total = hours * 60 + minutes;
+  // 21:00 (1260) 到次日 06:30 (390)
+  return total >= 1260 || total < 390;
 }
 
 function loadFont(): FontOption {
@@ -239,6 +252,31 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const resetTheme = useCallback(() => {
+    setPresetState(themePresets[0]);
+    localStorage.setItem(STORAGE_KEY, themePresets[0].id);
+    setFontSizeState(14);
+    localStorage.setItem(FONT_KEY, "14");
+    setFontState(fontOptions[0]);
+    localStorage.setItem(FONT_FAMILY_KEY, fontOptions[0].id);
+    applyFont(fontOptions[0]);
+    localStorage.removeItem(DARK_KEY);
+    setIsDarkState(isNightTime());
+  }, []);
+
+  // 夜间自动暗色模式：每分钟检查一次
+  useEffect(() => {
+    const check = () => {
+      const stored = localStorage.getItem(DARK_KEY);
+      // 只有无手动设置时才自动切换
+      if (stored === null) {
+        setIsDarkState(isNightTime());
+      }
+    };
+    const interval = setInterval(check, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
   // 初始化时加载字体
   useEffect(() => {
     applyFont(font);
@@ -305,7 +343,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   return (
     <ThemeContext.Provider
-      value={{ preset, setPreset, fontSize, setFontSize, font, setFont, isDark, toggleDark, antdTheme }}
+      value={{ preset, setPreset, fontSize, setFontSize, font, setFont, isDark, toggleDark, resetTheme, antdTheme }}
     >
       {children}
     </ThemeContext.Provider>

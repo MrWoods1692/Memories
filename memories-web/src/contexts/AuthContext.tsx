@@ -8,6 +8,7 @@ import {
 } from "react";
 import type { AuthResponse } from "@/types";
 import { clearTokens, getAccessToken, getOAuthError, oauthLogin, parseOAuthCallback } from "@/api";
+import { useTheme } from "@/contexts/ThemeContext";
 
 interface AuthContextType {
   user: AuthResponse | null;
@@ -33,6 +34,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [banned, setBanned] = useState(false);
+  const { resetTheme } = useTheme();
 
   useEffect(() => {
     // 1. 先检查 URL 中是否有 OAuth 回调错误
@@ -75,11 +77,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(() => {
     clearTokens();
     setUser(null);
-  }, []);
+    resetTheme();
+  }, [resetTheme]);
 
   const clearBanned = useCallback(() => {
     setBanned(false);
   }, []);
+
+  // 游客状态时恢复默认主题
+  useEffect(() => {
+    if (!user && !loading) {
+      resetTheme();
+    }
+  }, [user, loading, resetTheme]);
 
   return (
     <AuthContext.Provider

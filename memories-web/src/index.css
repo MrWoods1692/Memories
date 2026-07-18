@@ -288,3 +288,31 @@ body.dark-theme .ant-image-preview-operations {
     max-width: calc(100vw - 32px);
   }
 }
+
+/* 河视图：单行排列，图片保持原始比例不拉伸 */
+.river-image-wrap {
+  line-height: 0;
+  font-size: 0;
+}
+.river-image-wrap .ant-image {
+  height: 100% !important;
+}
+.river-image-wrap .ant-image-img {
+  object-fit: contain !important;
+  height: 100% !important;
+  width: auto !important;
+  max-width: none !important;
+  display: block !important;
+}
+
+/* 紧凑视图：无圆角（覆盖 Card cover 和 Image 的继承圆角） */
+.gallery-grid-compact .ant-card {
+  border-radius: 0 !important;
+}
+.gallery-grid-compact .ant-card .ant-card-cover,
+.gallery-grid-compact .ant-card .ant-card-cover > *,
+.gallery-grid-compact .ant-card .ant-card-cover .ant-image,
+.gallery-grid-compact .ant-card .ant-card-cover .ant-image-img,
+.gallery-grid-compact .ant-card .ant-card-cover .ant-image-mask {
+  border-radius: 0 !important;
+}
