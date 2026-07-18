@@ -409,9 +409,7 @@ export default function GalleryPage() {
   }, [page, totalPages, loading, loadImages]);
 
   if (initialLoading) {
-    return <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: 400 }}>
-      <Spin size="large"><div style={{ padding: 40 }} /></Spin>
-    </div>;
+    return <SkeletonGallery />;
   }
 
   return (
@@ -871,7 +869,7 @@ toolbarRender: (originalNode: React.ReactNode, info: { current: number; actions:
         zIndex={2100}
         style={isDesktop ? {} : { maxWidth: "100vw", margin: 0, padding: 0, top: 0 }}
         styles={{
-          body: { padding: isDesktop ? 16 : "12px 8px", maxHeight: isDesktop ? "70vh" : "calc(100vh - 120px)", overflowY: "auto" },
+          body: { padding: isDesktop ? 16 : "12px 8px", maxHeight: isDesktop ? "70vh" : "80vh", overflowY: "auto", paddingBottom: isDesktop ? 16 : "calc(12px + env(safe-area-inset-bottom, 8px))" },
         }}
         destroyOnHidden>
         {infoLoading ? (
@@ -1300,6 +1298,39 @@ function FreeView({ images, loading, page, totalPages, loadImages, getImgProps, 
             <Text type="secondary">已加载全部照片 🎉</Text>
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+/* ==================== 骨架屏加载组件 ==================== */
+
+function SkeletonGallery() {
+  return (
+    <div style={{ padding: "16px 16px 24px" }}>
+      <div style={{
+        display: "flex", alignItems: "center", justifyContent: "flex-end",
+        marginBottom: 12,
+      }}>
+        <div className="skeleton-line skeleton-line-short" style={{ width: 80, height: 22 }} />
+      </div>
+      <div style={{
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        marginBottom: 12,
+      }}>
+        <div className="skeleton-line" style={{ width: 80, height: 14 }} />
+        <div className="skeleton-line" style={{ width: 160, height: 28, borderRadius: 14 }} />
+      </div>
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fill, minmax(min(280px, 100%), 1fr))",
+        gap: 16,
+      }}>
+        {Array.from({ length: 8 }).map((_, i) => (
+          <div key={i} className="skeleton-card" style={{ animationDelay: `${i * 0.1}s` }}>
+            <div className="skeleton-image" />
+          </div>
+        ))}
       </div>
     </div>
   );

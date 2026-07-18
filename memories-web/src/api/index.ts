@@ -235,3 +235,21 @@ export async function queryImageInfo(filename: string): Promise<ImageBedInfo> {
   }
   return data.data;
 }
+
+/* ==================== 图片审核 ==================== */
+
+/** GET /images?status=all — 获取所有图片（含待审核），需要审核员/管理员权限 */
+export async function fetchPendingImages(
+  page: number,
+  limit: number = 20
+): Promise<PaginatedResponse> {
+  return getRequest<PaginatedResponse>(`/images?status=all&page=${page}&limit=${limit}`);
+}
+
+/** POST /images/{id}/audit — 审核图片：status=1 通过，status=2 拒绝 */
+export async function auditImage(
+  id: number,
+  status: 1 | 2
+): Promise<void> {
+  await postRequest<unknown>(`/images/${id}/audit`, { status: String(status) });
+}

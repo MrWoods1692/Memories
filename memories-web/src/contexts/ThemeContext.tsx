@@ -244,6 +244,15 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     applyFont(font);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // 暗色模式同步 body class
+  useEffect(() => {
+    if (isDark) {
+      document.body.classList.add("dark-theme");
+    } else {
+      document.body.classList.remove("dark-theme");
+    }
+  }, [isDark]);
+
   // 构建字体 family 字符串
   const fontFamily = font.family
     ? `"${font.family}", -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", sans-serif`
