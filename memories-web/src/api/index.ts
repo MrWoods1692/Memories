@@ -55,7 +55,16 @@ async function postRequest<T>(url: string, body: Record<string, string>): Promis
     const text = await res.text();
     throw new Error(text || `请求失败: ${res.status}`);
   }
-  return res.json();
+  // 后端部分接口（如 /images/audit）返回纯文本（如 "updated"）而非 JSON，
+  // 这里按 Content-Type 判断：仅当响应为 JSON 时才解析，否则返回空对象占位，
+  // 避免对非 JSON 响应调用 res.json() 报 "unexpected character" 错误。
+  const contentType = res.headers.get("content-type") || "";
+  if (contentType.includes("application/json")) {
+    return res.json() as Promise<T>;
+  }
+  // 消费掉响应体，避免连接泄漏；调用方不依赖具体返回值
+  await res.text();
+  return {} as T;
 }
 
 /* ==================== 健康检查 ==================== */
