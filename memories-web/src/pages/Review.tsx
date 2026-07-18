@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Button, Card, Empty, Image, Modal, Spin, Tag, Tooltip, Typography, App, Descriptions,
 } from "antd";
@@ -118,8 +118,9 @@ export default function ReviewPage() {
     catch { message.warning("复制失败"); }
   }, [message]);
 
-  // 待审核数量
-  const pendingCount = images.filter((i) => i.status === 0).length;
+  // 待审核数量（只统计 pending）
+  const pendingImages = useMemo(() => images.filter((i) => i.status === 0), [images]);
+  const pendingCount = pendingImages.length;
 
   if (initialLoading) {
     return <SkeletonReview />;
@@ -144,7 +145,7 @@ export default function ReviewPage() {
         </div>
       </div>
 
-      {images.length === 0 && !loading ? (
+      {pendingImages.length === 0 && !loading ? (
         <Empty description="暂无待审核图片 🎉" />
       ) : (
         <>
@@ -162,7 +163,7 @@ export default function ReviewPage() {
                 </div>
               ),
               toolbarRender: (originalNode: React.ReactNode, info: { current: number; actions: Record<string, unknown> }) => {
-                const url = images[(info as any).current ?? 0]?.url || "";
+                const url = pendingImages[(info as any).current ?? 0]?.url || "";
                 const btnStyle: React.CSSProperties = {
                   color: "rgba(255,255,255,0.85)", fontSize: 20, cursor: "pointer",
                   padding: 6, display: "inline-flex", alignItems: "center",
@@ -189,7 +190,7 @@ export default function ReviewPage() {
               gridTemplateColumns: "repeat(auto-fill, minmax(min(280px, 100%), 1fr))",
               gap: 16, padding: "0 16px",
             }}>
-              {images.map((img) => {
+              {pendingImages.map((img) => {
                 const dateStr = new Date(img.created_at).toLocaleDateString("zh-CN");
                 const isPending = img.status === 0;
                 const statusTag = isPending
@@ -255,7 +256,7 @@ export default function ReviewPage() {
               <Button type="link" icon={<ArrowDownOutlined />}
                 onClick={() => loadImages(page + 1)} style={{ fontSize: 14 }}>加载更多</Button>
             )}
-            {!loading && page >= totalPages && images.length > 0 && (
+            {!loading && page >= totalPages && pendingImages.length > 0 && (
               <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, color: "#999" }}>
                 <CheckCircleOutlined style={{ color: "#52c41a", fontSize: 18 }} />
                 <Text type="secondary">已加载全部照片 🎉</Text>
