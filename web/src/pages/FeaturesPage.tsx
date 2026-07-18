@@ -5,7 +5,10 @@ import {
   Link2, ZoomIn, ZoomOut, Image, RotateCcw, Printer, Move,
   Tag, MapPin, Sparkles, FileText, Upload, ListChecks,
   Bell, Trash2, FolderDown, Database, Palette, Sun, Moon,
-  Type, TextCursorInput, CheckSquare, Copy, Layers
+  Type, TextCursorInput, CheckSquare, Copy, Layers,
+  LayoutGrid, LayoutList, RectangleHorizontal, Monitor, Smartphone,
+  MousePointer2, Play, Shuffle, Shapes, Grip, ScanEye,
+  ShieldCheck, Infinity, PanelRight,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -303,6 +306,52 @@ const FeaturesPage: React.FC = () => {
                 </div>
               </CardContent>
             </Card>
+          </div>
+        </div>
+      </section>
+
+      {/* ===== Memories 特色功能 ===== */}
+      <section className="py-16 md:py-20 bg-gradient-to-b from-background to-primary/5">
+        <div className="container mx-auto px-4 md:px-6">
+          <div className="text-center mb-10">
+            <Badge variant="secondary" className="mb-4">Memories</Badge>
+            <h2 className="text-2xl md:text-3xl font-bold text-balance">特色功能</h2>
+            <p className="mt-3 text-muted-foreground text-pretty">专为 Memories 照片分享平台打造的强大功能</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[
+              { icon: LayoutGrid, title: '多种视图模式', desc: '网格、紧凑、详情列表、河视图、瀑布流、时间线、自由照片 — 8 种视图随心切换' },
+              { icon: Grip, title: '自由照片排列', desc: '拖拽自由摆放照片位置，支持随机、网格、阶梯、环绕、照片墙、瀑布 6 种预设布局' },
+              { icon: Shapes, title: '爱心排列', desc: '一键将照片排列成爱心形状，支持实心填充和描边两种模式' },
+              { icon: Play, title: '幻灯播放', desc: '自动轮播照片，支持多种切换动画效果，全屏沉浸式体验' },
+              { icon: MousePointer2, title: '右键菜单', desc: '侧边栏、图片、页面各处右键快捷操作，高效触达所有功能' },
+              { icon: ScanEye, title: '图片信息查询', desc: '查看图片详细信息：AI 标签、画面描述、存储位置、上传者等' },
+              { icon: ShieldCheck, title: '审核系统', desc: '待审核图片队列，支持通过/拒绝操作，保障平台内容安全' },
+              { icon: Infinity, title: '无限滚动', desc: '自动加载更多照片，流畅无分页的浏览体验' },
+              { icon: Monitor, title: '响应式设计', desc: '完美适配桌面端与移动端，移动端底部导航栏快捷操作' },
+              { icon: LayoutList, title: '批量操作', desc: '多选图片批量下载、复制 URL，高效管理照片' },
+              { icon: PanelRight, title: '可收起侧边栏', desc: '桌面端侧边栏支持收起/展开，节省屏幕空间' },
+              { icon: Smartphone, title: '多端支持', desc: 'Android 客户端 + Web 网页端，随时随地分享回忆' },
+            ].map((f, i) => (
+              <motion.div
+                key={f.title}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.06 }}
+              >
+                <Card className="h-full group hover:border-primary/40 transition-colors duration-300">
+                  <CardContent className="p-6">
+                    <div className="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors duration-300">
+                      <f.icon className="h-5 w-5 text-primary" />
+                    </div>
+                    <h3 className="font-semibold mb-2">{f.title}</h3>
+                    <p className="text-sm text-muted-foreground">{f.desc}</p>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ))}
           </div>
         </div>
       </section>
