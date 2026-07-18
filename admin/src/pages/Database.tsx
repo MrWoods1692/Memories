@@ -138,12 +138,27 @@ export function Database({ toast }: DatabaseProps) {
     }
   };
 
-  /** 快速删除表中行（通过主键） */
+  /** 快速删除表中行（通过主键）；无主键时自动转入 SQL 控制台 */
   const quickDelete = (row: Record<string, unknown>) => {
-    if (!selectedTable) return;
-    const pkCol = selectedTableInfo?.columns.find(c => c.pk);
+    if (!selectedTable || !selectedTableInfo) return;
+    const pkCol = selectedTableInfo.columns.find(c => c.pk);
     if (!pkCol) {
-      toast('该表没有主键，无法快速删除，请使用 SQL 控制台', 'error');
+      // 无主键：自动转入 SQL 控制台，预填带所有列值的 DELETE 语句
+      const conditions = selectedTableInfo.columns
+        .filter(c => row[c.name] !== null && row[c.name] !== undefined)
+        .map(c => {
+          const v = row[c.name];
+          return `${c.name} = ${typeof v === 'string' ? `'${v.replace(/'/g, "''")}'` : String(v)}`;
+        });
+      const stmt = conditions.length > 0
+        ? `DELETE FROM ${selectedTable} WHERE ${conditions.join(' AND ')};`
+        : `DELETE FROM ${selectedTable} /* 请手动补全 WHERE 条件 */;`;
+      setSql(stmt);
+      setQueryMode(true);
+      setSelectedTable(null);
+      setTableData(null);
+      setQueryResult(null);
+      toast('已转入 SQL 控制台，请确认 DELETE 语句后执行', 'success');
       return;
     }
     const pkVal = row[pkCol.name];
@@ -167,13 +182,23 @@ export function Database({ toast }: DatabaseProps) {
     });
   };
 
-  /** 保存内联编辑 */
+  /** 保存内联编辑；无主键时自动转入 SQL 控制台 */
   const saveCellEdit = async () => {
     if (!editingCell || !selectedTable || !selectedTableInfo) return;
     const pkCols = selectedTableInfo.columns.filter(c => c.pk);
     if (pkCols.length === 0) {
-      toast('该表没有主键，不支持内联编辑，请使用 SQL 控制台', 'error');
+      // 无主键：自动转入 SQL 控制台，预填 UPDATE 模板，由用户补全 WHERE 条件
+      const valLiteral = editingCell.value === 'NULL'
+        ? 'NULL'
+        : `'${editingCell.value.replace(/'/g, "''")}'`;
+      const stmt = `UPDATE ${selectedTable} SET ${editingCell.col} = ${valLiteral} WHERE /* 请补全 WHERE 条件 */;`;
+      setSql(stmt);
+      setQueryMode(true);
+      setSelectedTable(null);
+      setTableData(null);
+      setQueryResult(null);
       setEditingCell(null);
+      toast('已转入 SQL 控制台，请补全 UPDATE 语句后执行', 'success');
       return;
     }
     // 从 rowKey 还原 where 条件

@@ -29,11 +29,11 @@ export function Images({ toast, refreshKey }: ImagesProps) {
   const [filter, setFilter] = useState('');
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 300);
-  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [selected, setSelected] = useState<Set<string>>(new Set());
   const [confirmAction, setConfirmAction] = useState<(() => void) | null>(null);
   const [confirmMsg, setConfirmMsg] = useState('');
   const [loading, setLoading] = useState(true);
-  const [acting, setActing] = useState<Set<number>>(new Set());
+  const [acting, setActing] = useState<Set<string>>(new Set());
   const [previewIdx, setPreviewIdx] = useState<number>(-1);
 
   const loadPage = useCallback(async (p: number) => {
@@ -77,22 +77,22 @@ export function Images({ toast, refreshKey }: ImagesProps) {
   const toggleSelect = (url: string) => {
     setSelected(prev => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      if (next.has(url)) next.delete(url);
+      else next.add(url);
       return next;
     });
   };
 
-  const auditImage = async (id: number, status: ImageStatus) => {
-    setActing(prev => new Set(prev).add(id));
+  const auditImage = async (url: string, status: ImageStatus) => {
+    setActing(prev => new Set(prev).add(url));
     try {
-      await apiPost(`/images/audit?url=${encodeURIComponent(url)}\apiPost(`/images/${id}/audit`, { status: String(status) });
+      await apiPost(`/images/audit?url=${encodeURIComponent(url)}&status=${status}`);
       toast(status === 1 ? '已通过' : '已拒绝');
       loadPage(page);
     } catch {
       toast('操作失败', 'error');
     } finally {
-      setActing(prev => { const n = new Set(prev); n.delete(id); return n; });
+      setActing(prev => { const n = new Set(prev); n.delete(url); return n; });
     }
   };
 
@@ -100,7 +100,7 @@ export function Images({ toast, refreshKey }: ImagesProps) {
     setConfirmMsg(`确定删除图片？`);
     setConfirmAction(() => async () => {
       try {
-        await apiPost(`/images/delete?url=${encodeURIComponent(url)}`);
+        await apiDelete(`/images/delete?url=${encodeURIComponent(url)}`);
         toast('已删除');
         loadPage(page);
       } catch {
@@ -114,8 +114,8 @@ export function Images({ toast, refreshKey }: ImagesProps) {
     if (selected.size === 0) { toast('请先选择图片', 'error'); return; }
     setConfirmMsg(`确定删除选中的 ${selected.size} 张图片？`);
     setConfirmAction(() => async () => {
-      for (const id of selected) {
-        try { await apiPost(`/images/delete?url=${encodeURIComponent(url)}`); } catch { /* continue */ }
+      for (const imageUrl of selected) {
+        try { await apiDelete(`/images/delete?url=${encodeURIComponent(imageUrl)}`); } catch { /* continue */ }
       }
       setSelected(new Set());
       toast('批量删除完成');
@@ -154,7 +154,7 @@ export function Images({ toast, refreshKey }: ImagesProps) {
     if (!previewItem) return;
     setActing(p => new Set(p).add(previewItem.url));
     try {
-      await apiPost(`/images/audit?url=${encodeURIComponent(previewItem.url)}\apiPost(`/images/${previewItem.url}/audit`, { status: String(status) });
+      await apiPost(`/images/audit?url=${encodeURIComponent(previewItem.url)}&status=${status}`);
       toast(status === 1 ? '已通过' : '已拒绝');
       loadPage(page);
       if (hasNext) { setTimeout(() => previewNext(), 100); }

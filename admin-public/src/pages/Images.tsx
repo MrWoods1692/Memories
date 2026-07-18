@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { apiGet, apiPost } from '../api';
+import { apiGet, apiPost, apiDelete } from '../api';
 import { useAuth } from '../AuthContext';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { IconImage, IconCheck, IconX, IconTrash, IconRefresh, IconArrowLeft, IconArrowRight, IconGrid, IconList } from '../components/Icons';
@@ -15,10 +15,10 @@ export function ImagesPage({ toast }: Props) {
   const [filter, setFilter] = useState('');
   const [search, setSearch] = useState('');
   const [confirm, setConfirm] = useState<{ msg: string; fn: () => void } | null>(null);
-  const [acting, setActing] = useState<Set<number>>(new Set());
+  const [acting, setActing] = useState<Set<string>>(new Set());
   const [previewIdx, setPreviewIdx] = useState<number>(-1);
   const [viewMode, setViewMode] = useState<'table' | 'gallery'>('table');
-  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [selected, setSelected] = useState<Set<string>>(new Set());
   const [zoomed, setZoomed] = useState(false);
 
   const load = async () => {
@@ -33,26 +33,26 @@ export function ImagesPage({ toast }: Props) {
   useEffect(() => { load(); }, []);
 
   const audit = useCallback(async (url: string, status: 1 | 2) => {
-    setActing(p => new Set(p).add(id));
+    setActing(p => new Set(p).add(url));
     try {
-      await apiPost(`/images/audit?url=${encodeURIComponent(url)}\apiPost(`/images/${id}/audit`, { status: String(status) });
+      await apiPost(`/images/audit?url=${encodeURIComponent(url)}&status=${status}`);
       toast(status === 1 ? '已通过' : '已拒绝');
       await load();
-      setSelected(p => { const n = new Set(p); n.delete(id); return n; });
+      setSelected(p => { const n = new Set(p); n.delete(url); return n; });
       return true;
     } catch { toast('操作失败', 'error'); return false; }
-    finally { setActing(p => { const n = new Set(p); n.delete(id); return n; }); }
+    finally { setActing(p => { const n = new Set(p); n.delete(url); return n; }); }
   }, [toast]);
 
   const batchAudit = async (status: 1 | 2) => {
-    const ids = Array.from(selected);
-    if (ids.length === 0) return;
+    const urls = Array.from(selected);
+    if (urls.length === 0) return;
     setConfirm({
-      msg: `确定${status === 1 ? '通过' : '拒绝'}选中的 ${ids.length} 张图片？`,
+      msg: `确定${status === 1 ? '通过' : '拒绝'}选中的 ${urls.length} 张图片？`,
       fn: async () => {
         let ok = 0;
-        for (const id of ids) {
-          const r = await audit(id, status);
+        for (const url of urls) {
+          const r = await audit(url, status);
           if (r) ok++;
         }
         toast(`${status === 1 ? '通过' : '拒绝'}了 ${ok} 张`, 'success');
@@ -64,7 +64,7 @@ export function ImagesPage({ toast }: Props) {
     setConfirm({
       msg: `确定删除图片？`,
       fn: async () => {
-        try { await apiPost(`/images/delete?url=${encodeURIComponent(url)}`); toast('已删除'); load(); }
+        try { await apiDelete(`/images/delete?url=${encodeURIComponent(url)}`); toast('已删除'); load(); }
         catch { toast('删除失败', 'error'); }
       },
     });
@@ -73,7 +73,7 @@ export function ImagesPage({ toast }: Props) {
   const toggleSelect = (url: string) => {
     setSelected(p => {
       const n = new Set(p);
-      if (n.has(id)) n.delete(id); else n.add(id);
+      if (n.has(url)) n.delete(url); else n.add(url);
       return n;
     });
   };

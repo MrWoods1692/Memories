@@ -69,7 +69,7 @@ export default function ReviewPage() {
   }, [page, totalPages, loading, loadImages]);
 
   // 审核操作
-  const handleAudit = useCallback(async (id: number, status: 1 | 2) => {
+  const handleAudit = useCallback(async (url: string, status: 1 | 2) => {
     const label = status === 1 ? "通过" : "拒绝";
     Modal.confirm({
       title: `确认${label}`,
@@ -82,10 +82,10 @@ export default function ReviewPage() {
       okButtonProps: { danger: status === 2 },
       onOk: async () => {
         try {
-          await auditImage(id, status);
+          await auditImage(url, status);
           message.success(`已${label}`);
           // 从列表中移除
-          setImages((prev) => prev.filter((img) => img.id !== id));
+          setImages((prev) => prev.filter((img) => img.url !== url));
         } catch (err) {
           message.error(err instanceof Error ? err.message : "操作失败");
         }
@@ -231,12 +231,12 @@ export default function ReviewPage() {
                       {isPending && (
                         <div style={{ display: "flex", gap: 8 }}>
                           <Button type="primary" size="small" icon={<CheckOutlined />}
-                            onClick={(e) => { e.stopPropagation(); handleAudit(img.id, 1); }}
+                            onClick={(e) => { e.stopPropagation(); handleAudit(img.url, 1); }}
                             style={{ flex: 1, borderRadius: 8, background: "#52c41a", borderColor: "#52c41a" }}>
                             通过
                           </Button>
                           <Button danger size="small" icon={<CloseOutlined />}
-                            onClick={(e) => { e.stopPropagation(); handleAudit(img.id, 2); }}
+                            onClick={(e) => { e.stopPropagation(); handleAudit(img.url, 2); }}
                             style={{ flex: 1, borderRadius: 8 }}>
                             拒绝
                           </Button>

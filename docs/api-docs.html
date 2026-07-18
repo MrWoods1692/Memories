@@ -496,8 +496,9 @@
               <tbody>
                 <tr><td><code>/images</code></td><td>GET</td><td>无限制（默认仅返回已通过）；<br/>审核员 (≥1) 带 <code>?status=all</code></td></tr>
                 <tr><td><code>/images</code></td><td>POST</td><td>无限制</td></tr>
-                <tr><td><code>/images/{id}/audit</code></td><td>POST</td><td>审核员 (≥1)</td></tr>
-                <tr><td><code>/images/{id}</code></td><td>DELETE</td><td>管理员 (≥2)</td></tr>
+                <tr><td><code>/images/audit?url=&amp;status=</code></td><td>POST</td><td>审核员 (≥1)</td></tr>
+                <tr><td><code>/images/delete?url=</code></td><td>DELETE</td><td>管理员 (≥2)</td></tr>
+                <tr><td><code>/images/cleanup</code></td><td>DELETE</td><td>管理员 (≥2)</td></tr>
                 <tr><td><code>/users/*</code></td><td>全部</td><td>管理员 (≥2)</td></tr>
                 <tr><td><code>/bans/*</code></td><td>全部</td><td>管理员 (≥2)</td></tr>
                 <tr><td><code>/config</code></td><td>POST</td><td>管理员 (≥2)</td></tr>
@@ -694,24 +695,27 @@
             response:'{"id": 42}',
             notes:'写入成功后自动触发 WebDAV 后台同步（如已配置）。' },
 
-          { id:'images-audit', method:'POST', path:'/images/{id}/audit', pathShort:'/images/{id}/audit', summary:'审核图片',
+          { id:'images-audit', method:'POST', path:'/images/audit?url=&status=', pathShort:'/images/audit', summary:'审核图片',
             expanded:false, authClass:'reviewer', authLabel:'审核员 (≥1) 或局域网',
-            description:'审核图片，将其标记为通过或拒绝。',
-            pathParams:[
-              {name:'id',type:'number',desc:'图片 ID'}
-            ],
-            bodyParams:[
-              {name:'status',type:'string',required:true,default:'-',desc:'&quot;1&quot;=通过，&quot;2&quot;=拒绝'}
+            description:'审核图片，将其标记为通过或拒绝。通过 URL 查询参数传递。',
+            queryParams:[
+              {name:'url',type:'string',required:true,desc:'图片 URL（需 URL 编码）'},
+              {name:'status',type:'string',required:true,desc:'&quot;1&quot;=通过，&quot;2&quot;=拒绝'}
             ],
             responseDesc:'成功: updated | 不存在: not found' },
 
-          { id:'images-delete', method:'DELETE', path:'/images/{id}', pathShort:'/images/{id}', summary:'删除图片',
+          { id:'images-delete', method:'DELETE', path:'/images/delete?url=', pathShort:'/images/delete', summary:'删除图片',
             expanded:false, authClass:'admin', authLabel:'管理员 (≥2) 或局域网',
-            description:'删除指定图片。',
-            pathParams:[
-              {name:'id',type:'number',desc:'图片 ID'}
+            description:'删除指定图片。通过 URL 查询参数传递。',
+            queryParams:[
+              {name:'url',type:'string',required:true,desc:'图片 URL（需 URL 编码）'}
             ],
             responseDesc:'成功: deleted | 不存在: not found' },
+
+          { id:'images-cleanup', method:'DELETE', path:'/images/cleanup', pathShort:'/images/cleanup', summary:'清理已拒绝图片',
+            expanded:false, authClass:'admin', authLabel:'管理员 (≥2) 或局域网',
+            description:'批量删除所有已拒绝 (status=2) 的图片记录。',
+            responseDesc:'成功: { deleted: N, message: "..." }' },
 
           // Users
           { id:'users-get', method:'GET', path:'/users', pathShort:'/users', summary:'获取用户列表',

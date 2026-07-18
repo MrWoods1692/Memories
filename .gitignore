@@ -7,6 +7,26 @@ keystore.properties
 app/build/
 .gradle/
 *.apk
+*.aab
 
 # Local properties
 local.properties
+
+# Node.js
+node_modules/
+
+# Web frontend build outputs
+admin-public/dist/
+memories-web/dist/
+docs/api-docs/dist/
+
+# TypeScript build info
+*.tsbuildinfo
+
+# IDE
+.idea/
+*.iml
+
+# OS files
+.DS_Store
+Thumbs.db

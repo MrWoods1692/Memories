@@ -390,8 +390,8 @@ export function Dashboard({ toast: _toast }: DashboardProps) {
               </thead>
               <tbody>
                 {recentImages.map(i => (
-                  <tr key={i.id}>
-                    <td style={{color:'var(--accent)',fontWeight:600,fontSize:'0.72rem'}}>#{i.id}</td>
+                  <tr key={i.url}>
+                    <td style={{color:'var(--accent)',fontWeight:600,fontSize:'0.72rem'}}>#{i.url}</td>
                     <td className="url" title={i.url}>{i.url}</td>
                     <td><span className={`badge ${statusBadge[i.status]}`}>{statusLabels[i.status]}</span></td>
                     <td>{fmtTs(i.created_at)}</td>

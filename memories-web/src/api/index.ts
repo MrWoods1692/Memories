@@ -268,10 +268,10 @@ export async function fetchPendingImages(
   return getRequest<PaginatedResponse>(`/images?status=all&page=${page}&limit=${limit}`);
 }
 
-/** POST /images/{id}/audit — 审核图片：status=1 通过，status=2 拒绝 */
+/** POST /images/audit?url=...&status=... — 审核图片：status=1 通过，status=2 拒绝 */
 export async function auditImage(
-  id: number,
+  url: string,
   status: 1 | 2
 ): Promise<void> {
-  await postRequest<unknown>(`/images/${id}/audit`, { status: String(status) });
+  await postRequest<unknown>(`/images/audit?url=${encodeURIComponent(url)}&status=${status}`, {});
 }
