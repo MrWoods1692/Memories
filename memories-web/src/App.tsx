@@ -28,15 +28,17 @@ function RequireReviewer({ children }: { children: React.ReactNode }) {
 }
 
 function AppRoutes() {
+  const { isLoggedIn } = useAuth();
+
   return (
     <AppLayout>
       <Routes>
-        <Route path="/" element={<GalleryPage />} />
+        <Route path="/" element={isLoggedIn ? <Navigate to="/gallery" replace /> : <LoginPage />} />
         <Route path="/gallery" element={<GalleryPage />} />
         <Route path="/upload" element={<RequireAuth><UploadPage /></RequireAuth>} />
         <Route path="/review" element={<RequireReviewer><ReviewPage /></RequireReviewer>} />
         <Route path="/profile" element={<RequireAuth><ProfilePage /></RequireAuth>} />
-        <Route path="*" element={<Navigate to="/gallery" replace />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </AppLayout>
   );

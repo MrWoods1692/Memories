@@ -1188,6 +1188,22 @@ public class EmbeddedServer extends NanoHTTPD {
                 String userName = userInfo.optString("username");
                 String tenantName = userInfo.optString("tenant_name");
 
+                // 检查是否被封禁
+                if (db.isUserBanned(userQq)) {
+                    if (frontendRedirect != null && !frontendRedirect.isEmpty()) {
+                        String sep2 = frontendRedirect.contains("?") ? "&" : "?";
+                        String loc2 = frontendRedirect + sep2 + "error=banned";
+                        Response r2 = NanoHTTPD.newFixedLengthResponse(Status.REDIRECT, "text/html",
+                            "<html><body>账号已被封禁，正在跳转...<script>location.replace('" + loc2 + "');</script></body></html>");
+                        r2.addHeader("Location", loc2);
+                        return r2;
+                    }
+                    JSONObject err2 = new JSONObject();
+                    err2.put("error", "banned");
+                    err2.put("message", "该账号已被封禁");
+                    return NanoHTTPD.newFixedLengthResponse(Status.FORBIDDEN, "application/json", err2.toString());
+                }
+
                 // 检查该 QQ 是否在审核员/管理员列表中
                 int role = db.getUserRole(userQq);
 

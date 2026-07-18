@@ -7,7 +7,8 @@ import {
   type ReactNode,
 } from "react";
 import type { AuthResponse } from "@/types";
-import { clearTokens, getAccessToken, oauthLogin, parseOAuthCallback } from "@/api";
+import { clearTokens, getAccessToken, getOAuthError, oauthLogin, parseOAuthCallback } from "@/api";
+import { App } from "antd";
 
 interface AuthContextType {
   user: AuthResponse | null;
@@ -28,9 +29,18 @@ const AuthContext = createContext<AuthContextType>({
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const { message } = App.useApp();
 
   useEffect(() => {
-    // 1. 先检查 URL 中是否有 OAuth 回调参数
+    // 1. 先检查 URL 中是否有 OAuth 回调错误
+    const oauthError = getOAuthError();
+    if (oauthError) {
+      message.error(oauthError);
+      setLoading(false);
+      return;
+    }
+
+    // 2. 检查 URL 中是否有 OAuth 回调参数
     const callbackUser = parseOAuthCallback();
     if (callbackUser) {
       setUser(callbackUser);
@@ -38,7 +48,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    // 2. 从 localStorage 恢复
+    // 3. 从 localStorage 恢复
     const stored = localStorage.getItem("user_info");
     const token = getAccessToken();
     if (stored && token) {
@@ -49,7 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
     setLoading(false);
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const startLogin = useCallback(() => {
     oauthLogin();

@@ -81,9 +81,18 @@ export function oauthLogin(): void {
 /**
  * 从 URL query params 解析 OAuth 回调结果
  * 后端 302 → 前端 ?token=...&qq=...&role=2&nickname=...
+ * 返回 null 表示无需处理（无回调参数或有错误）
  */
 export function parseOAuthCallback(): AuthResponse | null {
   const params = new URLSearchParams(window.location.search);
+  const error = params.get("error");
+
+  // 检测错误参数（封禁、拒绝访问等）
+  if (error) {
+    window.history.replaceState({}, "", window.location.pathname);
+    return null;
+  }
+
   const token = params.get("token");
   const qq = params.get("qq");
   const role = params.get("role");
@@ -108,6 +117,19 @@ export function parseOAuthCallback(): AuthResponse | null {
   window.history.replaceState({}, "", window.location.pathname);
 
   return user;
+}
+
+/** 检查 OAuth 回调是否有错误参数 */
+export function getOAuthError(): string | null {
+  const params = new URLSearchParams(window.location.search);
+  const error = params.get("error");
+  if (!error) return null;
+
+  switch (error) {
+    case "banned": return "该账号已被封禁，无法登录";
+    case "access_denied": return "权限不足，无法访问";
+    default: return "登录失败: " + error;
+  }
 }
 
 /* ==================== 图片 ==================== */
