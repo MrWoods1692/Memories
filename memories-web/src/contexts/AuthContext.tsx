@@ -16,6 +16,7 @@ interface AuthContextType {
   logout: () => void;
   isLoggedIn: boolean;
   banned: boolean;
+  clearBanned: () => void;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -25,6 +26,7 @@ const AuthContext = createContext<AuthContextType>({
   logout: () => {},
   isLoggedIn: false,
   banned: false,
+  clearBanned: () => {},
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -75,9 +77,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }, []);
 
+  const clearBanned = useCallback(() => {
+    setBanned(false);
+  }, []);
+
   return (
     <AuthContext.Provider
-      value={{ user, loading, startLogin, logout, isLoggedIn: !!user, banned }}
+      value={{ user, loading, startLogin, logout, isLoggedIn: !!user, banned, clearBanned }}
     >
       {children}
     </AuthContext.Provider>

@@ -1,13 +1,33 @@
-import { Button, Card, Typography, Divider } from "antd";
-import { EyeOutlined, MailOutlined, StopOutlined } from "@ant-design/icons";
+import { Button, Card, Typography, Divider, App } from "antd";
+import { EyeOutlined, MailOutlined, StopOutlined, CopyOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 
-const { Title, Paragraph, Text } = Typography;
+const { Title, Paragraph } = Typography;
+
+const APPEAL_EMAIL = "mail@mrcwoods.com";
 
 export default function BannedPage() {
   const navigate = useNavigate();
+  const { clearBanned } = useAuth();
   const { isDark } = useTheme();
+  const { message } = App.useApp();
+
+  const handleGuest = () => {
+    clearBanned();
+    navigate("/gallery");
+  };
+
+  const handleCopyEmail = async () => {
+    try {
+      await navigator.clipboard.writeText(APPEAL_EMAIL);
+      message.success("邮箱地址已复制");
+    } catch {
+      // fallback for older browsers
+      message.info(`邮箱地址: ${APPEAL_EMAIL}`);
+    }
+  };
 
   const pageBg: React.CSSProperties = {
     minHeight: "100vh",
@@ -67,19 +87,32 @@ export default function BannedPage() {
           <Paragraph style={{ marginBottom: 4, fontSize: 13 }}>
             如需申诉解封，请发送邮件至
           </Paragraph>
-          <a
-            href="mailto:mail@mrcwoods.com"
-            style={{
-              fontSize: 15, fontWeight: 600,
-              color: isDark ? "#FF7875" : "#F5222D",
-              textDecoration: "underline",
-              wordBreak: "break-all",
-            }}
-          >
-            mail@mrcwoods.com
-          </a>
-          <Paragraph type="secondary" style={{ marginTop: 8, marginBottom: 0, fontSize: 12 }}>
-            请在邮件中附上您的 QQ 号和申诉理由
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+            <a
+              href={`mailto:${APPEAL_EMAIL}`}
+              style={{
+                fontSize: 15, fontWeight: 600,
+                color: isDark ? "#FF7875" : "#F5222D",
+                textDecoration: "underline",
+                wordBreak: "break-all",
+              }}
+            >
+              {APPEAL_EMAIL}
+            </a>
+            <Button
+              type="text"
+              size="small"
+              icon={<CopyOutlined />}
+              onClick={handleCopyEmail}
+              style={{ color: isDark ? "#FF7875" : "#F5222D", fontSize: 14 }}
+              title="复制邮箱"
+            />
+          </div>
+          <Paragraph type="secondary" style={{ marginTop: 8, marginBottom: 4, fontSize: 12 }}>
+            请在邮件中附上您的 QQ 号、学生证照片和申诉理由
+          </Paragraph>
+          <Paragraph type="secondary" style={{ marginBottom: 0, fontSize: 11, fontStyle: "italic" }}>
+            附上学生证可加快审核处理速度
           </Paragraph>
         </div>
 
@@ -88,7 +121,7 @@ export default function BannedPage() {
           size="large"
           block
           icon={<EyeOutlined />}
-          onClick={() => navigate("/gallery")}
+          onClick={handleGuest}
           style={{
             height: 48, fontSize: 15, fontWeight: 500,
             borderRadius: 14,
