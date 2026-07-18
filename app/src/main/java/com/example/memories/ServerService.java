@@ -33,23 +33,8 @@ public class ServerService extends Service {
         super.onCreate();
         createNotificationChannel();
 
-        // 先读取端口配置（带容错：如果数据库损坏，使用默认端口）
-        try {
-            DatabaseHelper db = new DatabaseHelper(this);
-            String portStr = db.getConfig("server_port");
-            if (portStr != null) {
-                try { apiPort = Integer.parseInt(portStr); } catch (NumberFormatException ignored) {}
-            }
-            String adminPortStr = db.getConfig("admin_port");
-            if (adminPortStr != null) {
-                try { adminPort = Integer.parseInt(adminPortStr); } catch (NumberFormatException ignored) {}
-            }
-        } catch (Exception e) {
-            Log.e("ServerService", "Failed to read config from database, using defaults", e);
-            // 数据库损坏时使用默认端口，不影响服务启动
-        }
-
-        // ⚠️ 关键：必须立即调用 startForeground()（5 秒内），否则系统杀死服务
+        // ⚠️ 关键：必须最先调用 startForeground()（5 秒内），否则系统杀死服务
+        // 数据库初始化可能因迁移而耗时，所以移到 startForeground 之后
         try {
             Intent openIntent = new Intent(this, MainActivity.class);
             PendingIntent pendingIntent = PendingIntent.getActivity(
@@ -67,13 +52,30 @@ public class ServerService extends Service {
             startForeground(NOTIFICATION_ID, n);
         } catch (Exception e) {
             Log.e("ServerService", "Failed to start foreground", e);
-            // 如果前台启动失败，服务无法存活，停止自身以避免僵尸状态
             stopSelf();
             return;
         }
 
-        // 前台通知已就绪，在后台线程启动服务器（避免阻塞主线程）
-        new Thread(this::startServers).start();
+        // 前台通知已就绪，在后台线程完成数据库初始化和服务器启动
+        new Thread(() -> {
+            // 读取端口配置（带容错：如果数据库损坏，使用默认端口）
+            try {
+                DatabaseHelper db = new DatabaseHelper(this);
+                String portStr = db.getConfig("server_port");
+                if (portStr != null) {
+                    try { apiPort = Integer.parseInt(portStr); } catch (NumberFormatException ignored) {}
+                }
+                String adminPortStr = db.getConfig("admin_port");
+                if (adminPortStr != null) {
+                    try { adminPort = Integer.parseInt(adminPortStr); } catch (NumberFormatException ignored) {}
+                }
+            } catch (Exception e) {
+                Log.e("ServerService", "Failed to read config from database, using defaults", e);
+            }
+
+            startServers();
+            updateNotification();
+        }).start();
 
         // 获取 WakeLock 防止 CPU 休眠导致服务中断
         acquireWakeLock();
