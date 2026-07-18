@@ -67,13 +67,14 @@ public class OAuthHelper {
         String state = generateState();
         String codeVerifier = generateCodeVerifier();
         String codeChallenge = generateCodeChallenge(codeVerifier);
+        String safeRedirect = sanitizeRedirectUrl(frontendRedirect);
 
         // 存入数据库：code_verifier, redirect_uri, frontend_redirect
         try {
             JSONObject st = new JSONObject();
             st.put("code_verifier", codeVerifier);
             st.put("redirect_uri", redirectUri);
-            if (frontendRedirect != null) st.put("frontend_redirect", frontendRedirect);
+            if (safeRedirect != null) st.put("frontend_redirect", safeRedirect);
             st.put("created_at", System.currentTimeMillis());
             db.setConfig(STATE_PREFIX + state, st.toString());
             // 清理过期 state (超过10分钟)
@@ -253,6 +254,26 @@ public class OAuthHelper {
         }
     }
 
+    private static String sanitizeRedirectUrl(String redirectUrl) {
+        if (redirectUrl == null || redirectUrl.trim().isEmpty()) return null;
+        String value = redirectUrl.trim();
+
+        // 允许相对路径
+        if (value.startsWith("/")) {
+            if (value.startsWith("//")) return null;
+            return value;
+        }
+
+        // 允许任意合法的绝对 URL
+        try {
+            java.net.URL url = new java.net.URL(value);
+            if (url.getHost() == null) return null;
+            return value;
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
     private static void cleanExpiredStates(DatabaseHelper db) {
         // 数据库存储无需手动清理，state 用完即删（在 exchangeToken 中删除）
     }
@@ -266,7 +287,9 @@ public class OAuthHelper {
             try {
                 JSONObject st = new JSONObject(stateJson);
                 String fr = st.optString("frontend_redirect", null);
-                if (fr != null && !fr.isEmpty()) return fr;
+                if (fr != null && !fr.isEmpty()) {
+                    return sanitizeRedirectUrl(fr);
+                }
             } catch (Exception ignored) {}
         }
         return null;
