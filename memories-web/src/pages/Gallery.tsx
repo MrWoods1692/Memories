@@ -591,11 +591,15 @@ export default function GalleryPage() {
           } as any}
         >
           <div style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))",
-            gridAutoRows: "180px",
-            columnGap: 1, rowGap: 12,
-            padding: 0,
+            display: "flex",
+            flexWrap: "nowrap",
+            overflowX: "auto",
+            overflowY: "hidden",
+            gap: 2,
+            padding: "4px 0",
+            height: 220,
+            alignItems: "stretch",
+            scrollbarWidth: "thin",
           }}>
             {images.map((img) => {
               const dateStr = new Date(img.created_at).toLocaleDateString("zh-CN");
@@ -603,8 +607,11 @@ export default function GalleryPage() {
               return (
                 <div key={img.id} style={{
                   display: "flex", flexDirection: "column",
+                  flexShrink: 0,
+                  height: "100%",
                   background: "var(--ant-color-bg-container)",
                   overflow: "hidden",
+                  borderRadius: 4,
                 }}
                   onClick={batchMode ? () => toggleSelect(img.id) : undefined}
                 >
@@ -613,6 +620,8 @@ export default function GalleryPage() {
                     background: "var(--ant-color-fill-quaternary)",
                     position: "relative",
                     cursor: batchMode ? "pointer" : undefined,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    minWidth: 60,
                   }}>
                     {batchMode && (
                       <div style={{
@@ -625,14 +634,15 @@ export default function GalleryPage() {
                       }}>{isSel ? "✓" : ""}</div>
                     )}
                     <Image src={img.url} alt={dateStr}
-                      style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                      style={{ height: "100%", width: "auto", maxWidth: "none", display: "block", objectFit: "contain" }}
                       preview={batchMode ? false : undefined}
                       {...getImgProps(img)} />
                   </div>
                   <Text type="secondary" style={{
                     fontSize: 10, textAlign: "center",
-                    padding: "2px 4px", lineHeight: 1.3,
+                    padding: "2px 6px", lineHeight: 1.3,
                     borderTop: "1px solid var(--ant-color-border-secondary)",
+                    flexShrink: 0,
                   }}>{dateStr}</Text>
                 </div>
               );
@@ -741,7 +751,7 @@ toolbarRender: (originalNode: React.ReactNode, info: { current: number; actions:
       ) : (
         /* ===== 普通视图：grid / compact / list ===== */
         <>
-          <div className={`gallery-grid ${(viewMode === "list" || viewMode === "simple") ? "gallery-grid-list" : ""}`} style={{
+          <div className={`gallery-grid ${viewMode === "compact" ? "gallery-grid-compact" : ""} ${(viewMode === "list" || viewMode === "simple") ? "gallery-grid-list" : ""}`} style={{
             display: "grid",
             gridTemplateColumns: (viewMode === "list" || viewMode === "simple")
               ? "1fr"
@@ -788,17 +798,29 @@ toolbarRender: (originalNode: React.ReactNode, info: { current: number; actions:
                   /* ===== 简洁列表：仅日期 + 文件名 ===== */
                   return (
                     <div key={img.id} id={`list-row-${img.id}`}
+                      onClick={batchMode ? () => toggleSelect(img.id) : undefined}
                       style={{
                         display: "flex", alignItems: "center", gap: 10,
                         padding: "6px 14px",
                         borderBottom: "1px solid var(--ant-color-border-secondary)",
+                        background: isSel && batchMode ? `${accentColor}10` : undefined,
                         cursor: batchMode ? "pointer" : "default",
+                        transition: "background 0.15s",
                       }}>
+                      {batchMode && (
+                        <div style={{
+                          width: 20, height: 20, borderRadius: 4, flexShrink: 0,
+                          background: isSel ? accentColor : "var(--ant-color-fill-quaternary)",
+                          border: `2px solid ${isSel ? accentColor : "var(--ant-color-border-secondary)"}`,
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                          color: "#fff", fontSize: 12, fontWeight: 700,
+                        }}>{isSel ? "✓" : ""}</div>
+                      )}
                       <Text type="secondary" style={{ fontSize: 12, flexShrink: 0, width: 80 }}>{dateShort}</Text>
                       <Text
-                        onClick={() => { if (!batchMode) { const el = document.getElementById(`list-row-${img.id}`)?.querySelector(".ant-image-img") as HTMLElement; el?.click(); } }}
+                        onClick={batchMode ? undefined : () => { const el = document.getElementById(`list-row-${img.id}`)?.querySelector(".ant-image-img") as HTMLElement; el?.click(); }}
                         style={{
-                          flex: 1, fontSize: 13, cursor: "pointer", color: accentColor,
+                          flex: 1, fontSize: 13, cursor: batchMode ? "default" : "pointer", color: accentColor,
                           overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                         }}>{filename}</Text>
                       <Image src={img.url} style={{ display: "none" }} preview={batchMode ? false : undefined} {...getImgProps(img)} />

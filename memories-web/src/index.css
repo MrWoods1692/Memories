@@ -247,6 +247,14 @@ body.dark-theme .ant-image-preview-operations {
     gap: 8px !important;
     padding: 0 8px !important;
   }
+  .gallery-grid-compact {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 2px !important;
+    padding: 0 !important;
+  }
+  .gallery-grid-compact .ant-card {
+    border-radius: 0 !important;
+  }
   .gallery-card-date {
     font-size: 11px !important;
   }
