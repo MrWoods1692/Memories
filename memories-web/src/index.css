@@ -35,6 +35,12 @@ html, body, #root {
 
 /* ==================== 骨架屏加载动画 ==================== */
 
+/* 流光 shimmer 效果 */
+@keyframes skeletonShimmer {
+  0% { background-position: -400% 0; }
+  100% { background-position: 400% 0; }
+}
+
 @keyframes skeletonPulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.4; }
@@ -47,17 +53,73 @@ html, body, #root {
   animation: skeletonPulse 1.5s ease-in-out infinite;
 }
 
+.skeleton-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255,255,255,0.08) 25%,
+    rgba(255,255,255,0.18) 50%,
+    rgba(255,255,255,0.08) 75%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: skeletonShimmer 1.8s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 1;
+}
+
 .skeleton-image {
   aspect-ratio: 4 / 3;
   background: var(--ant-color-fill-secondary);
-  animation: skeletonPulse 1.5s ease-in-out infinite;
+  position: relative;
+  overflow: hidden;
+}
+
+.skeleton-image::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255,255,255,0.1) 25%,
+    rgba(255,255,255,0.2) 50%,
+    rgba(255,255,255,0.1) 75%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: skeletonShimmer 1.8s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 1;
 }
 
 .skeleton-line {
   height: 14px;
   border-radius: 7px;
   background: var(--ant-color-fill-secondary);
-  animation: skeletonPulse 1.5s ease-in-out infinite;
+  position: relative;
+  overflow: hidden;
+}
+
+.skeleton-line::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255,255,255,0.1) 25%,
+    rgba(255,255,255,0.2) 50%,
+    rgba(255,255,255,0.1) 75%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: skeletonShimmer 1.8s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 1;
 }
 
 .skeleton-line-short { width: 60%; }

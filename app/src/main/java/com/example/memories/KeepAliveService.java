@@ -37,7 +37,9 @@ public class KeepAliveService extends Service {
     private int frpcFailCount = 0;
     // FRPC 深度检查周期：每 DEEP_CHECK_CYCLES 次做一次完整重启检测
     private int checkCycle = 0;
-    private static final int DEEP_CHECK_CYCLES = 4; // 约 60 秒一次深度检查
+    private static final int DEEP_CHECK_CYCLES = 8; // 约 120 秒一次深度检查（降低频率防 Go 运行时崩溃）
+    private long lastFrpcRestartTime = 0;
+    private static final long FRPC_RESTART_COOLDOWN_MS = 30_000; // FRPC 重启冷却 30 秒
 
     // WakeLock 持续持有，防止 CPU 深度休眠导致服务挂起/被杀
     private android.os.PowerManager.WakeLock wakeLock;
@@ -313,9 +315,13 @@ public class KeepAliveService extends Service {
                 return; // 本地 API 都不健康，先让 ensureFrpcRunning 处理服务端
             }
 
-            // 本地 API 健康，但 FRPC 可能已断开：强制重启 FRPC
-            Log.i(TAG, "Deep check: force restarting FRPC to ensure tunnel health");
-            manager.forceRestart(config);
+            // 本地 API 健康，但 FRPC 可能已断开：强制重启 FRPC（带冷却时间防 Go 运行时崩溃）
+            long now = System.currentTimeMillis();
+            if (now - lastFrpcRestartTime >= FRPC_RESTART_COOLDOWN_MS) {
+                lastFrpcRestartTime = now;
+                Log.i(TAG, "Deep check: force restarting FRPC to ensure tunnel health");
+                manager.forceRestart(config);
+            }
         } catch (Exception e) {
             Log.w(TAG, "FRPC deep check failed", e);
         }

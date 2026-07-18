@@ -152,14 +152,27 @@ public class OAuthHelper {
 
             int responseCode = conn.getResponseCode();
             if (responseCode == 200) {
-                // 仅在成功后才删除 state，防止并发回调或代理重试导致第二次请求丢失 code_verifier
-                db.setConfig(STATE_PREFIX + state, null);
+                // 成功后不删除 state，而是更新 state 缓存 token 信息
+                // 防止 FRPC 断连导致重定向失败后用户刷新时 state 丢失
                 BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream()));
                 StringBuilder resp = new StringBuilder();
                 String line;
                 while ((line = br.readLine()) != null) resp.append(line);
                 br.close();
-                return new JSONObject(resp.toString());
+                JSONObject token = new JSONObject(resp.toString());
+
+                // 将 token 缓存到 state 中（保留原有字段）
+                if (stateJson != null) {
+                    try {
+                        JSONObject st = new JSONObject(stateJson);
+                        st.put("access_token", token.optString("access_token"));
+                        st.put("refresh_token", token.optString("refresh_token"));
+                        st.put("token_cached_at", System.currentTimeMillis());
+                        db.setConfig(STATE_PREFIX + state, st.toString());
+                    } catch (Exception ignored) {}
+                }
+
+                return token;
             } else {
                 // 读取 Campux 返回的错误详情
                 String errBody = "";
@@ -281,6 +294,35 @@ public class OAuthHelper {
             if (url.getHost() == null) return null;
             return value;
         } catch (Exception ignored) {
+            return null;
+        }
+    }
+
+    /**
+     * 从 state 中获取已缓存的 token（OAuth 成功但 FRPC 断连导致重定向失败时使用）。
+     * 返回 null 表示无缓存或已过期（缓存保留 5 分钟）。
+     */
+    public static JSONObject getCachedToken(String state, DatabaseHelper db) {
+        String stateJson = db.getConfig(STATE_PREFIX + state);
+        if (stateJson == null) return null;
+        try {
+            JSONObject st = new JSONObject(stateJson);
+            String accessToken = st.optString("access_token", null);
+            if (accessToken == null || accessToken.isEmpty()) return null;
+
+            long cachedAt = st.optLong("token_cached_at", 0);
+            if (System.currentTimeMillis() - cachedAt > 5 * 60 * 1000L) {
+                // 缓存超过 5 分钟，清理
+                db.setConfig(STATE_PREFIX + state, null);
+                return null;
+            }
+
+            JSONObject result = new JSONObject();
+            result.put("access_token", accessToken);
+            result.put("refresh_token", st.optString("refresh_token", ""));
+            result.put("cached", true);
+            return result;
+        } catch (Exception e) {
             return null;
         }
     }

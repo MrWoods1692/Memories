@@ -1193,7 +1193,48 @@ public class EmbeddedServer extends NanoHTTPD {
                 // 在 exchangeToken 之前获取前端重定向 URL
                 String frontendRedirect = OAuthHelper.getFrontendRedirect(state, db);
 
-                // 换取 token
+                // 检查是否已有缓存的 token（上次交换成功但重定向失败，用户刷新了回调页）
+                JSONObject cachedToken = OAuthHelper.getCachedToken(state, db);
+                if (cachedToken != null) {
+                    Log.i(TAG, "OAuth callback: using cached token for state=" + state.substring(0, Math.min(8, state.length())) + "...");
+                    String accessToken = cachedToken.optString("access_token");
+                    String refreshToken = cachedToken.optString("refresh_token");
+
+                    // 获取用户信息
+                    JSONObject userInfo = OAuthHelper.getUserInfo(prefix, accessToken);
+                    if (userInfo != null) {
+                        String userQq = userInfo.optString("name");
+                        String userName = userInfo.optString("username");
+                        int role = db.getUserRole(userQq);
+
+                        if (db.isUserBanned(userQq)) {
+                            if (frontendRedirect != null && !frontendRedirect.isEmpty()) {
+                                String sep2 = frontendRedirect.contains("?") ? "&" : "?";
+                                String loc2 = frontendRedirect + sep2 + "error=banned";
+                                Response r2 = NanoHTTPD.newFixedLengthResponse(Status.REDIRECT, "text/html",
+                                    "<html><body>账号已被封禁，正在跳转...<script>location.replace('" + loc2 + "');</script></body></html>");
+                                r2.addHeader("Location", loc2);
+                                return r2;
+                            }
+                            return NanoHTTPD.newFixedLengthResponse(Status.FORBIDDEN, "text/plain", "banned");
+                        }
+
+                        if (frontendRedirect != null && !frontendRedirect.isEmpty()) {
+                            String sep = frontendRedirect.contains("?") ? "&" : "?";
+                            String loc = frontendRedirect + sep
+                                + "token=" + urlEncode(accessToken)
+                                + "&qq=" + urlEncode(userQq)
+                                + "&role=" + role
+                                + "&nickname=" + urlEncode(userName != null ? userName : "");
+                            Response r = NanoHTTPD.newFixedLengthResponse(Status.REDIRECT, "text/html",
+                                "<html><body>登录成功，正在跳转...<script>location.replace('" + loc + "');</script></body></html>");
+                            r.addHeader("Location", loc);
+                            return r;
+                        }
+                    }
+                }
+
+                // 换取 token（首次或缓存失效时）
                 JSONObject tokenResp = OAuthHelper.exchangeToken(prefix, clientId, clientSecret, code, redirectUri, state, db);
                 if (tokenResp == null || tokenResp.has("error")) {
                     String detail = tokenResp != null ? tokenResp.optString("detail", "unknown") : "no response";

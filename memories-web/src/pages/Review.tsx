@@ -127,7 +127,7 @@ export default function ReviewPage() {
   }
 
   return (
-    <div style={{ padding: "0 0 24px" }}>
+    <div className="fade-in-up" style={{ padding: "0 0 24px" }}>
       <div style={{ padding: "16px 16px 8px" }}>
         <div style={{
           display: "flex", alignItems: "center", justifyContent: "space-between",
@@ -317,7 +317,7 @@ export default function ReviewPage() {
 
 function SkeletonReview() {
   return (
-    <div style={{ padding: "16px 16px 24px" }}>
+    <div className="fade-in-up" style={{ padding: "16px 16px 24px" }}>
       <div style={{
         display: "flex", alignItems: "center", justifyContent: "space-between",
         marginBottom: 12, flexWrap: "wrap", gap: 8,
@@ -331,7 +331,10 @@ function SkeletonReview() {
         gap: 16,
       }}>
         {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="skeleton-card" style={{ animationDelay: `${i * 0.1}s` }}>
+          <div key={i} className="skeleton-card" style={{
+            position: "relative",
+            animationDelay: `${i * 0.1}s`,
+          }}>
             <div className="skeleton-image" />
             <div style={{ padding: "8px 12px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>

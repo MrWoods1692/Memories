@@ -27,6 +27,7 @@ public class ServerService extends Service {
     private int apiPort = 8080;
     private int adminPort = 8081;
     private boolean serversStarted = false;
+    private volatile boolean starting = false; // 防止 onCreate 和 onStartCommand 重复启动
 
     @Override
     public void onCreate() {
@@ -57,6 +58,7 @@ public class ServerService extends Service {
         }
 
         // 前台通知已就绪，在后台线程完成数据库初始化和服务器启动
+        starting = true;
         new Thread(() -> {
             // 读取端口配置（带容错：如果数据库损坏，使用默认端口）
             try {
@@ -74,7 +76,6 @@ public class ServerService extends Service {
             }
 
             startServers();
-            updateNotification();
         }).start();
 
         // 获取 WakeLock 防止 CPU 休眠导致服务中断
@@ -82,27 +83,31 @@ public class ServerService extends Service {
     }
 
     private void startServers() {
-        // 启动主 API 服务器
-        server = new EmbeddedServer(apiPort, this);
         try {
-            server.start();
-            serversStarted = true;
-            Log.i("ServerService", "API server started on port " + apiPort);
-        } catch (Exception e) {
-            Log.e("ServerService", "Failed to start API server", e);
-        }
+            // 启动主 API 服务器
+            server = new EmbeddedServer(apiPort, this);
+            try {
+                server.start();
+                serversStarted = true;
+                Log.i("ServerService", "API server started on port " + apiPort);
+            } catch (Exception e) {
+                Log.e("ServerService", "Failed to start API server", e);
+            }
 
-        // 启动管理面板服务器
-        adminServer = new AdminServer(adminPort, apiPort, this);
-        try {
-            adminServer.start();
-            Log.i("ServerService", "Admin server started on port " + adminPort);
-        } catch (Exception e) {
-            Log.e("ServerService", "Failed to start admin server", e);
-        }
+            // 启动管理面板服务器
+            adminServer = new AdminServer(adminPort, apiPort, this);
+            try {
+                adminServer.start();
+                Log.i("ServerService", "Admin server started on port " + adminPort);
+            } catch (Exception e) {
+                Log.e("ServerService", "Failed to start admin server", e);
+            }
 
-        // 更新通知为实际端口信息
-        updateNotification();
+            // 更新通知为实际端口信息
+            updateNotification();
+        } finally {
+            starting = false;
+        }
     }
 
     private void updateNotification() {
@@ -149,10 +154,13 @@ public class ServerService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         // 如果服务器挂了但服务还活着，尝试重启服务器
-        if (!serversStarted) {
-            new Thread(this::startServers).start();
+        // starting 标志防止与 onCreate 中的后台线程重复启动
+        if (!serversStarted && !starting) {
+            starting = true;
+            new Thread(() -> {
+                startServers();
+            }).start();
         }
-        // START_REDELIVER_INTENT：如果服务在被杀后重启，系统会重新传递 Intent
         return START_STICKY;
     }
 

@@ -98,8 +98,8 @@ public class MainActivity extends android.app.Activity {
         startFloatingWindow();
         startKeepAliveService();
 
-        // 自动加载 FRPC 配置
-        tryAutoStartFrpc();
+        // 自动加载 FRPC 配置（延迟启动，避免应用初始化阶段触发 Go 运行时崩溃）
+        handler.postDelayed(this::tryAutoStartFrpc, 5000);
 
         // 延迟请求权限（避免覆盖服务启动）
         handler.postDelayed(this::requestPermissions, 500);

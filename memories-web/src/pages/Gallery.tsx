@@ -1289,7 +1289,7 @@ function FreeView({ images, loading, page, totalPages, loadImages, getImgProps, 
       if (clientX == null || clientY == null) return;
       const dx = clientX - drag.startX;
       const dy = clientY - drag.startY;
-      const id = drag.created_at;
+      const id = drag.id;
       const origX = drag.origX;
       const origY = drag.origY;
       setPositions((prev) => {
