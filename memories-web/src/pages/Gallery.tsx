@@ -2,11 +2,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Button, Card, Descriptions, Dropdown, Empty, Image, Modal, Segmented, Spin, Tag, Tooltip, Typography, App,
 } from "antd";
+import type { MenuProps } from "antd";
 import {
   AppstoreOutlined, ArrowDownOutlined, BarsOutlined, BlockOutlined, BorderOutlined, CheckCircleOutlined, CheckSquareOutlined,
   CloseCircleOutlined, CopyOutlined, DownloadOutlined, DragOutlined, EyeOutlined, FieldTimeOutlined, InfoCircleOutlined, PictureOutlined,
   PlayCircleOutlined, PauseCircleOutlined, CaretRightOutlined,
-  UnorderedListOutlined,
+  HeartOutlined, HeartFilled, UnorderedListOutlined,
 } from "@ant-design/icons";
 import { fetchImages, extractImageBedFilename, queryImageInfo } from "@/api";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -22,8 +23,7 @@ export default function GalleryPage() {
   const [initialLoading, setInitialLoading] = useState(true);
   const { message } = App.useApp();
   const observerRef = useRef<HTMLDivElement | null>(null);
-  const { preset } = useTheme();
-  const accentColor = preset.config.token?.colorPrimary || "#1D6E5A";
+  const { accentColor } = useTheme();
 
   const [infoOpen, setInfoOpen] = useState(false);
   const [infoLoading, setInfoLoading] = useState(false);
@@ -81,6 +81,30 @@ export default function GalleryPage() {
   const toggleBatchMode = useCallback(() => {
     setBatchMode((prev) => { if (prev) setSelected(new Set()); return !prev; });
   }, []);
+
+  // 广场背景右键菜单
+  const galleryCtxMenu: MenuProps = {
+    items: [
+      { key: "grid", icon: <AppstoreOutlined />, label: "网格视图" },
+      { key: "compact", icon: <PictureOutlined />, label: "紧凑视图" },
+      { key: "list", icon: <UnorderedListOutlined />, label: "详情列表" },
+      { key: "simple", icon: <BarsOutlined />, label: "简洁列表" },
+      ...(isDesktop ? [{ key: "river" as const, icon: <BorderOutlined />, label: "河视图" }] : []),
+      { key: "masonry", icon: <BlockOutlined />, label: "瀑布流" },
+      { key: "timeline", icon: <FieldTimeOutlined />, label: "时间线" },
+      { key: "free", icon: <DragOutlined />, label: "自由照片" },
+      { type: "divider" as const },
+      { key: "batch", icon: <CheckSquareOutlined />, label: batchMode ? "退出批量操作" : "批量操作" },
+      { key: "slideshow", icon: slideshow ? <PauseCircleOutlined /> : <PlayCircleOutlined />, label: slideshow ? "停止幻灯" : "幻灯播放" },
+    ],
+    onClick: ({ key }) => {
+      if (["grid","compact","list","simple","river","masonry","timeline","free"].includes(key)) {
+        if (key === "free") setBatchMode(false);
+        setViewMode(key as GalleryView);
+      } else if (key === "batch") toggleBatchMode();
+      else if (key === "slideshow") toggleSlideshow();
+    },
+  };
 
   // 幻灯切换动画列表
   const slideAnims = [
@@ -260,6 +284,24 @@ export default function GalleryPage() {
     );
   }, [downloadOne, copyOne, handleQueryInfo]);
 
+  // 图片右键菜单
+  const makeImgCtxMenu = useCallback((img: ImageItem): MenuProps => ({
+    items: [
+      { key: "preview", icon: <EyeOutlined />, label: "打开预览" },
+      { key: "download", icon: <DownloadOutlined />, label: "下载图片" },
+      { key: "copy", icon: <CopyOutlined />, label: "复制 URL" },
+      { key: "info", icon: <InfoCircleOutlined />, label: "查看信息" },
+    ],
+    onClick: ({ key }) => {
+      if (key === "preview") {
+        const el = document.querySelector(`#card-${img.created_at} .ant-image-img`) as HTMLElement;
+        el?.click();
+      } else if (key === "download") downloadOne(img.url);
+      else if (key === "copy") copyOne(img.url);
+      else if (key === "info") handleQueryInfo(img.url);
+    },
+  }), [downloadOne, copyOne, handleQueryInfo]);
+
   const batchDownload = useCallback(async () => {
     const urls = images.filter((i) => selected.has(i.created_at)).map((i) => i.url);
     if (!urls.length) { message.warning("请先选择图片"); return; }
@@ -426,6 +468,7 @@ export default function GalleryPage() {
 
   return (
     <div style={{ padding: "0 0 24px" }}>
+      <Dropdown menu={galleryCtxMenu} trigger={['contextMenu']}>
       <div style={{
         padding: "16px 16px 8px",
         position: viewMode === "free" ? "sticky" : undefined,
@@ -581,6 +624,7 @@ export default function GalleryPage() {
         </div>
       </div>
       </div>
+      </Dropdown>
 
       {images.length === 0 && !loading ? (
         <Empty description="还没有人分享回忆，快来上传第一张吧！" />
@@ -601,9 +645,10 @@ export default function GalleryPage() {
           } as any}
         >
           <div className="gallery-view" style={{
-            overflowX: "auto",
-            overflowY: "hidden",
-            whiteSpace: "nowrap",
+            display: "flex",
+            flexWrap: "wrap",
+            alignItems: "flex-start",
+            gap: 2,
             padding: "4px 0",
           }}>
             {images.map((img) => {
@@ -611,10 +656,8 @@ export default function GalleryPage() {
               const isSel = selected.has(img.created_at);
               return (
                 <div key={img.created_at} style={{
-                  display: "inline-block",
-                  verticalAlign: "top",
                   height: 200,
-                  marginRight: 2,
+                  flexShrink: 0,
                 }}
                   onClick={batchMode ? () => toggleSelect(img.created_at) : undefined}
                 >
@@ -633,7 +676,7 @@ export default function GalleryPage() {
                         position: "absolute", top: 6, right: 6, zIndex: 5,
                         width: 22, height: 22, borderRadius: 4,
                         background: isSel ? accentColor : "rgba(255,255,255,0.9)",
-                        border: `2px solid ${isSel ? accentColor : "#ccc"}`,
+                        border: `2px solid ${isSel ? accentColor : "var(--border-muted)"}`,
                         display: "flex", alignItems: "center", justifyContent: "center",
                         color: "#fff", fontSize: 12, fontWeight: 700,
                       }}>{isSel ? "✓" : ""}</div>
@@ -659,7 +702,7 @@ export default function GalleryPage() {
             <Button type="link" icon={<ArrowDownOutlined />} onClick={() => loadImages(page + 1)} style={{ fontSize: 14 }}>加载更多</Button>
           )}
           {!loading && page >= totalPages && images.length > 0 && (
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, color: "#999" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, color: "var(--text-tertiary)" }}>
               <CheckCircleOutlined style={{ color: "#52c41a", fontSize: 18 }} />
               <Text type="secondary">已加载全部照片 🎉</Text>
             </div>
@@ -698,7 +741,7 @@ toolbarRender: (originalNode: React.ReactNode, info: { current: number; actions:
                     position: "absolute", top: 6, right: 6, zIndex: 5,
                     width: 22, height: 22, borderRadius: 4,
                     background: isSel ? accentColor : "rgba(255,255,255,0.9)",
-                    border: `2px solid ${isSel ? accentColor : "#ccc"}`,
+                    border: `2px solid ${isSel ? accentColor : "var(--border-muted)"}`,
                     display: "flex", alignItems: "center", justifyContent: "center",
                     color: "#fff", fontSize: 12, fontWeight: 700,
                   }}>{isSel ? "✓" : ""}</div>
@@ -717,7 +760,7 @@ toolbarRender: (originalNode: React.ReactNode, info: { current: number; actions:
             <Button type="link" icon={<ArrowDownOutlined />} onClick={() => loadImages(page + 1)} style={{ fontSize: 14 }}>加载更多</Button>
           )}
           {!loading && page >= totalPages && images.length > 0 && (
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, color: "#999" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, color: "var(--text-tertiary)" }}>
               <CheckCircleOutlined style={{ color: "#52c41a", fontSize: 18 }} />
               <Text type="secondary">已加载全部照片 🎉</Text>
             </div>
@@ -889,7 +932,8 @@ toolbarRender: (originalNode: React.ReactNode, info: { current: number; actions:
               }
 
               return (
-                <Card key={img.created_at} size="small" hoverable
+                <Dropdown key={img.created_at} menu={makeImgCtxMenu(img)} trigger={['contextMenu']}>
+                <Card id={`card-${img.created_at}`} size="small" hoverable
                   style={{
                     borderRadius: 12, overflow: "hidden",
                     outline: batchMode && isSel ? `2px solid ${accentColor}` : undefined,
@@ -909,7 +953,7 @@ toolbarRender: (originalNode: React.ReactNode, info: { current: number; actions:
                           position: "absolute", top: 8, right: 8, zIndex: 5,
                           width: 24, height: 24, borderRadius: 4,
                           background: isSel ? accentColor : "rgba(255,255,255,0.9)",
-                          border: `2px solid ${isSel ? accentColor : "#ccc"}`,
+                          border: `2px solid ${isSel ? accentColor : "var(--border-muted)"}`,
                           display: "flex", alignItems: "center", justifyContent: "center",
                           color: "#fff", fontSize: 14, fontWeight: 700,
                         }}>{isSel ? "✓" : ""}</div>
@@ -921,6 +965,7 @@ toolbarRender: (originalNode: React.ReactNode, info: { current: number; actions:
                     </div>
                   }>
                 </Card>
+                </Dropdown>
               );
             })}
             </Image.PreviewGroup>
@@ -933,7 +978,7 @@ toolbarRender: (originalNode: React.ReactNode, info: { current: number; actions:
                 onClick={() => loadImages(page + 1)} style={{ fontSize: 14 }}>加载更多</Button>
             )}
             {!loading && page >= totalPages && images.length > 0 && (
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, color: "#999" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, color: "var(--text-tertiary)" }}>
                 <CheckCircleOutlined style={{ color: "#52c41a", fontSize: 18 }} />
                 <Text type="secondary">已加载全部照片 🎉</Text>
               </div>
@@ -1192,7 +1237,7 @@ toolbarRender: (originalNode: React.ReactNode, info: { current: number }) => {
                   position: "absolute", top: 6, right: 6, zIndex: 5,
                   width: 22, height: 22, borderRadius: 4,
                   background: isSel ? accentColor : "rgba(255,255,255,0.9)",
-                  border: `2px solid ${isSel ? accentColor : "#ccc"}`,
+                  border: `2px solid ${isSel ? accentColor : "var(--border-muted)"}`,
                   display: "flex", alignItems: "center", justifyContent: "center",
                   color: "#fff", fontSize: 12, fontWeight: 700,
                 }}>{isSel ? "✓" : ""}</div>
@@ -1212,7 +1257,7 @@ toolbarRender: (originalNode: React.ReactNode, info: { current: number }) => {
           <Button type="link" icon={<ArrowDownOutlined />} onClick={() => loadImages(page + 1)} style={{ fontSize: 14 }}>加载更多</Button>
         )}
         {!loading && page >= totalPages && images.length > 0 && (
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, color: "#999" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, color: "var(--text-tertiary)" }}>
             <CheckCircleOutlined style={{ color: "#52c41a", fontSize: 18 }} />
             <Text type="secondary">已加载全部照片 🎉</Text>
           </div>
@@ -1223,6 +1268,109 @@ toolbarRender: (originalNode: React.ReactNode, info: { current: number }) => {
 }
 
 /* ===== 自由照片视图 ===== */
+
+type FreeLayout = "random" | "grid" | "staircase" | "circle" | "wall" | "waterfall";
+
+type HeartMode = 0 | 1 | 2; // 0=关 1=填充爱心 2=描边爱心
+
+const FREE_LAYOUTS: { value: FreeLayout; label: string }[] = [
+  { value: "random", label: "随机" },
+  { value: "grid", label: "网格" },
+  { value: "staircase", label: "阶梯" },
+  { value: "circle", label: "环绕" },
+  { value: "wall", label: "照片墙" },
+  { value: "waterfall", label: "瀑布" },
+];
+
+function computeLayoutPositions(images: ImageItem[], preset: FreeLayout): Map<number, { x: number; y: number; rotate: number }> {
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  const map = new Map<number, { x: number; y: number; rotate: number }>();
+  const margin = 30;
+  const cardW = FW_CARD_W;
+  const cardH = FW_CARD_H;
+
+  images.forEach((img, i) => {
+    switch (preset) {
+      case "random":
+        map.set(img.created_at, {
+          x: margin + Math.random() * Math.max(w - cardW - margin * 2, 100),
+          y: margin + Math.random() * Math.max(h - cardH - margin * 2, 200),
+          rotate: (Math.random() - 0.5) * 12,
+        });
+        break;
+      case "grid": {
+        const cols = Math.max(2, Math.floor((w - margin * 2) / (cardW + 16)));
+        const col = i % cols;
+        const row = Math.floor(i / cols);
+        map.set(img.created_at, {
+          x: margin + col * (cardW + 16),
+          y: margin + row * (cardH + 16),
+          rotate: 0,
+        });
+        break;
+      }
+      case "staircase": {
+        const stepX = 90;
+        const stepY = 85;
+        const cols = Math.min(images.length, 5);
+        const col = i % cols;
+        const row = Math.floor(i / cols);
+        const totalW = (cols - 1) * stepX + cardW;
+        const centerX = (w - totalW) / 2;
+        map.set(img.created_at, {
+          x: centerX + col * stepX + row * 8,
+          y: margin + row * stepY + col * 14,
+          rotate: (col - Math.floor(cols / 2)) * 2,
+        });
+        break;
+      }
+      case "circle": {
+        const count = images.length;
+        const cx = w / 2 - cardW / 2;
+        const cy = h / 2.3 - cardH / 2;
+        const radius = Math.min(w, h) * 0.28;
+        const angle = (2 * Math.PI * i) / Math.max(count, 1) - Math.PI / 2;
+        map.set(img.created_at, {
+          x: cx + radius * Math.cos(angle),
+          y: cy + radius * Math.sin(angle),
+          rotate: (angle * 180) / Math.PI * 0.15,
+        });
+        break;
+      }
+      case "wall": {
+        const cols = Math.max(2, Math.floor((w - margin * 2) / (cardW + 12)));
+        const col = i % cols;
+        const row = Math.floor(i / cols);
+        const rowOffset = (row % 2) * ((cardW + 12) / 2);
+        map.set(img.created_at, {
+          x: margin + col * (cardW + 12) + rowOffset,
+          y: margin + row * (cardH + 12),
+          rotate: (Math.random() - 0.5) * 3,
+        });
+        break;
+      }
+      case "waterfall": {
+        // 瀑布效果：每张照片从左上向右下倾斜级联
+        const waterfallStep = 60;
+        const row2 = Math.floor(i / 2);
+        const col2 = i % 2;
+        const stagger = row2 % 2 === 0 ? 0 : waterfallStep * 0.5;
+        const centerX = (w - waterfallStep * 3 - cardW) / 2;
+        map.set(img.created_at, {
+          x: centerX + col2 * waterfallStep * 2.5 + stagger + row2 * 12,
+          y: margin + row2 * waterfallStep * 0.8 + col2 * 25,
+          rotate: (col2 === 0 ? -3 : 3) + (row2 % 3 - 1) * 2,
+        });
+        break;
+      }
+    }
+  });
+  return map;
+}
+
+const FW_CARD_W = 220;
+const FW_CARD_H = 180;
 
 function FreeView({ images, loading, page, totalPages, loadImages, getImgProps, downloadOne, copyOne, handleQueryInfo }: {
   images: ImageItem[];
@@ -1238,34 +1386,98 @@ function FreeView({ images, loading, page, totalPages, loadImages, getImgProps, 
   const containerRef = useRef<HTMLDivElement>(null);
   const [positions, setPositions] = useState<Map<number, { x: number; y: number; rotate: number }>>(new Map());
   const [draggingId, setDraggingId] = useState<number | null>(null);
-  const [topPhotoId, setTopPhotoId] = useState<number | null>(null);
+  const [layerOrder, setLayerOrder] = useState<number[]>([]);
+  const [layoutPreset, setLayoutPreset] = useState<FreeLayout>("random");
+  const [heartMode, setHeartMode] = useState<HeartMode>(0);
+  const { message } = App.useApp();
   const dragRef = useRef<{ id: number; startX: number; startY: number; origX: number; origY: number } | null>(null);
+
+  // 爱心曲线点（固定 36 个基准点，确保分层计算正确）
+  const HEART_PT_COUNT = 36;
+  const heartPts = useMemo(() => {
+    const pts: { x: number; y: number }[] = [];
+    for (let i = 0; i < HEART_PT_COUNT; i++) {
+      const t = (2 * Math.PI * i) / HEART_PT_COUNT;
+      const x = 13 * Math.pow(Math.sin(t), 3) * 1.15;
+      const y = -(13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t));
+      pts.push({ x, y });
+    }
+    return pts;
+  }, []);
+
+  // 检查点是否在爱心形状内部
+  const insideHeart = (px: number, py: number): boolean => {
+    const nx = px / 14;
+    const ny = py / 17;
+    return (nx * nx + ny * ny - 1) ** 3 - nx * nx * ny * ny * ny < 0;
+  };
 
   useEffect(() => {
     if (images.length === 0) return;
-    const w = window.innerWidth;
-    const h = window.innerHeight;
-    setPositions((prev) => {
-      const next = new Map(prev);
-      images.forEach((img) => {
-        if (!next.has(img.created_at)) {
-          next.set(img.created_at, {
-            x: 40 + Math.random() * Math.max(w - 300, 100),
-            y: 40 + Math.random() * Math.max(h - 300, 200),
-            rotate: (Math.random() - 0.5) * 12,
-          });
+    if (heartMode === 0) {
+      setPositions(computeLayoutPositions(images, layoutPreset));
+    } else {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      const scale = Math.min(w, h) * 0.023;
+      const cx = w / 2 - FW_CARD_W / 2;
+      const cy = h / 2.4 - FW_CARD_H / 2;
+      const n = images.length;
+      setPositions(new Map(images.map((img, i) => {
+        // 将照片均匀分布到 36 个曲线基准点上
+        const curveIdx = Math.min(Math.floor(i * HEART_PT_COUNT / Math.max(n, 1)), HEART_PT_COUNT - 1);
+        // 分层：每 36 张一层
+        const layer = Math.floor(i / HEART_PT_COUNT);
+        if (heartMode === 2) {
+          // 描边爱心：均匀分布在曲线边界
+          const pt = heartPts[curveIdx];
+          return [img.created_at, {
+            x: cx + pt.x * scale,
+            y: cy + pt.y * scale,
+            rotate: 0,
+          }];
         }
-      });
-      return next;
-    });
-  }, [images]);
+        // 实心爱心：多层铺设
+        const scales = [1, 0.85, 0.65, 0.45, 0.25, 0.1];
+        if (layer < scales.length) {
+          const angleShift = (layer * Math.PI * 0.6) / HEART_PT_COUNT;
+          const t = (2 * Math.PI * curveIdx) / HEART_PT_COUNT + angleShift;
+          const sx = 13 * Math.pow(Math.sin(t), 3) * 1.15;
+          const sy = -(13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t));
+          return [img.created_at, {
+            x: cx + sx * scale * scales[layer],
+            y: cy + sy * scale * scales[layer],
+            rotate: 0,
+          }];
+        }
+        // 超出层数：随机散落
+        for (let tries = 0; tries < 50; tries++) {
+          const rx = (Math.random() - 0.5) * 26;
+          const ry = (Math.random() - 0.5) * 30;
+          if (insideHeart(rx, ry)) {
+            return [img.created_at, {
+              x: cx + rx * scale, y: cy + ry * scale, rotate: 0,
+            }];
+          }
+        }
+        const pt = heartPts[curveIdx];
+        return [img.created_at, {
+          x: cx + pt.x * scale * 0.8, y: cy + pt.y * scale * 0.8, rotate: 0,
+        }];
+      })));
+    }
+  }, [images, layoutPreset, heartMode, heartPts]);
 
   const startDrag = (id: number, clientX: number, clientY: number) => {
     const pos = positions.get(id);
     if (!pos) return;
     dragRef.current = { id, startX: clientX, startY: clientY, origX: pos.x, origY: pos.y };
     setDraggingId(id);
-    setTopPhotoId(id);
+    setLayerOrder((prev) => {
+      const next = prev.filter((i) => i !== id);
+      next.push(id);
+      return next;
+    });
   };
 
   const onMouseDown = (id: number, e: React.MouseEvent) => {
@@ -1326,10 +1538,42 @@ function FreeView({ images, loading, page, totalPages, loadImages, getImgProps, 
 
   return (
     <div ref={containerRef} className="gallery-view" style={{
-      position: "fixed", inset: 0, zIndex: 60,
+      position: "fixed", inset: 0, zIndex: 80,
       background: "var(--ant-color-bg-layout)",
       userSelect: "none",
+      pointerEvents: "none",
     }}>
+      {/* 布局预设工具栏 */}
+      <div className="freeview-toolbar" style={{
+        position: "absolute", top: 12, left: "50%", transform: "translateX(-50%)",
+        zIndex: 100, pointerEvents: "auto",
+        display: "flex", gap: 4, alignItems: "center",
+        background: "var(--ant-color-bg-container)",
+        padding: "4px 8px",
+        borderRadius: 10,
+        boxShadow: "0 2px 12px rgba(0,0,0,0.12)",
+      }}>
+        {FREE_LAYOUTS.map((l) => (
+          <Button
+            key={l.value}
+            type={layoutPreset === l.value && heartMode === 0 ? "primary" : "text"}
+            size="small"
+            onClick={() => { setHeartMode(0); setLayoutPreset(l.value); }}
+            style={{ borderRadius: 8, fontSize: 12 }}
+          >
+            {l.label}
+          </Button>
+        ))}
+        <div style={{ width: 1, height: 16, background: "var(--ant-color-border-secondary)", margin: "0 2px" }} />
+        <Tooltip title={heartMode === 0 ? "排列为爱心" : heartMode === 1 ? "切换描边爱心" : "关闭爱心"}>
+          <HeartFilled style={{
+            fontSize: 15,
+            color: heartMode === 0 ? "var(--ant-color-text-tertiary)" : heartMode === 1 ? "#e74c3c" : "#e74c3c",
+            cursor: "pointer", transition: "color 0.3s",
+            opacity: heartMode === 2 ? 0.6 : 1,
+          }} onClick={() => setHeartMode((p) => ((p + 1) % 3) as HeartMode)} />
+        </Tooltip>
+      </div>
       <Image.PreviewGroup
         preview={{
           mask: (
@@ -1361,15 +1605,21 @@ function FreeView({ images, loading, page, totalPages, loadImages, getImgProps, 
               onTouchStart={(e) => onTouchStart(img.created_at, e)}
               style={{
                 position: "absolute", left: pos.x, top: pos.y,
+                pointerEvents: "auto",
                 transform: `rotate(${pos.rotate}deg)`,
                 cursor: draggingId === img.created_at ? "grabbing" : "grab",
-                zIndex: draggingId === img.created_at ? 1000 : topPhotoId === img.created_at ? 100 : 1,
+                zIndex: (() => {
+                  if (draggingId === img.created_at) return 1000;
+                  const idx = layerOrder.indexOf(img.created_at);
+                  if (idx !== -1) return (idx + 1) * 10;
+                  return 1;
+                })(),
                 padding: "10px 10px 40px 10px",
                 background: "#fff",
                 borderRadius: 2,
                 boxShadow: draggingId === img.created_at
                   ? "4px 8px 24px rgba(0,0,0,0.3)"
-                  : topPhotoId === img.created_at
+                  : layerOrder[layerOrder.length - 1] === img.created_at
                   ? "2px 4px 12px rgba(0,0,0,0.2)"
                   : "1px 2px 8px rgba(0,0,0,0.15)",
                 transition: draggingId === img.created_at ? "none" : "box-shadow 0.2s",
@@ -1394,13 +1644,13 @@ function FreeView({ images, loading, page, totalPages, loadImages, getImgProps, 
         })}
       </Image.PreviewGroup>
 
-      <div ref={observerRef} style={{ position: "absolute", bottom: 0, left: 0, right: 0, textAlign: "center", padding: "24px" }}>
+      <div ref={observerRef} style={{ position: "absolute", bottom: 0, left: 0, right: 0, textAlign: "center", padding: "24px", pointerEvents: "auto" }}>
         {loading && <Spin size="small" />}
         {!loading && page < totalPages && (
           <Button type="link" icon={<ArrowDownOutlined />} onClick={() => loadImages(page + 1)}>加载更多</Button>
         )}
         {!loading && page >= totalPages && images.length > 0 && (
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, color: "#999" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, color: "var(--text-tertiary)" }}>
             <CheckCircleOutlined style={{ color: "#52c41a", fontSize: 18 }} />
             <Text type="secondary">已加载全部照片 🎉</Text>
           </div>

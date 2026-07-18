@@ -14,8 +14,7 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const [healthOk, setHealthOk] = useState<boolean | null>(null);
   const [checking, setChecking] = useState(true);
-  const { preset, isDark } = useTheme();
-  const accentColor = preset.config.token?.colorPrimary || "#1D6E5A";
+  const { isDark, accentColor } = useTheme();
 
   useEffect(() => {
     checkHealth()

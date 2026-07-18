@@ -114,6 +114,17 @@ export const themePresets: ThemePreset[] = [
   },
 ];
 
+/* ==================== 颜色工具 ==================== */
+
+/** 将 hex 颜色按百分比调亮（0=不变，1=纯白） */
+function lightenHex(hex: string, percent: number): string {
+  const num = parseInt(hex.replace("#", ""), 16);
+  const r = Math.min(255, (num >> 16) + Math.round(255 * percent));
+  const g = Math.min(255, ((num >> 8) & 0x00ff) + Math.round(255 * percent));
+  const b = Math.min(255, (num & 0x0000ff) + Math.round(255 * percent));
+  return `rgb(${r},${g},${b})`;
+}
+
 /* ==================== 主题上下文 ==================== */
 
 interface ThemeContextType {
@@ -127,6 +138,8 @@ interface ThemeContextType {
   toggleDark: () => void;
   resetTheme: () => void;
   antdTheme: ThemeConfig;
+  /** 主题强调色（暗色下已调亮，适合文字/图标） */
+  accentColor: string;
 }
 
 const ThemeContext = createContext<ThemeContextType>({
@@ -140,6 +153,7 @@ const ThemeContext = createContext<ThemeContextType>({
   toggleDark: () => {},
   resetTheme: () => {},
   antdTheme: {},
+  accentColor: "#1D6E5A",
 });
 
 const STORAGE_KEY = "memories_theme";
@@ -307,6 +321,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       }
     : presetToken;
 
+  // 计算暗色模式下调亮后的强调色
+  const rawPrimary = presetToken.colorPrimary || "#1D6E5A";
+  const accentColor = isDark ? lightenHex(rawPrimary, 0.45) : rawPrimary;
+
   const antdTheme: ThemeConfig = {
     token: {
       ...tokenOverrides,
@@ -343,7 +361,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   return (
     <ThemeContext.Provider
-      value={{ preset, setPreset, fontSize, setFontSize, font, setFont, isDark, toggleDark, resetTheme, antdTheme }}
+      value={{ preset, setPreset, fontSize, setFontSize, font, setFont, isDark, toggleDark, resetTheme, antdTheme, accentColor }}
     >
       {children}
     </ThemeContext.Provider>

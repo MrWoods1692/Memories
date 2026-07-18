@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
 import {
-  Button, Card, Image, Progress, Segmented, Space, Tag, Typography, Upload, Popconfirm, App,
+  Button, Card, Dropdown, Image, Progress, Segmented, Space, Tag, Typography, Upload, Popconfirm, App,
 } from "antd";
+import type { MenuProps } from "antd";
 import {
   CloudUploadOutlined, CheckCircleOutlined, CloseCircleOutlined,
   DeleteOutlined, ReloadOutlined, ClockCircleOutlined, PlusCircleOutlined,
-  AppstoreOutlined, UnorderedListOutlined, MenuOutlined,
+  AppstoreOutlined, UnorderedListOutlined, MenuOutlined, PictureOutlined,
 } from "@ant-design/icons";
 import { clearImagesCache, uploadImageToServer, uploadToImageBed } from "@/api";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -142,8 +143,7 @@ export default function UploadPage() {
   const [records, setRecords] = useState<UploadRecord[]>(() => engine.getRecords());
   const [uploading, setUploading] = useState(() => engine.isRunning());
   const [viewMode, setViewMode] = useState<ViewMode>("card");
-  const { preset } = useTheme();
-  const accentColor = preset.config.token?.colorPrimary || "#1D6E5A";
+  const { accentColor } = useTheme();
 
   useEffect(() => engine.subscribe((r) => { setRecords(r); setUploading(engine.isRunning()); }), []);
 
@@ -174,6 +174,29 @@ export default function UploadPage() {
   const failedCount = records.filter((r) => r.status === "failed").length;
   const pendingCount = records.filter((r) => r.status === "pending" || r.status === "uploading_imagebed" || r.status === "uploading_server").length;
 
+  // 上传页面右键菜单
+  const uploadCtxMenu: MenuProps = {
+    items: [
+      { key: "upload", icon: <CloudUploadOutlined />, label: "上传图片" },
+      { key: "select", icon: <PictureOutlined />, label: "选择图片文件" },
+    ],
+    onClick: ({ key }) => {
+      if (key === "upload") startUpload();
+      else if (key === "select") {
+        const input = document.createElement("input");
+        input.type = "file"; input.accept = "image/*"; input.multiple = true;
+        input.onchange = () => {
+          Array.from(input.files || []).forEach((f) => {
+            if (f.type.startsWith("image/")) {
+              engine.add([{ id: uid(), fileName: f.name, fileSize: f.size, localUrl: URL.createObjectURL(f), status: "pending", createdAt: Date.now() }]);
+            }
+          });
+        };
+        input.click();
+      }
+    },
+  };
+
   const formatSize = (bytes: number) => {
     if (bytes < 1024) return `${bytes} B`;
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
@@ -196,6 +219,7 @@ export default function UploadPage() {
   };
 
   return (
+    <Dropdown menu={uploadCtxMenu} trigger={['contextMenu']}>
     <div style={{ padding: "0 0 24px" }}>
       <div style={{ textAlign: "center", padding: "32px 16px 20px" }}>
         <Title level={3} style={{ margin: 0, fontWeight: 700, color: accentColor }}>
@@ -302,5 +326,6 @@ export default function UploadPage() {
         )}
       </div>
     </div>
+    </Dropdown>
   );
 }

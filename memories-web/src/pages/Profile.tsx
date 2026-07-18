@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { Avatar, Button, Card, Divider, Popconfirm, Segmented, Slider, Space, Tag, Typography, App } from "antd";
+import { Avatar, Button, Card, Divider, Dropdown, Popconfirm, Segmented, Slider, Space, Tag, Typography, App } from "antd";
+import type { MenuProps } from "antd";
 import {
   UserOutlined, LogoutOutlined, SafetyCertificateOutlined, CheckCircleOutlined,
   SunOutlined, MoonOutlined, BgColorsOutlined, FontSizeOutlined, ClearOutlined, DeleteOutlined,
-  GlobalOutlined, ExportOutlined,
+  GlobalOutlined, ExportOutlined, SendOutlined,
 } from "@ant-design/icons";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme, themePresets, fontOptions } from "@/contexts/ThemeContext";
@@ -23,14 +24,60 @@ const roleMap: Record<number, string> = { 0: "普通用户", 1: "审核员", 2: 
 
 export default function ProfilePage() {
   const { user, logout } = useAuth();
-  const { preset, setPreset, fontSize, setFontSize, font, setFont, isDark, toggleDark } = useTheme();
+  const { preset, setPreset, fontSize, setFontSize, font, setFont, isDark, toggleDark, accentColor } = useTheme();
   const { clearCache } = useImageCache();
   const { message } = App.useApp();
-  const accentColor = preset.config.token?.colorPrimary || "#1D6E5A";
 
   if (!user) return null;
 
   const handleLogout = () => { logout(); message.success("已退出登录"); };
+
+  // 右键菜单
+  const pageCtxMenu: MenuProps = {
+    items: [
+      { key: "website", icon: <GlobalOutlined />, label: "Memories 官网" },
+      { key: "campus", icon: <SendOutlined />, label: "校园墙 (gz.campux.top)" },
+      { type: "divider" },
+      { key: "logout", icon: <LogoutOutlined />, label: "退出登录", danger: true },
+    ],
+    onClick: ({ key }) => {
+      if (key === "website") window.open("https://memories.mrcwoods.com", "_blank");
+      else if (key === "campus") window.open("https://gz.campux.top", "_blank");
+      else if (key === "logout") handleLogout();
+    },
+  };
+
+  const themeCtxMenu: MenuProps = {
+    items: themePresets.map((t) => ({
+      key: t.id,
+      label: t.name,
+      icon: <div style={{ display: "inline-flex", gap: 2 }}>{t.colors.map((c, ci) => (
+        <span key={ci} style={{ width: 10, height: 10, borderRadius: "50%", background: c, display: "inline-block", border: "1px solid rgba(0,0,0,0.1)" }} />
+      ))}</div>,
+      style: preset.id === t.id ? { fontWeight: 600, background: "var(--ant-color-primary-bg)" } : undefined,
+    })),
+    onClick: ({ key }) => setPreset(themePresets.find((t) => t.id === key) || themePresets[0]),
+  };
+
+  const fontCtxMenu: MenuProps = {
+    items: [
+      ...fontOptions.map((f) => ({
+        key: f.id,
+        label: f.name,
+        style: font.id === f.id ? { fontWeight: 600, color: "var(--ant-color-primary)" } : undefined,
+      })),
+      { type: "divider" },
+      ...fontSizes.map((s) => ({
+        key: `size_${s.value}`,
+        label: `${s.label} (${s.value}px)`,
+        style: fontSize === s.value ? { fontWeight: 600, color: "var(--ant-color-primary)" } : undefined,
+      })),
+    ],
+    onClick: ({ key }) => {
+      if (key.startsWith("size_")) setFontSize(parseInt(key.replace("size_", "")));
+      else setFont(fontOptions.find((f) => f.id === key) || fontOptions[0]);
+    },
+  };
 
   const handleClearCache = () => {
     clearCache();
@@ -80,6 +127,9 @@ export default function ProfilePage() {
       </div>
 
       <div style={{ maxWidth: 520, margin: "0 auto", padding: "0 16px" }}>
+        {/* 页面其余区域右键菜单 */}
+        <Dropdown menu={pageCtxMenu} trigger={['contextMenu']}>
+        <div style={{ display: "contents" }}>
         {/* === 用户信息 === */}
         <Card style={{ borderRadius: 16, textAlign: "center", overflow: "visible", marginBottom: 16 }}
           styles={{ body: { padding: "40px 24px 20px" } }}>
@@ -111,6 +161,7 @@ export default function ProfilePage() {
         <Divider orientation="left" plain style={{ fontSize: 13, fontWeight: 500 }}>偏好设置</Divider>
 
         {/* === 主题配色 === */}
+        <Dropdown menu={themeCtxMenu} trigger={['contextMenu']}>
         <Card size="small" style={{ borderRadius: 12, marginBottom: 16 }}
           styles={{ body: { padding: "14px 18px" } }}
           title={<><BgColorsOutlined style={{ fontSize: 15 }} /> 主题配色</>}>
@@ -135,6 +186,7 @@ export default function ProfilePage() {
             ))}
           </Space>
         </Card>
+        </Dropdown>
 
         {/* === 外观模式 === */}
         <Card size="small" style={{ borderRadius: 12, marginBottom: 16 }}
@@ -151,6 +203,7 @@ export default function ProfilePage() {
         </Card>
 
         {/* === 字体选择 === */}
+        <Dropdown menu={fontCtxMenu} trigger={['contextMenu']}>
         <Card size="small" style={{ borderRadius: 12, marginBottom: 16 }}
           styles={{ body: { padding: "14px 18px 20px" } }}
           title={<><FontSizeOutlined style={{ fontSize: 15 }} /> 字体与字号</>}>
@@ -191,6 +244,7 @@ export default function ProfilePage() {
             />
           </div>
         </Card>
+        </Dropdown>
 
         {/* === 缓存管理 === */}
         <Card size="small" style={{ borderRadius: 12, marginBottom: 16 }}
@@ -245,6 +299,9 @@ export default function ProfilePage() {
             </div>
           </Card>
         </a>
+
+      </div>
+      </Dropdown>
 
         <Divider />
 

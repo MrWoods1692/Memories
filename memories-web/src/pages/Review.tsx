@@ -21,8 +21,7 @@ export default function ReviewPage() {
   const [initialLoading, setInitialLoading] = useState(true);
   const { message } = App.useApp();
   const observerRef = useRef<HTMLDivElement | null>(null);
-  const { preset } = useTheme();
-  const accentColor = preset.config.token?.colorPrimary || "#1D6E5A";
+  const { accentColor } = useTheme();
 
   const [infoOpen, setInfoOpen] = useState(false);
   const [infoLoading, setInfoLoading] = useState(false);
@@ -257,7 +256,7 @@ export default function ReviewPage() {
                 onClick={() => loadImages(page + 1)} style={{ fontSize: 14 }}>加载更多</Button>
             )}
             {!loading && page >= totalPages && pendingImages.length > 0 && (
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, color: "#999" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, color: "var(--text-tertiary)" }}>
                 <CheckCircleOutlined style={{ color: "#52c41a", fontSize: 18 }} />
                 <Text type="secondary">已加载全部照片 🎉</Text>
               </div>

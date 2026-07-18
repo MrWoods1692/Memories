@@ -30,16 +30,11 @@ public class KeepAliveService extends Service {
     private static final String TAG = "KeepAliveService";
     private static final String CHANNEL_ID = "keepalive_channel";
     private static final int NOTIFICATION_ID = 999;
-    private static final long KEEP_ALIVE_INTERVAL_MS = 15 * 1000L; // 每 15 秒检查一次
+    private static final long KEEP_ALIVE_INTERVAL_MS = 30 * 1000L; // 每 30 秒检查一次
     private static final String ALARM_ACTION = "com.example.memories.KEEP_ALIVE";
 
-    // FRPC 连续失败计数器（用于降低频繁重试的日志噪音）
+    // FRPC 连续失败计数器
     private int frpcFailCount = 0;
-    // FRPC 深度检查周期：每 DEEP_CHECK_CYCLES 次做一次完整重启检测
-    private int checkCycle = 0;
-    private static final int DEEP_CHECK_CYCLES = 8; // 约 120 秒一次深度检查（降低频率防 Go 运行时崩溃）
-    private long lastFrpcRestartTime = 0;
-    private static final long FRPC_RESTART_COOLDOWN_MS = 30_000; // FRPC 重启冷却 30 秒
 
     // WakeLock 持续持有，防止 CPU 深度休眠导致服务挂起/被杀
     private android.os.PowerManager.WakeLock wakeLock;
@@ -153,13 +148,6 @@ public class KeepAliveService extends Service {
         }
 
         ensureFrpcRunning();
-
-        // 周期性深度检查：即使 FRPC 自认为在运行，也做一次强制重连验证
-        checkCycle++;
-        if (checkCycle >= DEEP_CHECK_CYCLES) {
-            checkCycle = 0;
-            deepCheckFrpc();
-        }
     }
 
     /**
@@ -281,49 +269,6 @@ public class KeepAliveService extends Service {
             }
         } catch (Exception e) {
             Log.e(TAG, "Failed to check FRPC status", e);
-        }
-    }
-
-    /**
-     * FRPC 深度检查：强制停止并重新启动 FRPC，彻底解决"假在线"问题。
-     * 每 DEEP_CHECK_CYCLES 次保活周期执行一次（约 60 秒）。
-     */
-    private void deepCheckFrpc() {
-        try {
-            DatabaseHelper db = new DatabaseHelper(this);
-            String config = db.getConfig("frpc_config");
-            if (config == null || config.trim().isEmpty()) {
-                return;
-            }
-
-            FrpcManager manager = FrpcManager.getInstance();
-            if (manager == null || !manager.isRunning()) {
-                return; // ensureFrpcRunning 会处理未运行的情况
-            }
-
-            // 检查本地 API 是否健康，如果不健康则 FRPC 可能也没问题（是服务端挂了）
-            String portStr = db.getConfig("server_port");
-            int serverPort = 8080;
-            if (portStr != null) {
-                try {
-                    serverPort = Integer.parseInt(portStr);
-                } catch (NumberFormatException ignored) {
-                }
-            }
-
-            if (!isApiHealthy(serverPort)) {
-                return; // 本地 API 都不健康，先让 ensureFrpcRunning 处理服务端
-            }
-
-            // 本地 API 健康，但 FRPC 可能已断开：强制重启 FRPC（带冷却时间防 Go 运行时崩溃）
-            long now = System.currentTimeMillis();
-            if (now - lastFrpcRestartTime >= FRPC_RESTART_COOLDOWN_MS) {
-                lastFrpcRestartTime = now;
-                Log.i(TAG, "Deep check: force restarting FRPC to ensure tunnel health");
-                manager.forceRestart(config);
-            }
-        } catch (Exception e) {
-            Log.w(TAG, "FRPC deep check failed", e);
         }
     }
 
