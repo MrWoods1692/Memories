@@ -95,14 +95,18 @@ export default function GalleryPage() {
   ];
 
   // 幻灯播放
+  const slideshowImagesRef = useRef(images);
+
   const advanceSlide = useCallback(() => {
-    if (images.length === 0) return false;
-    // 循环索引
-    slideshowIndex.current = (slideshowIndex.current + 1) % images.length;
+    const thumbnails = document.querySelectorAll(".gallery-view .ant-image-img");
+    if (thumbnails.length === 0) return false;
+
+    // 循环索引：优先使用 DOM 中实际渲染的缩略图数量
+    const count = thumbnails.length;
+    slideshowIndex.current = (slideshowIndex.current + 1) % count;
     const idx = slideshowIndex.current;
 
     // 点击对应缩略图切换
-    const thumbnails = document.querySelectorAll(".gallery-grid .ant-image-img");
     const target = thumbnails[idx] as HTMLElement | undefined;
     if (target) {
       const anim = slideAnims[Math.floor(Math.random() * slideAnims.length)];
@@ -117,7 +121,7 @@ export default function GalleryPage() {
       return true;
     }
     return false;
-  }, [images.length]);
+  }, []);
   const startSlideshow = useCallback(() => {
     setSlideshow(true);
     setSlideshowPaused(false);
@@ -126,7 +130,7 @@ export default function GalleryPage() {
     isSlideshowRef.current = true;
     document.body.classList.add("slideshow-active");
     if (images.length > 0) {
-      const imgs = document.querySelectorAll(".gallery-grid .ant-image-img");
+      const imgs = document.querySelectorAll(".gallery-view .ant-image-img");
       if (imgs.length > 0) (imgs[0] as HTMLElement).click();
     }
   }, [images]);
@@ -424,6 +428,9 @@ export default function GalleryPage() {
     <div style={{ padding: "0 0 24px" }}>
       <div style={{
         padding: "16px 16px 8px",
+        position: viewMode === "free" ? "sticky" : undefined,
+        top: 0, zIndex: viewMode === "free" ? 70 : undefined,
+        background: viewMode === "free" ? "var(--ant-color-bg-layout)" : undefined,
       }}>
         {/* 标题行 - 桌面端右对齐 */}
         <div style={{
@@ -453,8 +460,9 @@ export default function GalleryPage() {
               <Segmented size="small"
                 value={viewMode}
                 onChange={(v) => {
-                  if (v === "free") setBatchMode(false);
-                  setViewMode(v as GalleryView);
+                  const newView = v as GalleryView;
+                  if (newView === "free") setBatchMode(false);
+                  setViewMode(newView);
                 }}
                 options={viewOptions.map((v) => ({ value: v.value, icon: v.icon })) as any}
                 style={{ marginRight: 4 }}
@@ -483,6 +491,7 @@ export default function GalleryPage() {
                 </Button>
               </Dropdown>
             )}
+            {viewMode !== "free" && (
             <Button
               onClick={toggleSlideshow}
               type={slideshow ? "primary" : "default"}
@@ -490,6 +499,7 @@ export default function GalleryPage() {
               title={slideshow ? "停止幻灯" : "幻灯播放"}
               style={{ borderRadius: 20, height: 36 }}
             />
+            )}
               </>
             )}
             {!batchMode ? (
@@ -579,7 +589,7 @@ export default function GalleryPage() {
         <Image.PreviewGroup
           preview={{
             mask: (
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", background: "rgba(0,0,0,0.12)", backdropFilter: "blur(2px)" }}>
+              <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.12)", backdropFilter: "blur(2px)" }}>
                 <EyeOutlined style={{ color: "#fff", fontSize: 20, marginRight: 6 }} />
                 <Text style={{ color: "#fff", fontSize: 12, opacity: 0.85 }}>点击预览</Text>
               </div>
@@ -590,7 +600,7 @@ export default function GalleryPage() {
             },
           } as any}
         >
-          <div style={{
+          <div className="gallery-view" style={{
             overflowX: "auto",
             overflowY: "hidden",
             whiteSpace: "nowrap",
@@ -660,14 +670,14 @@ export default function GalleryPage() {
         <>
         <Image.PreviewGroup
           preview={{
-            mask: (              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", background: "rgba(0,0,0,0.12)", backdropFilter: "blur(2px)" }}>                <EyeOutlined style={{ color: "#fff", fontSize: 20, marginRight: 6 }} />                <Text style={{ color: "#fff", fontSize: 12, opacity: 0.85 }}>点击预览</Text>              </div>            ),
+            mask: (              <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.12)", backdropFilter: "blur(2px)" }}>                <EyeOutlined style={{ color: "#fff", fontSize: 20, marginRight: 6 }} />                <Text style={{ color: "#fff", fontSize: 12, opacity: 0.85 }}>点击预览</Text>              </div>            ),
 toolbarRender: (originalNode: React.ReactNode, info: { current: number; actions: Record<string, unknown> }) => {
               const url = images[(info as any).current ?? 0]?.url || "";
               return <>{makePreviewTools(url)}{originalNode}</>;
             },
           } as any}
         >
-          <div style={{
+          <div className="gallery-view" style={{
             columnCount: 4, columnGap: 0, columnRule: "none",
             columnFill: "balance",
             padding: 0, fontSize: 0,
@@ -745,7 +755,7 @@ toolbarRender: (originalNode: React.ReactNode, info: { current: number; actions:
       ) : (
         /* ===== 普通视图：grid / compact / list ===== */
         <>
-          <div className={`gallery-grid ${viewMode === "compact" ? "gallery-grid-compact" : ""} ${(viewMode === "list" || viewMode === "simple") ? "gallery-grid-list" : ""}`} style={{
+          <div className={`gallery-view gallery-grid ${viewMode === "compact" ? "gallery-grid-compact" : ""} ${(viewMode === "list" || viewMode === "simple") ? "gallery-grid-list" : ""}`} style={{
             display: "grid",
             gridTemplateColumns: (viewMode === "list" || viewMode === "simple")
               ? "1fr"
@@ -759,8 +769,8 @@ toolbarRender: (originalNode: React.ReactNode, info: { current: number; actions:
               preview={{
                 mask: (
                   <div style={{
+                    position: "absolute", inset: 0,
                     display: "flex", alignItems: "center", justifyContent: "center",
-                    height: "100%",
                     background: "rgba(0,0,0,0.12)",
                     backdropFilter: "blur(2px)",
                   }}>
@@ -1153,14 +1163,14 @@ function TimelineView({ images, loading, page, totalPages, loadImages, getImgPro
       {/* 图片区 */}
       <Image.PreviewGroup
         preview={{
-            mask: (              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", background: "rgba(0,0,0,0.12)", backdropFilter: "blur(2px)" }}>                <EyeOutlined style={{ color: "#fff", fontSize: 20, marginRight: 6 }} />                <Text style={{ color: "#fff", fontSize: 12, opacity: 0.85 }}>点击预览</Text>              </div>            ),
+            mask: (              <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.12)", backdropFilter: "blur(2px)" }}>                <EyeOutlined style={{ color: "#fff", fontSize: 20, marginRight: 6 }} />                <Text style={{ color: "#fff", fontSize: 12, opacity: 0.85 }}>点击预览</Text>              </div>            ),
 toolbarRender: (originalNode: React.ReactNode, info: { current: number }) => {
             const url = activeImages[(info as any).current ?? 0]?.url || "";
             return <>{makeTools(url)}{originalNode}</>;
           },
         } as any}
       >
-        <div style={{
+        <div className="gallery-view" style={{
           display: "grid",
           gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
           gap: 8, padding: "12px 16px",
@@ -1233,16 +1243,16 @@ function FreeView({ images, loading, page, totalPages, loadImages, getImgProps, 
   const dragRef = useRef<{ id: number; startX: number; startY: number; origX: number; origY: number } | null>(null);
 
   useEffect(() => {
-    if (!containerRef.current || images.length === 0) return;
-    const w = containerRef.current.clientWidth;
-    const h = Math.max(600, window.innerHeight * 0.7);
+    if (images.length === 0) return;
+    const w = window.innerWidth;
+    const h = window.innerHeight;
     setPositions((prev) => {
       const next = new Map(prev);
       images.forEach((img) => {
         if (!next.has(img.id)) {
           next.set(img.id, {
             x: 40 + Math.random() * Math.max(w - 300, 100),
-            y: 20 + Math.random() * Math.max(h - 300, 100),
+            y: 40 + Math.random() * Math.max(h - 300, 200),
             rotate: (Math.random() - 0.5) * 12,
           });
         }
@@ -1273,19 +1283,21 @@ function FreeView({ images, loading, page, totalPages, loadImages, getImgProps, 
 
   useEffect(() => {
     const onMove = (e: MouseEvent | TouchEvent) => {
-      if (!dragRef.current) return;
-      const clientX = 'touches' in e ? e.touches[0]?.clientX : e.clientX;
-      const clientY = 'touches' in e ? e.touches[0]?.clientY : e.clientY;
+      const drag = dragRef.current;
+      if (!drag) return;
+      const clientX = 'touches' in e ? (e as TouchEvent).touches[0]?.clientX : (e as MouseEvent).clientX;
+      const clientY = 'touches' in e ? (e as TouchEvent).touches[0]?.clientY : (e as MouseEvent).clientY;
       if (clientX == null || clientY == null) return;
-      const dx = clientX - dragRef.current.startX;
-      const dy = clientY - dragRef.current.startY;
+      const dx = clientX - drag.startX;
+      const dy = clientY - drag.startY;
+      const id = drag.id;
+      const origX = drag.origX;
+      const origY = drag.origY;
       setPositions((prev) => {
         const next = new Map(prev);
-        next.set(dragRef.current!.id, {
-          ...next.get(dragRef.current!.id)!,
-          x: dragRef.current!.origX + dx,
-          y: dragRef.current!.origY + dy,
-        });
+        const cur = next.get(id);
+        if (!cur) return next;
+        next.set(id, { ...cur, x: origX + dx, y: origY + dy });
         return next;
       });
     };
@@ -1314,15 +1326,15 @@ function FreeView({ images, loading, page, totalPages, loadImages, getImgProps, 
   }, [page, totalPages, loading, loadImages]);
 
   return (
-    <div ref={containerRef} style={{
-      position: "relative", minHeight: "70vh",
+    <div ref={containerRef} className="gallery-view" style={{
+      position: "fixed", inset: 0, zIndex: 60,
       background: "var(--ant-color-bg-layout)",
-      overflow: "hidden", userSelect: "none",
+      userSelect: "none",
     }}>
       <Image.PreviewGroup
         preview={{
           mask: (
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", background: "rgba(0,0,0,0.12)", backdropFilter: "blur(2px)" }}>
+            <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.12)", backdropFilter: "blur(2px)" }}>
               <EyeOutlined style={{ color: "#fff", fontSize: 20, marginRight: 6 }} />
               <Text style={{ color: "#fff", fontSize: 12, opacity: 0.85 }}>点击预览</Text>
             </div>
