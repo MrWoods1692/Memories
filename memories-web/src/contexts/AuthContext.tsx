@@ -8,7 +8,6 @@ import {
 } from "react";
 import type { AuthResponse } from "@/types";
 import { clearTokens, getAccessToken, getOAuthError, oauthLogin, parseOAuthCallback } from "@/api";
-import { App } from "antd";
 
 interface AuthContextType {
   user: AuthResponse | null;
@@ -16,6 +15,7 @@ interface AuthContextType {
   startLogin: () => void;
   logout: () => void;
   isLoggedIn: boolean;
+  banned: boolean;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -24,18 +24,23 @@ const AuthContext = createContext<AuthContextType>({
   startLogin: () => {},
   logout: () => {},
   isLoggedIn: false,
+  banned: false,
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthResponse | null>(null);
   const [loading, setLoading] = useState(true);
-  const { message } = App.useApp();
+  const [banned, setBanned] = useState(false);
 
   useEffect(() => {
     // 1. 先检查 URL 中是否有 OAuth 回调错误
     const oauthError = getOAuthError();
     if (oauthError) {
-      message.error(oauthError);
+      // 如果是封禁错误，设置 banned 标志以显示封禁页面
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("error") === "banned") {
+        setBanned(true);
+      }
       setLoading(false);
       return;
     }
@@ -72,7 +77,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, loading, startLogin, logout, isLoggedIn: !!user }}
+      value={{ user, loading, startLogin, logout, isLoggedIn: !!user, banned }}
     >
       {children}
     </AuthContext.Provider>
