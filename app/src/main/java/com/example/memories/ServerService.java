@@ -29,9 +29,14 @@ public class ServerService extends Service {
     private boolean serversStarted = false;
     private volatile boolean starting = false; // 防止 onCreate 和 onStartCommand 重复启动
 
+    // WakeLock 持续持有，防止 CPU 深度休眠导致服务挂起/被杀
+    private PowerManager.WakeLock wakeLock;
+    private static final String WAKE_LOCK_TAG = "Memories:ServerWakeLock";
+
     @Override
     public void onCreate() {
         super.onCreate();
+        ServiceChecker.markAlive(ServerService.class);
         createNotificationChannel();
 
         // ⚠️ 关键：必须最先调用 startForeground()（5 秒内），否则系统杀死服务
@@ -132,18 +137,19 @@ public class ServerService extends Service {
         }
     }
 
-    /** 获取 WakeLock 防止 CPU 深度休眠 */
+    /** 获取 WakeLock 防止 CPU 深度休眠（持久持有，无超时，onDestroy 时释放） */
     private void acquireWakeLock() {
         try {
             PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
-            if (pm != null) {
-                PowerManager.WakeLock wl = pm.newWakeLock(
+            if (pm != null && (wakeLock == null || !wakeLock.isHeld())) {
+                wakeLock = pm.newWakeLock(
                     PowerManager.PARTIAL_WAKE_LOCK,
-                    "Memories:ServerWakeLock"
+                    WAKE_LOCK_TAG
                 );
-                if (wl != null && !wl.isHeld()) {
-                    wl.setReferenceCounted(false);
-                    wl.acquire(30 * 60 * 1000L); // 30 分钟超时
+                if (wakeLock != null) {
+                    wakeLock.setReferenceCounted(false);
+                    // 不带超时：服务存活期间持续持有，避免 30 分钟后 CPU 休眠导致接口掉线
+                    wakeLock.acquire();
                 }
             }
         } catch (Exception e) {
@@ -151,8 +157,33 @@ public class ServerService extends Service {
         }
     }
 
+    /** 刷新 WakeLock：释放后重新获取，兜底防止异常状态导致 WakeLock 丢失 */
+    private void refreshWakeLock() {
+        try {
+            if (wakeLock != null && wakeLock.isHeld()) {
+                wakeLock.release();
+            }
+        } catch (Exception ignored) {}
+        acquireWakeLock();
+    }
+
+    private void releaseWakeLock() {
+        try {
+            if (wakeLock != null && wakeLock.isHeld()) {
+                wakeLock.release();
+            }
+        } catch (Exception ignored) {}
+        wakeLock = null;
+    }
+
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        // 每次 onStartCommand 刷新 WakeLock，防止长时间运行后 WakeLock 异常丢失
+        refreshWakeLock();
+
+        // 互相监控：如果看门狗 KeepAliveService 挂了，主动拉起（防止看门狗被系统强杀后整条保活链断裂）
+        ensureKeepAliveRunning();
+
         // 如果服务器挂了但服务还活着，尝试重启服务器
         // starting 标志防止与 onCreate 中的后台线程重复启动
         if (!serversStarted && !starting) {
@@ -162,6 +193,23 @@ public class ServerService extends Service {
             }).start();
         }
         return START_STICKY;
+    }
+
+    /** 确保看门狗 KeepAliveService 在运行，否则拉起它 */
+    private void ensureKeepAliveRunning() {
+        try {
+            if (!ServiceChecker.isServiceRunning(this, KeepAliveService.class)) {
+                Log.w("ServerService", "KeepAliveService not running, starting it");
+                Intent ka = new Intent(this, KeepAliveService.class);
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    startForegroundService(ka);
+                } else {
+                    startService(ka);
+                }
+            }
+        } catch (Exception e) {
+            Log.w("ServerService", "Failed to start KeepAliveService", e);
+        }
     }
 
     @Override
@@ -194,8 +242,10 @@ public class ServerService extends Service {
     @Override
     public void onDestroy() {
         super.onDestroy();
+        ServiceChecker.markDead(ServerService.class);
         if (server != null) server.stop();
         if (adminServer != null) adminServer.stop();
+        releaseWakeLock();
     }
 
     @Override

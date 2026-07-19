@@ -7,7 +7,7 @@ import {
   type ReactNode,
 } from "react";
 import type { AuthResponse } from "@/types";
-import { clearTokens, getAccessToken, getOAuthError, oauthLogin, parseOAuthCallback } from "@/api";
+import { clearTokens, getAccessToken, getOAuthError, oauthLogin, parseOAuthCallback, type OAuthErrorInfo } from "@/api";
 import { useTheme } from "@/contexts/ThemeContext";
 
 interface AuthContextType {
@@ -18,6 +18,8 @@ interface AuthContextType {
   isLoggedIn: boolean;
   banned: boolean;
   clearBanned: () => void;
+  oauthError: OAuthErrorInfo | null;
+  clearOAuthError: () => void;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -28,21 +30,24 @@ const AuthContext = createContext<AuthContextType>({
   isLoggedIn: false,
   banned: false,
   clearBanned: () => {},
+  oauthError: null,
+  clearOAuthError: () => {},
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [banned, setBanned] = useState(false);
+  const [oauthError, setOauthError] = useState<OAuthErrorInfo | null>(null);
   const { resetTheme } = useTheme();
 
   useEffect(() => {
     // 1. 先检查 URL 中是否有 OAuth 回调错误
-    const oauthError = getOAuthError();
-    if (oauthError) {
+    const oauthErr = getOAuthError();
+    if (oauthErr) {
+      setOauthError(oauthErr);
       // 如果是封禁错误，设置 banned 标志以显示封禁页面
-      const params = new URLSearchParams(window.location.search);
-      if (params.get("error") === "banned") {
+      if (oauthErr.code === "banned") {
         setBanned(true);
       }
       setLoading(false);
@@ -71,6 +76,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const startLogin = useCallback(() => {
+    // 重新登录前清除上一次的错误状态
+    setOauthError(null);
     oauthLogin();
   }, []);
 
@@ -84,6 +91,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setBanned(false);
   }, []);
 
+  const clearOAuthError = useCallback(() => {
+    setOauthError(null);
+  }, []);
+
   // 游客状态时恢复默认主题
   useEffect(() => {
     if (!user && !loading) {
@@ -93,7 +104,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, loading, startLogin, logout, isLoggedIn: !!user, banned, clearBanned }}
+      value={{
+        user,
+        loading,
+        startLogin,
+        logout,
+        isLoggedIn: !!user,
+        banned,
+        clearBanned,
+        oauthError,
+        clearOAuthError,
+      }}
     >
       {children}
     </AuthContext.Provider>

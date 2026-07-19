@@ -5,6 +5,7 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
+import android.content.Context;
 import android.content.Intent;
 import android.graphics.PixelFormat;
 import android.net.wifi.WifiManager;
@@ -12,6 +13,7 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
+import android.os.PowerManager;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.WindowManager;
@@ -34,9 +36,14 @@ public class FloatingWindow extends Service {
     private final Handler handler = new Handler(Looper.getMainLooper());
     private boolean floatViewCreated = false;
 
+    // WakeLock 持续持有，作为第三个服务的冗余保活，防止 CPU 深度休眠
+    private PowerManager.WakeLock wakeLock;
+    private static final String WAKE_LOCK_TAG = "Memories:FloatingWakeLock";
+
     @Override
     public void onCreate() {
         super.onCreate();
+        ServiceChecker.markAlive(FloatingWindow.class);
         createNotificationChannel();
 
         // 前台服务通知（Android 5 秒规则：必须在 onCreate 中尽早调用）
@@ -55,8 +62,53 @@ public class FloatingWindow extends Service {
                 .build();
         startForeground(NOTIFICATION_ID, n);
 
+        // 获取持久 WakeLock，作为冗余保活（与 ServerService / KeepAliveService 形成三重保险）
+        acquireWakeLock();
+
         // 创建悬浮窗（需要 SYSTEM_ALERT_WINDOW 权限）
         tryCreateFloatView();
+    }
+
+    /** 获取持久 WakeLock，防止 CPU 深度休眠 */
+    private void acquireWakeLock() {
+        try {
+            PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
+            if (pm != null && (wakeLock == null || !wakeLock.isHeld())) {
+                wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, WAKE_LOCK_TAG);
+                if (wakeLock != null) {
+                    wakeLock.setReferenceCounted(false);
+                    wakeLock.acquire(); // 持久持有，无超时
+                }
+            }
+        } catch (Exception e) {
+            Log.w("FloatingWindow", "Failed to acquire wake lock", e);
+        }
+    }
+
+    private void releaseWakeLock() {
+        try {
+            if (wakeLock != null && wakeLock.isHeld()) {
+                wakeLock.release();
+            }
+        } catch (Exception ignored) {}
+        wakeLock = null;
+    }
+
+    /** 确保看门狗 KeepAliveService 在运行，否则拉起它 */
+    private void ensureKeepAliveRunning() {
+        try {
+            if (!ServiceChecker.isServiceRunning(this, KeepAliveService.class)) {
+                Log.w("FloatingWindow", "KeepAliveService not running, starting it");
+                Intent ka = new Intent(this, KeepAliveService.class);
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    startForegroundService(ka);
+                } else {
+                    startService(ka);
+                }
+            }
+        } catch (Exception e) {
+            Log.w("FloatingWindow", "Failed to start KeepAliveService", e);
+        }
     }
 
     private void tryCreateFloatView() {
@@ -130,6 +182,12 @@ public class FloatingWindow extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        // 刷新 WakeLock，兜底防止长时间运行后 WakeLock 异常丢失
+        acquireWakeLock();
+
+        // 互相监控：如果看门狗 KeepAliveService 挂了，主动拉起
+        ensureKeepAliveRunning();
+
         // 如果悬浮窗被系统移除，且权限允许，重新创建
         if (!floatViewCreated || (floatView != null && windowManager != null
                 && !floatView.isAttachedToWindow())) {
@@ -181,11 +239,13 @@ public class FloatingWindow extends Service {
     @Override
     public void onDestroy() {
         super.onDestroy();
+        ServiceChecker.markDead(FloatingWindow.class);
         handler.removeCallbacksAndMessages(null);
         if (floatView != null && windowManager != null) {
             try { windowManager.removeView(floatView); } catch (Exception ignored) {}
         }
         floatViewCreated = false;
+        releaseWakeLock();
     }
 
     @Override

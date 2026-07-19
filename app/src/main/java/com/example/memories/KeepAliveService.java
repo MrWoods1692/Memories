@@ -36,6 +36,10 @@ public class KeepAliveService extends Service {
     // FRPC 连续失败计数器
     private int frpcFailCount = 0;
 
+    // API 健康检查连续失败计数器（避免单次网络抖动误杀服务）
+    private int apiHealthFailCount = 0;
+    private static final int API_HEALTH_FAIL_THRESHOLD = 2; // 连续 2 次失败才重启
+
     // WakeLock 持续持有，防止 CPU 深度休眠导致服务挂起/被杀
     private android.os.PowerManager.WakeLock wakeLock;
     private static final String WAKE_LOCK_TAG = "Memories:KeepAliveWakeLock";
@@ -43,6 +47,7 @@ public class KeepAliveService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
+        ServiceChecker.markAlive(KeepAliveService.class);
         createNotificationChannel();
 
         // 低调的前台通知（不打扰用户）
@@ -120,12 +125,31 @@ public class KeepAliveService extends Service {
         boolean serverRunning = ServiceChecker.isServiceRunning(this, ServerService.class);
         if (!serverRunning) {
             Log.w(TAG, "ServerService not running, restarting...");
-            restartServerService();
-        } else if (!isApiHealthy(serverPort)) {
-            Log.w(TAG, "API health check failed on port " + serverPort + ", restarting ServerService...");
+            apiHealthFailCount = 0;
             restartServerService();
         } else {
-            apiHealthy = true;
+            boolean healthy = isApiHealthy(serverPort);
+            if (!healthy) {
+                apiHealthFailCount++;
+                Log.w(TAG, "API health check failed (" + apiHealthFailCount + "/"
+                    + API_HEALTH_FAIL_THRESHOLD + ") on port " + serverPort);
+                if (apiHealthFailCount >= API_HEALTH_FAIL_THRESHOLD) {
+                    Log.w(TAG, "API unhealthy for " + apiHealthFailCount
+                        + " consecutive checks, restarting ServerService...");
+                    apiHealthFailCount = 0;
+                    restartServerService();
+                }
+                // 未达阈值时不重启，等下一轮检查（避免单次网络抖动误杀）
+            } else {
+                apiHealthFailCount = 0;
+                apiHealthy = true;
+                // 服务健康时，主动 ping 一次 ServerService，触发其 onStartCommand 刷新 WakeLock
+                // 防止长时间运行后 WakeLock 被系统异常释放导致 CPU 休眠
+                try {
+                    Intent ping = new Intent(this, ServerService.class);
+                    startService(ping);
+                } catch (Exception ignored) {}
+            }
         }
 
         // 检查悬浮窗是否在运行
@@ -141,6 +165,12 @@ public class KeepAliveService extends Service {
             } catch (Exception e) {
                 Log.e(TAG, "Failed to restart FloatingWindow", e);
             }
+        } else {
+            // 悬浮窗在运行时，主动 ping 一次刷新其 WakeLock
+            try {
+                Intent ping = new Intent(this, FloatingWindow.class);
+                startService(ping);
+            } catch (Exception ignored) {}
         }
 
         if (!apiHealthy && !serverRunning) {
@@ -192,14 +222,29 @@ public class KeepAliveService extends Service {
     private void restartServerService() {
         try {
             Intent svc = new Intent(this, ServerService.class);
-            stopService(svc);
+            // 优先直接 startForegroundService：
+            // - 如果服务还活着，会触发 onStartCommand（内部检测 serversStarted=false 会重启服务器）
+            // - 如果服务已死，系统会重新创建服务
+            // 避免 stopService + 立即 startForegroundService 的竞态（旧服务未完全销毁导致启动失败）
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 startForegroundService(svc);
             } else {
                 startService(svc);
             }
         } catch (Exception e) {
-            Log.e(TAG, "Failed to restart ServerService", e);
+            Log.e(TAG, "Failed to restart ServerService, trying stop+start", e);
+            // 兜底：stop 后再 start
+            try {
+                Intent svc = new Intent(this, ServerService.class);
+                stopService(svc);
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    startForegroundService(svc);
+                } else {
+                    startService(svc);
+                }
+            } catch (Exception e2) {
+                Log.e(TAG, "Stop+start also failed", e2);
+            }
         }
     }
 
@@ -291,35 +336,49 @@ public class KeepAliveService extends Service {
                 // 先取消旧的闹钟
                 am.cancel(pendingIntent);
 
-                // 设置周期性闹钟
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
-                        && !am.canScheduleExactAlarms()) {
-                    // Android 12+ 无精确闹钟权限，用 setInexactRepeating
-                    am.setInexactRepeating(
-                        AlarmManager.RTC_WAKEUP,
-                        System.currentTimeMillis() + KEEP_ALIVE_INTERVAL_MS,
-                        KEEP_ALIVE_INTERVAL_MS,
-                        pendingIntent
-                    );
-                } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
-                    // Android 4.4+: setInexactRepeating 已被优化为低功耗
-                    am.setInexactRepeating(
-                        AlarmManager.RTC_WAKEUP,
-                        System.currentTimeMillis() + KEEP_ALIVE_INTERVAL_MS,
-                        KEEP_ALIVE_INTERVAL_MS,
-                        pendingIntent
-                    );
-                } else {
-                    am.setRepeating(
-                        AlarmManager.RTC_WAKEUP,
-                        System.currentTimeMillis() + KEEP_ALIVE_INTERVAL_MS,
-                        KEEP_ALIVE_INTERVAL_MS,
-                        pendingIntent
-                    );
+                long triggerAt = System.currentTimeMillis() + KEEP_ALIVE_INTERVAL_MS;
+                boolean scheduled = false;
+
+                // 优先使用 setExactAndAllowWhileIdle：在 Doze 模式下也能准时唤醒
+                // 注意：该 API 为单次闹钟，每次 onStartCommand 时重新调度（见 onStartCommand）
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    try {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+                                && !am.canScheduleExactAlarms()) {
+                            // Android 12+ 无精确闹钟权限，降级为不精确（仍允许 Doze 唤醒）
+                            am.setAndAllowWhileIdle(
+                                AlarmManager.RTC_WAKEUP, triggerAt, pendingIntent);
+                        } else {
+                            am.setExactAndAllowWhileIdle(
+                                AlarmManager.RTC_WAKEUP, triggerAt, pendingIntent);
+                        }
+                        scheduled = true;
+                    } catch (SecurityException se) {
+                        Log.w(TAG, "setExactAndAllowWhileIdle denied, fallback", se);
+                    }
+                }
+
+                if (!scheduled) {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+                        am.setInexactRepeating(
+                            AlarmManager.RTC_WAKEUP,
+                            triggerAt,
+                            KEEP_ALIVE_INTERVAL_MS,
+                            pendingIntent
+                        );
+                    } else {
+                        am.setRepeating(
+                            AlarmManager.RTC_WAKEUP,
+                            triggerAt,
+                            KEEP_ALIVE_INTERVAL_MS,
+                            pendingIntent
+                        );
+                    }
                 }
 
                 Log.i(TAG, "Keep-alive alarm scheduled (interval: "
-                    + (KEEP_ALIVE_INTERVAL_MS / 1000) + " s)");
+                    + (KEEP_ALIVE_INTERVAL_MS / 1000) + " s, exact="
+                    + scheduled + ")");
             } catch (Exception e) {
                 Log.e(TAG, "Failed to schedule keep-alive alarm", e);
             }
@@ -329,11 +388,12 @@ public class KeepAliveService extends Service {
     @Override
     public void onDestroy() {
         super.onDestroy();
+        ServiceChecker.markDead(KeepAliveService.class);
         // 释放 WakeLock
         releaseWakeLock();
         // 如果被销毁，立即尝试重启自己和所有服务
         Log.w(TAG, "KeepAliveService destroyed, attempting restart");
-        // 通过 setAlarm 方式重启（因为 onDestroy 中不能 startService）
+        // 通过 setExactAndAllowWhileIdle 重启（Doze 模式下也能唤醒）
         Intent restartIntent = new Intent(getApplicationContext(), KeepAliveService.class);
         PendingIntent pi = PendingIntent.getService(
             getApplicationContext(), 1, restartIntent,
@@ -343,8 +403,25 @@ public class KeepAliveService extends Service {
         );
         AlarmManager am = (AlarmManager) getSystemService(ALARM_SERVICE);
         if (am != null) {
-            am.set(AlarmManager.RTC_WAKEUP,
-                System.currentTimeMillis() + 2000, pi);
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+                            && !am.canScheduleExactAlarms()) {
+                        am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP,
+                            System.currentTimeMillis() + 2000, pi);
+                    } else {
+                        am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP,
+                            System.currentTimeMillis() + 2000, pi);
+                    }
+                } else {
+                    am.set(AlarmManager.RTC_WAKEUP,
+                        System.currentTimeMillis() + 2000, pi);
+                }
+            } catch (SecurityException se) {
+                Log.w(TAG, "Exact alarm denied in onDestroy, fallback", se);
+                am.set(AlarmManager.RTC_WAKEUP,
+                    System.currentTimeMillis() + 2000, pi);
+            }
         }
     }
 

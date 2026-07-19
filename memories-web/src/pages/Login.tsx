@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { Button, Card, Result, Spin, Tag, Typography, Divider } from "antd";
-import { HeartOutlined, LoginOutlined, EyeOutlined, ReloadOutlined, WifiOutlined } from "@ant-design/icons";
+import { Alert, Button, Card, Result, Spin, Tag, Typography, Divider } from "antd";
+import { HeartOutlined, LoginOutlined, EyeOutlined, ReloadOutlined, WifiOutlined, ExclamationCircleOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import { checkHealth } from "@/api";
 import { useAuth } from "@/contexts/AuthContext";
@@ -10,10 +10,11 @@ import LogoIcon from "@/components/LogoIcon";
 const { Title, Paragraph, Text } = Typography;
 
 export default function LoginPage() {
-  const { startLogin, isLoggedIn } = useAuth();
+  const { startLogin, isLoggedIn, oauthError, clearOAuthError } = useAuth();
   const navigate = useNavigate();
   const [healthOk, setHealthOk] = useState<boolean | null>(null);
   const [checking, setChecking] = useState(true);
+  const [loggingIn, setLoggingIn] = useState(false);
   const { isDark, accentColor } = useTheme();
 
   useEffect(() => {
@@ -40,6 +41,16 @@ export default function LoginPage() {
 
   const handleGuest = () => {
     navigate("/gallery");
+  };
+
+  // 发起登录：清除上一次错误状态，防止重复点击
+  const handleLogin = () => {
+    if (loggingIn) return;
+    clearOAuthError();
+    setLoggingIn(true);
+    startLogin();
+    // 5 秒兜底恢复（正常情况下页面已跳走）
+    setTimeout(() => setLoggingIn(false), 5000);
   };
 
   const pageBg: React.CSSProperties = {
@@ -150,10 +161,35 @@ export default function LoginPage() {
             </Tag>
           </div>
 
+          {/* OAuth 回调错误提示（frp 瞬断、state 过期等） */}
+          {oauthError && (
+            <Alert
+              style={{ marginBottom: 16, borderRadius: 12, textAlign: "left" }}
+              showIcon
+              type={oauthError.retryable ? "warning" : "error"}
+              icon={<ExclamationCircleOutlined />}
+              message={oauthError.retryable ? "登录遇到问题" : "登录失败"}
+              description={
+                <div>
+                  <Paragraph style={{ marginBottom: 4, fontSize: 13 }}>
+                    {oauthError.message}
+                  </Paragraph>
+                  {oauthError.retryable && (
+                    <Paragraph type="secondary" style={{ marginBottom: 0, fontSize: 12 }}>
+                      请点击下方按钮重新登录；若反复失败可尝试清除浏览器缓存或使用无痕模式。
+                    </Paragraph>
+                  )}
+                </div>
+              }
+              closable
+              onClose={clearOAuthError}
+            />
+          )}
+
           <Button type="primary" size="large" block
-            onClick={startLogin} icon={<LoginOutlined />}
+            onClick={handleLogin} icon={<LoginOutlined />} loading={loggingIn}
             style={{ height: 48, fontSize: 16, fontWeight: 600, borderRadius: 14 }}>
-            校园墙 OAuth 授权登录
+            {loggingIn ? "正在跳转..." : "校园墙 OAuth 授权登录"}
           </Button>
 
           <Divider plain style={{ margin: "16px 0" }}>

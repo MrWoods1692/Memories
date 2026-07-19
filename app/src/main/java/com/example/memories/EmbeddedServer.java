@@ -243,7 +243,9 @@ public class EmbeddedServer extends NanoHTTPD {
     }
 
     /**
-     * 为响应添加 CORS 跨域头，允许管理面板跨端口/跨域调用 API
+     * 为响应添加 CORS 跨域头，允许管理面板跨端口/跨域调用 API。
+     * 同时统一禁止浏览器缓存，避免 OAuth PKCE 流程中因缓存过期 state
+     * 导致 "code_verifier not found for state" 错误。
      */
     private void addCorsHeaders(Response response) {
         response.addHeader("Access-Control-Allow-Origin", "*");
@@ -252,6 +254,10 @@ public class EmbeddedServer extends NanoHTTPD {
                 "Content-Type, x-user-qq, Authorization, authorization, DNT, User-Agent, X-Requested-With, If-Modified-Since, Cache-Control, Range");
         response.addHeader("Access-Control-Max-Age", "86400");
         response.addHeader("Access-Control-Expose-Headers", "Content-Length, Content-Range");
+        // 禁止浏览器缓存 API 响应（含 OAuth 登录/回调页），防止 PKCE state 失效
+        response.addHeader("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
+        response.addHeader("Pragma", "no-cache");
+        response.addHeader("Expires", "0");
     }
 
     private Response handleImages(IHTTPSession session) {
@@ -1088,6 +1094,31 @@ public class EmbeddedServer extends NanoHTTPD {
         return NanoHTTPD.newFixedLengthResponse(Status.NOT_IMPLEMENTED, "text/plain", "Not Implemented");
     }
 
+    /**
+     * 构造一个重定向回前端登录页并带 error 参数的响应。
+     * 用于 frp 隧道瞬断、code 已用、state 过期等场景，让前端能友好提示并允许重新登录。
+     * @param frontendRedirect 前端重定向 URL（可为 null）
+     * @param errorCode 错误码（如 token_exchange_failed / state_expired / invalid_grant）
+     * @param message 可选附加消息（可为 null）
+     */
+    private Response redirectWithError(String frontendRedirect, String errorCode, String message) {
+        // 无前端重定向 URL 时，回退到纯文本错误（兼容旧 API 调用方式）
+        if (frontendRedirect == null || frontendRedirect.isEmpty()) {
+            String body = "oauth error: " + errorCode + (message != null ? " - " + message : "");
+            return NanoHTTPD.newFixedLengthResponse(Status.UNAUTHORIZED, "text/plain", body);
+        }
+        StringBuilder loc = new StringBuilder(frontendRedirect);
+        loc.append(frontendRedirect.contains("?") ? "&" : "?");
+        loc.append("error=").append(urlEncode(errorCode));
+        if (message != null && !message.isEmpty()) {
+            loc.append("&error_msg=").append(urlEncode(message));
+        }
+        Response r = NanoHTTPD.newFixedLengthResponse(Status.REDIRECT, "text/html",
+            "<html><body>登录遇到问题，正在跳转...<script>location.replace('" + loc + "');</script></body></html>");
+        r.addHeader("Location", loc.toString());
+        return r;
+    }
+
     private Response handleOauth(IHTTPSession session) {
         DatabaseHelper db = new DatabaseHelper(context);
         String uri = session.getUri();
@@ -1175,6 +1206,11 @@ public class EmbeddedServer extends NanoHTTPD {
                     + " state=" + (state != null ? state.substring(0, Math.min(8, state.length())) + "..." : "null"));
 
                 if (code == null || code.isEmpty()) {
+                    // code 缺失：可能是 frp 代理截断了查询串，尝试从 state 反查前端地址后重定向回去
+                    String fr = state != null ? OAuthHelper.getFrontendRedirect(state, db) : null;
+                    if (fr != null && !fr.isEmpty()) {
+                        return redirectWithError(fr, "missing_code", "授权码缺失，请重新登录");
+                    }
                     return NanoHTTPD.newFixedLengthResponse(Status.BAD_REQUEST, "text/plain", "missing code");
                 }
                 if (state == null || state.isEmpty()) {
@@ -1237,20 +1273,38 @@ public class EmbeddedServer extends NanoHTTPD {
                 // 换取 token（首次或缓存失效时）
                 JSONObject tokenResp = OAuthHelper.exchangeToken(prefix, clientId, clientSecret, code, redirectUri, state, db);
                 if (tokenResp == null || tokenResp.has("error")) {
-                    String detail = tokenResp != null ? tokenResp.optString("detail", "unknown") : "no response";
-                    return NanoHTTPD.newFixedLengthResponse(Status.UNAUTHORIZED, "text/plain", "token exchange failed: " + detail);
+                    String errCode = tokenResp != null ? tokenResp.optString("error", "token_exchange_failed") : "network_error";
+                    String detail = tokenResp != null ? tokenResp.optString("detail", "no response") : "no response";
+                    String oauthErr = tokenResp != null ? tokenResp.optString("oauth_error", "") : "";
+                    Log.e(TAG, "OAuth callback token exchange failed: errCode=" + errCode + " oauth_error=" + oauthErr + " detail=" + detail);
+
+                    // 区分错误类型，决定是否提示重新登录
+                    String userError;
+                    if ("missing_code_verifier".equals(errCode)) {
+                        // state 已过期/丢失（浏览器缓存了旧登录链接），必须重新发起登录
+                        userError = "state_expired";
+                    } else if ("invalid_grant".equals(oauthErr)) {
+                        // code 已被使用或过期（通常是刷新回调页导致），必须重新登录获取新 code
+                        userError = "invalid_grant";
+                    } else {
+                        // 其他失败（含 frp 网络错误），允许用户重试
+                        userError = "token_exchange_failed";
+                    }
+                    return redirectWithError(frontendRedirect, userError, detail);
                 }
 
                 String accessToken = tokenResp.optString("access_token");
                 String refreshToken = tokenResp.optString("refresh_token");
                 if (accessToken == null || accessToken.isEmpty()) {
-                    return NanoHTTPD.newFixedLengthResponse(Status.UNAUTHORIZED, "text/plain", "no access_token");
+                    return redirectWithError(frontendRedirect, "no_access_token", "服务器未返回 access_token");
                 }
 
                 // 获取用户信息
                 JSONObject userInfo = OAuthHelper.getUserInfo(prefix, accessToken);
                 if (userInfo == null) {
-                    return NanoHTTPD.newFixedLengthResponse(Status.UNAUTHORIZED, "text/plain", "userinfo failed");
+                    // token 已换到但拉取用户信息失败（frp 瞬断），重定向回前端提示重试
+                    // 注意：此时 state 已缓存 token，用户重新登录会走 getCachedToken 分支
+                    return redirectWithError(frontendRedirect, "userinfo_failed", "获取用户信息失败，请重试");
                 }
 
                 String userQq = userInfo.optString("name"); // QQ 号

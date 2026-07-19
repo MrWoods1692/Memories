@@ -1,16 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.example.memories"
-    android:versionCode="1"
-    android:versionName="0.1" >
+    android:versionCode="4"
+    android:versionName="0.4" >
 
     <uses-sdk
         android:minSdkVersion="29"
-        android:targetSdkVersion="35" />
+        android:targetSdkVersion="34" />
 
-    <!-- 存储 -->
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <!-- 存储 (Android 13+ 不再需要 READ_EXTERNAL_STORAGE) -->
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
 
     <!-- 网络 -->
@@ -35,6 +36,10 @@
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <uses-permission android:name="android.permission.POWER_SAVE_MODE_CHANGED" />
 
+    <!-- 精确闹钟（Android 12+，KeepAliveService 看门狗在 Doze 下准时唤醒） -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+
     <!-- 悬浮窗 -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 
@@ -54,6 +59,12 @@
         android:supportsRtl="true"
         android:theme="@android:style/Theme.DeviceDefault.NoActionBar"
         android:usesCleartextTraffic="true" >
+
+        <!-- Apache HTTP Legacy 库：Sardine WebDAV 依赖，解决 NoSuchFieldError -->
+        <uses-library
+            android:name="org.apache.http.legacy"
+            android:required="false" />
+
         <activity
             android:name="com.example.memories.MainActivity"
             android:exported="true"

@@ -128,17 +128,46 @@ export function parseOAuthCallback(): AuthResponse | null {
   return user;
 }
 
-/** 检查 OAuth 回调是否有错误参数 */
-export function getOAuthError(): string | null {
+/** OAuth 错误信息（含是否可重试标志） */
+export interface OAuthErrorInfo {
+  code: string;
+  message: string;
+  retryable: boolean;
+}
+
+// 错误码到用户友好提示的映射（与后端 redirectWithError 的 errorCode 对应）
+const OAUTH_ERROR_MAP: Record<string, { message: string; retryable: boolean }> = {
+  banned: { message: "该账号已被封禁，无法登录", retryable: false },
+  access_denied: { message: "权限不足，无法访问", retryable: false },
+  // frp 隧道瞬断导致 token 交换失败，可重试
+  token_exchange_failed: { message: "网络通道（frp）瞬断导致授权失败，请重新登录", retryable: true },
+  // code 已被使用或过期（通常是刷新回调页导致），需重新登录
+  invalid_grant: { message: "授权码已失效（可能页面被刷新过），请重新登录", retryable: true },
+  // state 在服务器端已过期/丢失（浏览器缓存了旧登录链接）
+  state_expired: { message: "登录状态已过期，请重新登录", retryable: true },
+  missing_code: { message: "授权码缺失（网络代理截断），请重新登录", retryable: true },
+  no_access_token: { message: "服务器未返回访问令牌，请重试", retryable: true },
+  userinfo_failed: { message: "获取用户信息失败（网络波动），请重新登录", retryable: true },
+  network_error: { message: "无法连接到授权服务器，请检查网络后重试", retryable: true },
+};
+
+/** 检查 OAuth 回调是否有错误参数，返回结构化错误信息或 null */
+export function getOAuthError(): OAuthErrorInfo | null {
   const params = new URLSearchParams(window.location.search);
   const error = params.get("error");
   if (!error) return null;
 
-  switch (error) {
-    case "banned": return "该账号已被封禁，无法登录";
-    case "access_denied": return "权限不足，无法访问";
-    default: return "登录失败: " + error;
-  }
+  const errorMsgParam = params.get("error_msg") || "";
+  const info = OAUTH_ERROR_MAP[error] || { message: "登录失败: " + error, retryable: true };
+
+  // 清除 URL 中的错误参数，避免刷新后仍显示
+  window.history.replaceState({}, "", window.location.pathname);
+
+  return {
+    code: error,
+    message: errorMsgParam || info.message,
+    retryable: info.retryable,
+  };
 }
 
 /* ==================== 图片 ==================== */
