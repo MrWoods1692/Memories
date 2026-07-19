@@ -266,23 +266,92 @@ export default function GalleryPage() {
   // 统一预览工具条：自定义按钮 + antd 原生操作（旋转/缩放/关闭），移动端自动换行
   const makePreviewTools = useCallback((url: string) => {
     const btnStyle: React.CSSProperties = {
-      color: "rgba(255,255,255,0.85)", fontSize: 20, cursor: "pointer",
-      padding: 6, display: "inline-flex", alignItems: "center",
+      color: "rgba(255,255,255,0.9)",
+      fontSize: 18,
+      cursor: "pointer",
+      width: 36,
+      height: 36,
+      borderRadius: "50%",
+      display: "inline-flex",
+      alignItems: "center",
+      justifyContent: "center",
+      background: "rgba(255,255,255,0.08)",
+      border: "1px solid rgba(255,255,255,0.12)",
+      backdropFilter: "blur(6px)",
+      transition: "all 0.2s ease",
     };
     return (
-      <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 2, padding: "0 4px" }}>
+      <div style={{
+        display: "flex", flexWrap: "wrap", justifyContent: "center",
+        gap: 8, padding: "6px 10px",
+        borderRadius: 24,
+        background: "rgba(0,0,0,0.28)",
+        border: "1px solid rgba(255,255,255,0.1)",
+        backdropFilter: "blur(10px)",
+      }}>
         <Tooltip title="下载图片">
-          <span onClick={() => url && downloadOne(url)} style={btnStyle}><DownloadOutlined /></span>
+          <span
+            onClick={() => url && downloadOne(url)}
+            style={btnStyle}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = `${accentColor}E6`;
+              e.currentTarget.style.color = "#fff";
+              e.currentTarget.style.transform = "translateY(-2px)";
+              e.currentTarget.style.boxShadow = `0 4px 12px ${accentColor}55`;
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "rgba(255,255,255,0.08)";
+              e.currentTarget.style.color = "rgba(255,255,255,0.9)";
+              e.currentTarget.style.transform = "none";
+              e.currentTarget.style.boxShadow = "none";
+            }}
+          >
+            <DownloadOutlined />
+          </span>
         </Tooltip>
         <Tooltip title="复制链接">
-          <span onClick={() => url && copyOne(url)} style={btnStyle}><CopyOutlined /></span>
+          <span
+            onClick={() => url && copyOne(url)}
+            style={btnStyle}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = `${accentColor}E6`;
+              e.currentTarget.style.color = "#fff";
+              e.currentTarget.style.transform = "translateY(-2px)";
+              e.currentTarget.style.boxShadow = `0 4px 12px ${accentColor}55`;
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "rgba(255,255,255,0.08)";
+              e.currentTarget.style.color = "rgba(255,255,255,0.9)";
+              e.currentTarget.style.transform = "none";
+              e.currentTarget.style.boxShadow = "none";
+            }}
+          >
+            <CopyOutlined />
+          </span>
         </Tooltip>
         <Tooltip title="图片信息">
-          <span onClick={() => url && handleQueryInfo(url)} style={btnStyle}><InfoCircleOutlined /></span>
+          <span
+            onClick={() => url && handleQueryInfo(url)}
+            style={btnStyle}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = `${accentColor}E6`;
+              e.currentTarget.style.color = "#fff";
+              e.currentTarget.style.transform = "translateY(-2px)";
+              e.currentTarget.style.boxShadow = `0 4px 12px ${accentColor}55`;
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "rgba(255,255,255,0.08)";
+              e.currentTarget.style.color = "rgba(255,255,255,0.9)";
+              e.currentTarget.style.transform = "none";
+              e.currentTarget.style.boxShadow = "none";
+            }}
+          >
+            <InfoCircleOutlined />
+          </span>
         </Tooltip>
       </div>
     );
-  }, [downloadOne, copyOne, handleQueryInfo]);
+  }, [downloadOne, copyOne, handleQueryInfo, accentColor]);
 
   // 图片右键菜单
   const makeImgCtxMenu = useCallback((img: ImageItem): MenuProps => ({
@@ -507,7 +576,10 @@ export default function GalleryPage() {
                   if (newView === "free") setBatchMode(false);
                   setViewMode(newView);
                 }}
-                options={viewOptions.map((v) => ({ value: v.value, icon: v.icon })) as any}
+                options={viewOptions.map((v) => ({
+                  value: v.value,
+                  label: <Tooltip title={v.label} mouseEnterDelay={0.3}>{v.icon}</Tooltip>,
+                })) as any}
                 style={{ marginRight: 4 }}
               />
             ) : (
@@ -638,6 +710,7 @@ export default function GalleryPage() {
                 <Text style={{ color: "#fff", fontSize: 12, opacity: 0.85 }}>点击预览</Text>
               </div>
             ),
+            countRender: () => null,
             toolbarRender: (originalNode: React.ReactNode, info: { current: number; actions: Record<string, unknown> }) => {
               const url = images[(info as any).current ?? 0]?.url || "";
               return <>{makePreviewTools(url)}{originalNode}</>;
@@ -714,6 +787,7 @@ export default function GalleryPage() {
         <Image.PreviewGroup
           preview={{
             mask: (              <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.12)", backdropFilter: "blur(2px)" }}>                <EyeOutlined style={{ color: "#fff", fontSize: 20, marginRight: 6 }} />                <Text style={{ color: "#fff", fontSize: 12, opacity: 0.85 }}>点击预览</Text>              </div>            ),
+countRender: () => null,
 toolbarRender: (originalNode: React.ReactNode, info: { current: number; actions: Record<string, unknown> }) => {
               const url = images[(info as any).current ?? 0]?.url || "";
               return <>{makePreviewTools(url)}{originalNode}</>;
@@ -823,6 +897,7 @@ toolbarRender: (originalNode: React.ReactNode, info: { current: number; actions:
                     </Text>
                   </div>
                 ),
+                countRender: () => null,
                 toolbarRender: (originalNode: React.ReactNode, info: { current: number; actions: Record<string, unknown> }) => {
                   const url = images[(info as any).current ?? 0]?.url || "";
                   return <>{makePreviewTools(url)}{originalNode}</>;
@@ -940,6 +1015,7 @@ toolbarRender: (originalNode: React.ReactNode, info: { current: number; actions:
                     outlineOffset: -2,
                   }}
                   styles={{ body: { padding: 0 } }}
+                  onContextMenu={(e) => e.stopPropagation()}
                   cover={
                     <div onClick={batchMode ? () => toggleSelect(img.created_at) : undefined}
                       style={{
@@ -987,18 +1063,19 @@ toolbarRender: (originalNode: React.ReactNode, info: { current: number; actions:
         </>
       )}
 
-      <Modal title="图片信息" open={infoOpen} onCancel={() => setInfoOpen(false)}
+      <Modal title={<span style={{ color: accentColor, fontWeight: 700 }}>图片信息</span>} open={infoOpen} onCancel={() => setInfoOpen(false)}
         footer={null} width={isDesktop ? 520 : "100%"}
-        zIndex={2100}
+        zIndex={1050}
         style={isDesktop ? {} : { maxWidth: "100vw", margin: 0, padding: 0, top: 0 }}
         styles={{
+          header: { borderBottom: `2px solid ${accentColor}22` },
           body: { padding: isDesktop ? 16 : "12px 8px", maxHeight: isDesktop ? "70vh" : "80vh", overflowY: "auto", paddingBottom: isDesktop ? 16 : "calc(12px + env(safe-area-inset-bottom, 8px))" },
         }}
         destroyOnHidden>
         {infoLoading ? (
           <div style={{ textAlign: "center", padding: 40 }}><Spin /></div>
         ) : imageInfo ? (
-          <Descriptions column={isDesktop ? 2 : 1} size="small" bordered labelStyle={{ fontWeight: 500, whiteSpace: "nowrap" }}>
+          <Descriptions column={isDesktop ? 2 : 1} size="small" bordered styles={{ label: { fontWeight: 600, whiteSpace: "nowrap", background: `${accentColor}10`, color: accentColor } }}>
             <Descriptions.Item label="文件名" span={2}>
               <Text copyable style={{ fontSize: 12 }}>{imageInfo.filename}</Text>
             </Descriptions.Item>
@@ -1009,7 +1086,6 @@ toolbarRender: (originalNode: React.ReactNode, info: { current: number; actions:
             <Descriptions.Item label="压缩后">{imageInfo.size_display.split("→")[1]?.trim() || imageInfo.size_display}</Descriptions.Item>
             <Descriptions.Item label="存储位置"><Tag color="blue">{imageInfo.storage_location}</Tag></Descriptions.Item>
             <Descriptions.Item label="上传者 IP">{imageInfo.uploader_masked}</Descriptions.Item>
-            <Descriptions.Item label="归属地" span={2}>{imageInfo.location || "未知"}</Descriptions.Item>
             {imageInfo.tags_array.length > 0 && (
               <Descriptions.Item label="标签" span={2}>
                 <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
@@ -1093,13 +1169,49 @@ function TimelineView({ images, loading, page, totalPages, loadImages, getImgPro
   const timelineRef = useRef<HTMLDivElement>(null);
   const [activeDate, setActiveDate] = useState<string>("");
 
-  const makeTools = useCallback((url: string) => (
-    <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 2, padding: "0 4px" }}>
-      <Tooltip title="下载图片"><span onClick={() => url && downloadOne(url)} style={{ color: "rgba(255,255,255,0.85)", fontSize: 20, cursor: "pointer", padding: 6, display: "inline-flex", alignItems: "center" }}><DownloadOutlined /></span></Tooltip>
-      <Tooltip title="复制链接"><span onClick={() => url && copyOne(url)} style={{ color: "rgba(255,255,255,0.85)", fontSize: 20, cursor: "pointer", padding: 6, display: "inline-flex", alignItems: "center" }}><CopyOutlined /></span></Tooltip>
-      <Tooltip title="图片信息"><span onClick={() => url && handleQueryInfo(url)} style={{ color: "rgba(255,255,255,0.85)", fontSize: 20, cursor: "pointer", padding: 6, display: "inline-flex", alignItems: "center" }}><InfoCircleOutlined /></span></Tooltip>
-    </div>
-  ), [downloadOne, copyOne, handleQueryInfo]);
+  const makeTools = useCallback((url: string) => {
+    const btnStyle: React.CSSProperties = {
+      color: "rgba(255,255,255,0.9)",
+      fontSize: 18,
+      cursor: "pointer",
+      width: 36,
+      height: 36,
+      borderRadius: "50%",
+      display: "inline-flex",
+      alignItems: "center",
+      justifyContent: "center",
+      background: "rgba(255,255,255,0.08)",
+      border: "1px solid rgba(255,255,255,0.12)",
+      backdropFilter: "blur(6px)",
+      transition: "all 0.2s ease",
+    };
+    const hoverIn = (e: React.MouseEvent<HTMLSpanElement>) => {
+      e.currentTarget.style.background = `${accentColor}E6`;
+      e.currentTarget.style.color = "#fff";
+      e.currentTarget.style.transform = "translateY(-2px)";
+      e.currentTarget.style.boxShadow = `0 4px 12px ${accentColor}55`;
+    };
+    const hoverOut = (e: React.MouseEvent<HTMLSpanElement>) => {
+      e.currentTarget.style.background = "rgba(255,255,255,0.08)";
+      e.currentTarget.style.color = "rgba(255,255,255,0.9)";
+      e.currentTarget.style.transform = "none";
+      e.currentTarget.style.boxShadow = "none";
+    };
+    return (
+      <div style={{
+        display: "flex", flexWrap: "wrap", justifyContent: "center",
+        gap: 8, padding: "6px 10px",
+        borderRadius: 24,
+        background: "rgba(0,0,0,0.28)",
+        border: "1px solid rgba(255,255,255,0.1)",
+        backdropFilter: "blur(10px)",
+      }}>
+        <Tooltip title="下载图片"><span onClick={() => url && downloadOne(url)} style={btnStyle} onMouseEnter={hoverIn} onMouseLeave={hoverOut}><DownloadOutlined /></span></Tooltip>
+        <Tooltip title="复制链接"><span onClick={() => url && copyOne(url)} style={btnStyle} onMouseEnter={hoverIn} onMouseLeave={hoverOut}><CopyOutlined /></span></Tooltip>
+        <Tooltip title="图片信息"><span onClick={() => url && handleQueryInfo(url)} style={btnStyle} onMouseEnter={hoverIn} onMouseLeave={hoverOut}><InfoCircleOutlined /></span></Tooltip>
+      </div>
+    );
+  }, [downloadOne, copyOne, handleQueryInfo, accentColor]);
 
   // 按日期分组
   const dateGroups = useMemo(() => {
@@ -1208,6 +1320,7 @@ function TimelineView({ images, loading, page, totalPages, loadImages, getImgPro
       <Image.PreviewGroup
         preview={{
             mask: (              <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.12)", backdropFilter: "blur(2px)" }}>                <EyeOutlined style={{ color: "#fff", fontSize: 20, marginRight: 6 }} />                <Text style={{ color: "#fff", fontSize: 12, opacity: 0.85 }}>点击预览</Text>              </div>            ),
+countRender: () => null,
 toolbarRender: (originalNode: React.ReactNode, info: { current: number }) => {
             const url = activeImages[(info as any).current ?? 0]?.url || "";
             return <>{makeTools(url)}{originalNode}</>;
@@ -1582,6 +1695,7 @@ function FreeView({ images, loading, page, totalPages, loadImages, getImgProps, 
               <Text style={{ color: "#fff", fontSize: 12, opacity: 0.85 }}>点击预览</Text>
             </div>
           ),
+          countRender: () => null,
           toolbarRender: (originalNode: React.ReactNode, info: { current: number; actions: Record<string, unknown> }) => {
             const url = images[(info as any).current ?? 0]?.url || "";
             const btnStyle: React.CSSProperties = { color: "rgba(255,255,255,0.85)", fontSize: 20, cursor: "pointer", padding: 6, display: "inline-flex", alignItems: "center" };
@@ -1663,28 +1777,54 @@ function FreeView({ images, loading, page, totalPages, loadImages, getImgProps, 
 /* ==================== 骨架屏加载组件 ==================== */
 
 function SkeletonGallery() {
+  const { accentColor } = useTheme();
   return (
-    <div style={{ padding: "16px 16px 24px" }}>
+    <div className="fade-in-up" style={{ padding: "16px 16px 24px" }}>
+      {/* 顶部加载指示器 */}
       <div style={{
-        display: "flex", alignItems: "center", justifyContent: "flex-end",
-        marginBottom: 12,
+        display: "flex", flexDirection: "column", alignItems: "center",
+        gap: 10, padding: "32px 0 28px",
       }}>
-        <div className="skeleton-line skeleton-line-short" style={{ width: 80, height: 22 }} />
+        <div className="loading-logo" style={{
+          width: 48, height: 48, borderRadius: 14,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          background: `linear-gradient(135deg, ${accentColor}18, ${accentColor}08)`,
+          border: `1px solid ${accentColor}20`,
+        }}>
+          <PictureOutlined style={{ fontSize: 24, color: accentColor }} />
+        </div>
+        <div style={{
+          fontSize: 13, fontWeight: 600, color: accentColor,
+          letterSpacing: 0.5,
+        }}>
+          正在加载广场
+          <span className="loading-dot">·</span>
+          <span className="loading-dot">·</span>
+          <span className="loading-dot">·</span>
+        </div>
+        <div className="page-loading-bar" style={{ width: "60%", maxWidth: 240 }} />
       </div>
+
+      {/* 工具栏骨架 */}
       <div style={{
         display: "flex", alignItems: "center", justifyContent: "space-between",
-        marginBottom: 12,
+        marginBottom: 14, flexWrap: "wrap", gap: 8,
       }}>
-        <div className="skeleton-line" style={{ width: 80, height: 14 }} />
-        <div className="skeleton-line" style={{ width: 160, height: 28, borderRadius: 14 }} />
+        <div className="skeleton-line" style={{ width: 90, height: 14 }} />
+        <div className="skeleton-line" style={{ width: 160, height: 30, borderRadius: 15 }} />
       </div>
+
+      {/* 卡片网格骨架 */}
       <div style={{
         display: "grid",
         gridTemplateColumns: "repeat(auto-fill, minmax(min(280px, 100%), 1fr))",
         gap: 16,
       }}>
         {Array.from({ length: 8 }).map((_, i) => (
-          <div key={i} className="skeleton-card" style={{ animationDelay: `${i * 0.1}s` }}>
+          <div key={i} className="skeleton-card" style={{
+            animationDelay: `${i * 0.08}s, ${i * 0.08}s`,
+            boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
+          }}>
             <div className="skeleton-image" />
           </div>
         ))}

@@ -208,11 +208,19 @@ export default function UploadPage() {
   };
 
   const statusTag = (status: string, error?: string) => {
-    const base = { borderRadius: 8, fontSize: 12 };
+    const base = { borderRadius: 10, fontSize: 12, padding: "2px 10px", fontWeight: 500 };
     switch (status) {
       case "pending": return <Tag icon={<ClockCircleOutlined />} style={base}>等待</Tag>;
-      case "uploading_imagebed": return <Tag icon={<CloudUploadOutlined />} color="processing" style={base}>图床中</Tag>;
-      case "uploading_server": return <Tag icon={<CloudUploadOutlined />} color="processing" style={base}>服务器中</Tag>;
+      case "uploading_imagebed": return (
+        <Tag icon={<CloudUploadOutlined spin />} color="processing" style={base}>
+          图床上传中
+        </Tag>
+      );
+      case "uploading_server": return (
+        <Tag icon={<CloudUploadOutlined spin />} color="processing" style={base}>
+          服务器同步中
+        </Tag>
+      );
       case "done": return <Tag icon={<CheckCircleOutlined />} color="success" style={base}>成功</Tag>;
       case "failed": return <Tag icon={<CloseCircleOutlined />} color="error" title={error} style={base}>失败</Tag>;
     }
@@ -222,8 +230,12 @@ export default function UploadPage() {
     <Dropdown menu={uploadCtxMenu} trigger={['contextMenu']}>
     <div style={{ padding: "0 0 24px" }}>
       <div style={{ textAlign: "center", padding: "32px 16px 20px" }}>
-        <Title level={3} style={{ margin: 0, fontWeight: 700, color: accentColor }}>
-          <PlusCircleOutlined style={{ marginRight: 6 }} />上传照片
+        <Title level={3} style={{
+          margin: 0, fontWeight: 800,
+          background: `linear-gradient(135deg, ${accentColor} 0%, ${accentColor}aa 100%)`,
+          WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text",
+        }}>
+          <PlusCircleOutlined style={{ marginRight: 8 }} />上传照片
         </Title>
         <Text type="secondary" style={{ display: "block", marginTop: 8 }}>选择图片，多选自动加入上传队列</Text>
       </div>
@@ -231,23 +243,52 @@ export default function UploadPage() {
       <div style={{ padding: "0 16px", maxWidth: 700, margin: "0 auto" }}>
         <Dragger multiple accept="image/*" showUploadList={false}
           beforeUpload={handleBeforeUpload as any} disabled={uploading}
-          style={{ borderRadius: 16 }}>
-          <p className="ant-upload-drag-icon"><CloudUploadOutlined style={{ fontSize: 48, color: accentColor }} /></p>
+          style={{
+            borderRadius: 20, padding: "8px 0",
+            background: `linear-gradient(135deg, ${accentColor}08 0%, ${accentColor}03 100%)`,
+            border: `2px dashed ${accentColor}55`,
+            transition: "all 0.3s",
+          }}>
+          <p className="ant-upload-drag-icon">
+            <span style={{
+              display: "inline-flex", alignItems: "center", justifyContent: "center",
+              width: 72, height: 72, borderRadius: "50%",
+              background: `linear-gradient(135deg, ${accentColor}18 0%, ${accentColor}08 100%)`,
+              animation: "memories-logo-breathe 3s ease-in-out infinite",
+            }}>
+              <CloudUploadOutlined style={{ fontSize: 36, color: accentColor }} />
+            </span>
+          </p>
           <p className="ant-upload-text" style={{ fontSize: 16, fontWeight: 600 }}>点击或拖拽图片到此处</p>
           <p className="ant-upload-hint" style={{ fontSize: 13 }}>支持 JPG / PNG / WebP · 可多选</p>
         </Dragger>
 
         {records.length > 0 && (
           <>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 16, flexWrap: "wrap", gap: 8 }}>
-              <Text type="secondary" style={{ fontSize: 13 }}>共 {totalCount} · 成功 {doneCount} · 失败 {failedCount} · 待处理 {pendingCount}</Text>
+            <div style={{
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+              marginTop: 16, flexWrap: "wrap", gap: 8,
+              padding: "10px 14px", borderRadius: 14,
+              background: "var(--ant-color-fill-quaternary)",
+            }}>
+              <div style={{ display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap" }}>
+                <Text style={{ fontSize: 13, fontWeight: 600 }}>共 {totalCount}</Text>
+                <Text style={{ fontSize: 13, color: "#52c41a" }}>✓ {doneCount}</Text>
+                {failedCount > 0 && <Text style={{ fontSize: 13, color: "#ff4d4f" }}>✕ {failedCount}</Text>}
+                {pendingCount > 0 && <Text type="secondary" style={{ fontSize: 13 }}>⏱ {pendingCount}</Text>}
+              </div>
               <Space size={6} wrap>
                 <Segmented size="small" value={viewMode} onChange={(v) => setViewMode(v as ViewMode)}
                   options={[{ value: "card", icon: <AppstoreOutlined /> }, { value: "list", icon: <UnorderedListOutlined /> }, { value: "grid", icon: <MenuOutlined /> }] as any} />
                 {failedCount > 0 && <Button size="small" type="link" danger icon={<ReloadOutlined />} onClick={retryFailed}>重试</Button>}
-                <Button size="small" type="primary" icon={<CloudUploadOutlined />} onClick={startUpload}
+                <Button size="small" type="primary" icon={!uploading ? <CloudUploadOutlined /> : undefined} onClick={startUpload}
                   disabled={uploading || records.every((r) => r.status === "done")} loading={uploading}
-                  style={{ borderRadius: 8 }}>{uploading ? "上传中..." : "开始上传"}</Button>
+                  style={{
+                    borderRadius: 10, fontWeight: 600, minWidth: 96,
+                    background: `linear-gradient(135deg, ${accentColor} 0%, ${accentColor}cc 100%)`,
+                    border: "none", boxShadow: `0 3px 10px ${accentColor}33`,
+                    color: "#fff",
+                  }}>{uploading ? "上传中…" : "开始上传"}</Button>
                 <Popconfirm title="清除所有已完成记录？" onConfirm={() => { engine.clearDone(); message.success("已清除"); }} okText="确定" cancelText="取消">
                   <Button size="small" type="link" icon={<DeleteOutlined />}>清除完成</Button>
                 </Popconfirm>
@@ -264,9 +305,14 @@ export default function UploadPage() {
             {viewMode === "card" && (
               <Space direction="vertical" style={{ width: "100%" }}>
                 {records.map((r) => (
-                  <Card key={r.id} size="small" style={{ borderRadius: 12, opacity: r.status === "done" ? 0.85 : 1 }} styles={{ body: { padding: "10px 14px" } }}>
+                  <Card key={r.id} size="small" style={{
+                    borderRadius: 14, opacity: r.status === "done" ? 0.85 : 1,
+                    transition: "all 0.25s",
+                    border: r.status === "failed" ? "1px solid #ff4d4f44" : r.status === "done" ? `1px solid ${accentColor}33` : undefined,
+                    position: "relative", overflow: "hidden",
+                  }} styles={{ body: { padding: "10px 14px" } }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                      <div style={{ width: 48, height: 48, borderRadius: 8, overflow: "hidden", flexShrink: 0, background: "var(--ant-color-fill-quaternary)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <div style={{ width: 48, height: 48, borderRadius: 10, overflow: "hidden", flexShrink: 0, background: "var(--ant-color-fill-quaternary)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                         {r.localUrl ? <ThumbImage url={r.localUrl} name={r.fileName} size={32} /> : <ImagePlaceholder size={32} />}
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
@@ -281,6 +327,19 @@ export default function UploadPage() {
                         <Button type="text" danger size="small" icon={<DeleteOutlined />} onClick={() => engine.remove(r.id)} />
                       )}
                     </div>
+                    {/* 上传中底部进度条 */}
+                    {(r.status === "uploading_imagebed" || r.status === "uploading_server") && (
+                      <div style={{
+                        position: "absolute", left: 0, right: 0, bottom: 0, height: 2,
+                        background: "var(--ant-color-border-secondary)", overflow: "hidden",
+                      }}>
+                        <div style={{
+                          height: "100%", width: "40%",
+                          background: `linear-gradient(90deg, transparent 0%, ${accentColor} 50%, transparent 100%)`,
+                          animation: "upload-progress-slide 1.4s ease-in-out infinite",
+                        }} />
+                      </div>
+                    )}
                   </Card>
                 ))}
               </Space>
@@ -288,13 +347,30 @@ export default function UploadPage() {
             {viewMode === "list" && (
               <div style={{ borderRadius: 12, overflow: "hidden", border: "1px solid var(--ant-color-border-secondary)" }}>
                 {records.map((r, i) => (
-                  <div key={r.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 14px", background: "var(--ant-color-bg-container)", borderBottom: i < records.length - 1 ? "1px solid var(--ant-color-border-secondary)" : "none" }}>
+                  <div key={r.id} style={{
+                    display: "flex", alignItems: "center", gap: 10, padding: "7px 14px",
+                    background: "var(--ant-color-bg-container)",
+                    borderBottom: i < records.length - 1 ? "1px solid var(--ant-color-border-secondary)" : "none",
+                    position: "relative", overflow: "hidden",
+                  }}>
                     <Text type="secondary" style={{ fontSize: 11, width: 44, flexShrink: 0 }}>{formatTime(r.createdAt)}</Text>
                     <Text style={{ flex: 1, fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.fileName}</Text>
                     <Text type="secondary" style={{ fontSize: 11, width: 52, textAlign: "right", flexShrink: 0 }}>{formatSize(r.fileSize)}</Text>
                     <div style={{ width: 52, flexShrink: 0, display: "flex", justifyContent: "center" }}>{statusTag(r.status, r.error)}</div>
                     {r.status !== "uploading_imagebed" && r.status !== "uploading_server" && (
                       <Button type="text" danger size="small" icon={<DeleteOutlined />} onClick={() => engine.remove(r.id)} />
+                    )}
+                    {(r.status === "uploading_imagebed" || r.status === "uploading_server") && (
+                      <div style={{
+                        position: "absolute", left: 0, right: 0, bottom: 0, height: 2,
+                        background: "var(--ant-color-border-secondary)", overflow: "hidden",
+                      }}>
+                        <div style={{
+                          height: "100%", width: "40%",
+                          background: `linear-gradient(90deg, transparent 0%, ${accentColor} 50%, transparent 100%)`,
+                          animation: "upload-progress-slide 1.4s ease-in-out infinite",
+                        }} />
+                      </div>
                     )}
                   </div>
                 ))}
@@ -303,7 +379,11 @@ export default function UploadPage() {
             {viewMode === "grid" && (
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(100px, 1fr))", gap: 8 }}>
                 {records.map((r) => (
-                  <div key={r.id} style={{ borderRadius: 10, overflow: "hidden", background: "var(--ant-color-bg-container)", border: "1px solid var(--ant-color-border-secondary)" }}>
+                  <div key={r.id} style={{
+                    borderRadius: 12, overflow: "hidden", background: "var(--ant-color-bg-container)",
+                    border: r.status === "failed" ? "1px solid #ff4d4f44" : r.status === "done" ? `1px solid ${accentColor}33` : "1px solid var(--ant-color-border-secondary)",
+                    transition: "all 0.25s",
+                  }}>
                     <div style={{ aspectRatio: "1", overflow: "hidden", background: "var(--ant-color-fill-quaternary)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                       {r.localUrl ? <ThumbImage url={r.localUrl} name={r.fileName} size={36} /> : <ImagePlaceholder size={36} />}
                     </div>

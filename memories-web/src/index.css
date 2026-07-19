@@ -5,6 +5,116 @@
   box-sizing: border-box;
 }
 
+/* 字体加载旋转动画 */
+@keyframes memories-font-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* 登录页背景光斑浮动 */
+@keyframes memories-float-orb {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(30px, -20px) scale(1.08); }
+  66% { transform: translate(-20px, 25px) scale(0.95); }
+}
+
+/* 登录页水波纹扩散 */
+@keyframes memories-water-ripple {
+  0% { transform: scale(0.6); opacity: 0.55; }
+  100% { transform: scale(2.4); opacity: 0; }
+}
+
+/* 登录页星空闪烁 */
+@keyframes memories-star-twinkle {
+  0%, 100% { opacity: 0.2; }
+  50% { opacity: 1; }
+}
+
+/* 登录页星星缓慢漂移 */
+@keyframes memories-star-drift {
+  0% { transform: translate(0, 0); }
+  100% { transform: translate(-40px, -30px); }
+}
+
+/* 登录页流星划过 */
+@keyframes memories-shooting-star {
+  0% { transform: translate(0, 0) rotate(-35deg); opacity: 0; }
+  10% { opacity: 1; }
+  100% { transform: translate(-600px, 420px) rotate(-35deg); opacity: 0; }
+}
+
+/* 登录页光晕旋转 */
+@keyframes memories-aurora-rotate {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* 登录页卡片入场 */
+@keyframes memories-card-in {
+  from { opacity: 0; transform: translateY(24px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* 登录页标题渐变流动 */
+@keyframes memories-title-shimmer {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+/* 登录页按钮光扫过 */
+@keyframes memories-btn-sheen {
+  0% { transform: translateX(-120%) skewX(-20deg); }
+  100% { transform: translateX(220%) skewX(-20deg); }
+}
+
+/* Logo 呼吸动画 */
+@keyframes memories-logo-breathe {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.06); opacity: 0.92; }
+}
+
+/* 状态指示器脉冲 */
+@keyframes memories-status-pulse {
+  0%, 100% { box-shadow: 0 0 0 4px rgba(82,196,26,0.2); }
+  50% { box-shadow: 0 0 0 8px rgba(82,196,26,0.08); }
+}
+
+/* 头像光环旋转 */
+@keyframes memories-avatar-ring {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* 头像光晕呼吸 */
+@keyframes memories-avatar-glow {
+  0%, 100% { filter: drop-shadow(0 0 6px var(--ring-color, transparent)); }
+  50% { filter: drop-shadow(0 0 14px var(--ring-color, transparent)); }
+}
+
+/* 侧边栏收起时菜单图标居中 */
+.ant-menu-inline-collapsed > .ant-menu-item,
+.ant-menu-inline-collapsed > .ant-menu-submenu > .ant-menu-submenu-title {
+  padding-inline: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  text-align: center;
+}
+.ant-menu-inline-collapsed > .ant-menu-item .ant-menu-item-icon,
+.ant-menu-inline-collapsed > .ant-menu-submenu > .ant-menu-submenu-title .ant-menu-item-icon {
+  margin-inline-end: 0 !important;
+  margin-inline-start: 0 !important;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px !important;
+}
+/* 收起态隐藏文字占位，避免撑开导致图标偏移 */
+.ant-menu-inline-collapsed > .ant-menu-item .ant-menu-title-content,
+.ant-menu-inline-collapsed > .ant-menu-submenu > .ant-menu-submenu-title .ant-menu-title-content {
+  display: none !important;
+}
+
 /* 返回顶部按钮动效 */
 .back-to-top:hover .back-to-top-btn {
   transform: scale(1.1);
@@ -37,22 +147,29 @@ html, body, #root {
 
 /* ==================== 骨架屏加载动画 ==================== */
 
-/* 流光 shimmer 效果 */
+/* 流光 shimmer 效果 - 主题色调 */
 @keyframes skeletonShimmer {
-  0% { background-position: -400% 0; }
-  100% { background-position: 400% 0; }
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
 }
 
 @keyframes skeletonPulse {
   0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
+  50% { opacity: 0.55; }
+}
+
+/* 骨架卡片入场动画 */
+@keyframes skeletonCardIn {
+  from { opacity: 0; transform: translateY(14px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 .skeleton-card {
-  border-radius: 12px;
+  border-radius: 14px;
   overflow: hidden;
   background: var(--ant-color-fill-quaternary);
-  animation: skeletonPulse 1.5s ease-in-out infinite;
+  animation: skeletonCardIn 0.5s ease-out backwards, skeletonPulse 1.8s ease-in-out infinite 0.5s;
+  position: relative;
 }
 
 .skeleton-card::before {
@@ -62,13 +179,13 @@ html, body, #root {
   background: linear-gradient(
     90deg,
     transparent 0%,
-    rgba(255,255,255,0.08) 25%,
-    rgba(255,255,255,0.18) 50%,
-    rgba(255,255,255,0.08) 75%,
+    color-mix(in srgb, var(--ant-color-primary, #1D6E5A) 14%, transparent) 40%,
+    color-mix(in srgb, var(--ant-color-primary, #1D6E5A) 22%, transparent) 50%,
+    color-mix(in srgb, var(--ant-color-primary, #1D6E5A) 14%, transparent) 60%,
     transparent 100%
   );
   background-size: 200% 100%;
-  animation: skeletonShimmer 1.8s ease-in-out infinite;
+  animation: skeletonShimmer 2s ease-in-out infinite;
   pointer-events: none;
   z-index: 1;
 }
@@ -222,53 +339,58 @@ body.dark-theme {
   --border-muted: rgba(255, 255, 255, 0.25);
 }
 
-/* 暗色下侧边栏菜单 */
-body.dark-theme .ant-layout-sider .ant-menu-item {
-  color: rgba(255, 255, 255, 0.7) !important;
+/* 侧边栏菜单：跟随主题配色 */
+.ant-layout-sider .ant-menu-item {
   border-radius: 8px !important;
   margin: 2px 8px !important;
   width: calc(100% - 16px) !important;
+  transition: all 0.2s ease !important;
 }
-body.dark-theme .ant-layout-sider .ant-menu-item:hover {
-  color: #fff !important;
-  background: rgba(255, 255, 255, 0.08) !important;
+.ant-layout-sider .ant-menu-item:hover {
+  background: color-mix(in srgb, var(--ant-color-primary) 10%, transparent) !important;
+  color: var(--ant-color-primary) !important;
 }
-body.dark-theme .ant-layout-sider .ant-menu-item-selected {
-  color: #fff !important;
-  font-weight: 600;
-  background: rgba(255, 255, 255, 0.12) !important;
-}
-body.dark-theme .ant-layout-sider .ant-menu-item-selected .anticon {
-  color: #fff !important;
-}
-
-/* 亮色下侧边栏菜单 */
-body:not(.dark-theme) .ant-layout-sider .ant-menu-item {
-  border-radius: 8px !important;
-  margin: 2px 8px !important;
-  width: calc(100% - 16px) !important;
-  color: rgba(0, 0, 0, 0.7) !important;
-}
-body:not(.dark-theme) .ant-layout-sider .ant-menu-item:hover {
-  background: rgba(0, 0, 0, 0.04) !important;
-  color: rgba(0, 0, 0, 0.88) !important;
-}
-body:not(.dark-theme) .ant-layout-sider .ant-menu-item-selected {
-  background: rgba(0, 0, 0, 0.06) !important;
-  color: rgba(0, 0, 0, 0.88) !important;
+.ant-layout-sider .ant-menu-item-selected {
+  background: color-mix(in srgb, var(--ant-color-primary) 15%, transparent) !important;
+  color: var(--ant-color-primary) !important;
   font-weight: 600;
 }
+.ant-layout-sider .ant-menu-item-selected .anticon {
+  color: var(--ant-color-primary) !important;
+}
+/* 选中态左侧主题色指示条 */
+.ant-layout-sider .ant-menu-item-selected::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 60%;
+  border-radius: 0 3px 3px 0;
+  background: var(--ant-color-primary);
+}
 
-/* 亮色/暗色下侧边栏收起模式菜单 */
+/* 侧边栏收起模式菜单：图标严格居中 */
 .ant-layout-sider .ant-menu-inline-collapsed .ant-menu-item {
   border-radius: 8px !important;
   margin: 4px 8px !important;
   width: calc(100% - 16px) !important;
   justify-content: center !important;
+  align-items: center !important;
   padding: 0 !important;
+  display: flex !important;
 }
 .ant-layout-sider .ant-menu-inline-collapsed .ant-menu-item .anticon {
   font-size: 18px !important;
+  margin: 0 auto !important;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+}
+/* 收起态隐藏选中指示条（无空间） */
+.ant-layout-sider .ant-menu-inline-collapsed .ant-menu-item-selected::before {
+  display: none;
 }
 
 /* 暗色下 Modal 弹窗 */
@@ -348,6 +470,20 @@ body.dark-theme .ant-btn-default {
 body.dark-theme .ant-btn-default:hover {
   color: #fff;
   border-color: rgba(255, 255, 255, 0.5);
+}
+
+/* 主按钮 loading 状态下确保文字与图标清晰 */
+.ant-btn-primary-loading {
+  opacity: 1 !important;
+}
+.ant-btn-primary-loading .ant-btn-loading-icon,
+.ant-btn-primary-loading .ant-btn-loading-icon .anticon {
+  color: #fff !important;
+  opacity: 1 !important;
+}
+.ant-btn-primary-loading > span:not(.ant-btn-loading-icon) {
+  color: #fff !important;
+  opacity: 1 !important;
 }
 
 /* 暗色下 Tooltip */
@@ -513,3 +649,65 @@ body.dark-theme .ant-empty-img {
 .gallery-grid-compact .ant-card .ant-card-cover .ant-image-mask {
   border-radius: 0 !important;
 }
+
+/* ==================== 精美加载动画 ==================== */
+
+/* 顶部加载进度条 */
+@keyframes loadingBarSweep {
+  0% { left: -40%; width: 40%; }
+  50% { width: 60%; }
+  100% { left: 100%; width: 40%; }
+}
+
+.page-loading-bar {
+  position: relative;
+  height: 3px;
+  border-radius: 3px;
+  background: var(--ant-color-fill-secondary);
+  overflow: hidden;
+  margin: 0 auto;
+  max-width: 280px;
+}
+.page-loading-bar::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -40%;
+  width: 40%;
+  border-radius: 3px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--ant-color-primary, #1D6E5A) 50%,
+    transparent 100%
+  );
+  animation: loadingBarSweep 1.4s ease-in-out infinite;
+}
+
+/* 加载图标呼吸 */
+@keyframes loadingLogoBreathe {
+  0%, 100% { transform: scale(1); opacity: 0.85; }
+  50% { transform: scale(1.12); opacity: 1; }
+}
+.loading-logo {
+  animation: loadingLogoBreathe 1.6s ease-in-out infinite;
+}
+
+/* 上传卡片进度条滑动 */
+@keyframes upload-progress-slide {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(350%); }
+}
+
+/* 加载文字三点动画 */
+@keyframes loadingDots {
+  0%, 100% { opacity: 0.2; }
+  33% { opacity: 1; }
+}
+.loading-dot {
+  display: inline-block;
+  animation: loadingDots 1.2s ease-in-out infinite;
+}
+.loading-dot:nth-child(2) { animation-delay: 0.2s; }
+.loading-dot:nth-child(3) { animation-delay: 0.4s; }

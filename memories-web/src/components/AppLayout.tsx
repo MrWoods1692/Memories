@@ -4,13 +4,14 @@ import { Button, Dropdown, Layout, Menu, Tooltip, theme } from "antd";
 import type { MenuProps } from "antd";
 import {
   PictureOutlined, CloudUploadOutlined, UserOutlined, LoginOutlined, AuditOutlined,
-  MenuFoldOutlined, MenuUnfoldOutlined, HeartOutlined,
+  MenuFoldOutlined, MenuUnfoldOutlined,
   GlobalOutlined, InfoCircleOutlined, SunOutlined, MoonOutlined,
 } from "@ant-design/icons";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { App } from "antd";
 import BackToTop from "./BackToTop";
+import LogoIcon from "@/components/LogoIcon";
 
 const { Content, Sider } = Layout;
 
@@ -100,6 +101,8 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             borderRight: `1px solid ${token.colorBorderSecondary}`,
             zIndex: 50,
             display: "flex", flexDirection: "column",
+            // 顶部主题色微光，让侧边栏跟随主题配色
+            backgroundImage: `linear-gradient(180deg, color-mix(in srgb, ${accentColor} 8%, transparent) 0%, transparent 120px)`,
           }}
         >
           {/* 侧边栏右键菜单容器 */}
@@ -107,13 +110,15 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             <div style={{ display: "contents" }}>
           {/* 顶部图标 + 标题 */}
           <Dropdown menu={brandCtxMenu} trigger={['contextMenu']}>
-          <div style={{
+          <div
+            onContextMenu={(e) => e.stopPropagation()}
+            style={{
             height: 56, display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
             fontWeight: 700, fontSize: collapsed ? 16 : 18, color: accentColor,
             borderBottom: `1px solid ${token.colorBorderSecondary}`,
             flexShrink: 0, cursor: "context-menu",
           }}>
-            <HeartOutlined style={{ fontSize: collapsed ? 18 : 20 }} />
+            <LogoIcon size={collapsed ? 24 : 28} style={{ flexShrink: 0 }} />
             {!collapsed && <span>Memories</span>}
           </div>
           </Dropdown>
@@ -150,7 +155,22 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                 type="text"
                 icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
                 onClick={toggleCollapsed}
-                style={{ borderRadius: 8, width: "100%", color: "var(--ant-color-text-tertiary)" }}
+                style={{
+                  borderRadius: 10, width: "100%",
+                  color: "var(--ant-color-text-tertiary)",
+                  transition: "all 0.25s ease",
+                  background: "transparent",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.color = accentColor;
+                  e.currentTarget.style.background = `${accentColor}12`;
+                  e.currentTarget.style.transform = "scale(1.05)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.color = "var(--ant-color-text-tertiary)";
+                  e.currentTarget.style.background = "transparent";
+                  e.currentTarget.style.transform = "scale(1)";
+                }}
               />
             </Tooltip>
           </div>

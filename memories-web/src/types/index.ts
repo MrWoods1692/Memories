@@ -18,7 +18,7 @@ export interface AuthResponse {
 
 /** 图片资源（来自 GET /images） */
 export interface ImageItem {
-  id: number;
+  id?: number;
   url: string;
   status: number;      // 0=待审核, 1=已通过, 2=已拒绝
   created_at: number;   // Unix 毫秒时间戳
