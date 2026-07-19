@@ -1,0 +1,20 @@
+[
+    {
+        "classes": [
+            {
+                "className": "QTgaPlugin",
+                "lineNumber": 17,
+                "object": true,
+                "qualifiedClassName": "QTgaPlugin",
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QImageIOPlugin"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "main.cpp",
+        "outputRevision": 68
+    }
+]

@@ -1,0 +1,12 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+C:/Users/16237/Desktop/idoknow/Memories-Client/Windows/qtimageformats-src/build/src/plugins/imageformats/tiff/QTiffPlugin_resource.rc
+windows.h
+-
+

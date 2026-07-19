@@ -1,0 +1,16 @@
+{
+	"InstallScripts" : 
+	[
+		"C:/Users/16237/Desktop/idoknow/Memories-Client/Windows/qtimageformats-src/build/cmake_install.cmake",
+		"C:/Users/16237/Desktop/idoknow/Memories-Client/Windows/qtimageformats-src/build/src/cmake_install.cmake",
+		"C:/Users/16237/Desktop/idoknow/Memories-Client/Windows/qtimageformats-src/build/src/imageformats/cmake_install.cmake",
+		"C:/Users/16237/Desktop/idoknow/Memories-Client/Windows/qtimageformats-src/build/src/plugins/cmake_install.cmake",
+		"C:/Users/16237/Desktop/idoknow/Memories-Client/Windows/qtimageformats-src/build/src/plugins/imageformats/cmake_install.cmake",
+		"C:/Users/16237/Desktop/idoknow/Memories-Client/Windows/qtimageformats-src/build/src/plugins/imageformats/tga/cmake_install.cmake",
+		"C:/Users/16237/Desktop/idoknow/Memories-Client/Windows/qtimageformats-src/build/src/plugins/imageformats/wbmp/cmake_install.cmake",
+		"C:/Users/16237/Desktop/idoknow/Memories-Client/Windows/qtimageformats-src/build/src/plugins/imageformats/tiff/cmake_install.cmake",
+		"C:/Users/16237/Desktop/idoknow/Memories-Client/Windows/qtimageformats-src/build/src/plugins/imageformats/webp/cmake_install.cmake",
+		"C:/Users/16237/Desktop/idoknow/Memories-Client/Windows/qtimageformats-src/build/src/plugins/imageformats/icns/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

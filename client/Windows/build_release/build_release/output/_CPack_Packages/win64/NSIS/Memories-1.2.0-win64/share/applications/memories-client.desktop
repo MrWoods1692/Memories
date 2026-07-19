@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Memories
+Comment=Image management client
+Exec=Memories
+Icon=memories
+Categories=Graphics;Photography;Network;
+Terminal=false
+StartupNotify=true
+Keywords=images;photos;upload;gallery;

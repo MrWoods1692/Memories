@@ -1,0 +1,20 @@
+src/plugins/imageformats/webp/CMakeFiles/QWebpPlugin.dir/__/__/__/3rdparty/libwebp/src/utils/quant_levels_dec_utils.c.obj: \
+ C:\Users\16237\Desktop\idoknow\Memories-Client\Windows\qtimageformats-src\src\3rdparty\libwebp\src\utils\quant_levels_dec_utils.c \
+ C:/Users/16237/Desktop/idoknow/Memories-Client/Windows/qtimageformats-src/src/3rdparty/libwebp/src/utils/quant_levels_dec_utils.h \
+ C:/Users/16237/Desktop/idoknow/Memories-Client/Windows/qtimageformats-src/src/3rdparty/libwebp/src/webp/types.h \
+ C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/stddef.h \
+ C:/Qt/Tools/mingw1310_64/x86_64-w64-mingw32/include/stddef.h \
+ C:/Qt/Tools/mingw1310_64/x86_64-w64-mingw32/include/crtdefs.h \
+ C:/Qt/Tools/mingw1310_64/x86_64-w64-mingw32/include/corecrt.h \
+ C:/Qt/Tools/mingw1310_64/x86_64-w64-mingw32/include/_mingw.h \
+ C:/Qt/Tools/mingw1310_64/x86_64-w64-mingw32/include/_mingw_mac.h \
+ C:/Qt/Tools/mingw1310_64/x86_64-w64-mingw32/include/_mingw_secapi.h \
+ C:/Qt/Tools/mingw1310_64/x86_64-w64-mingw32/include/vadefs.h \
+ C:/Qt/Tools/mingw1310_64/x86_64-w64-mingw32/include/sdks/_mingw_ddk.h \
+ C:/Qt/Tools/mingw1310_64/x86_64-w64-mingw32/include/inttypes.h \
+ C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/stdint.h \
+ C:/Qt/Tools/mingw1310_64/x86_64-w64-mingw32/include/stdint.h \
+ C:/Qt/Tools/mingw1310_64/x86_64-w64-mingw32/include/string.h \
+ C:/Qt/Tools/mingw1310_64/x86_64-w64-mingw32/include/sec_api/string_s.h \
+ C:/Users/16237/Desktop/idoknow/Memories-Client/Windows/qtimageformats-src/src/3rdparty/libwebp/src/utils/utils.h \
+ C:/Qt/Tools/mingw1310_64/x86_64-w64-mingw32/include/assert.h

@@ -1,0 +1,4 @@
+C:/Users/16237/Desktop/idoknow/Memories-Client/Windows/qtimageformats-src/build/config.tests/binary_for_strip_built/CMakeFiles/lib1.dir
+C:/Users/16237/Desktop/idoknow/Memories-Client/Windows/qtimageformats-src/build/config.tests/binary_for_strip_built/CMakeFiles/print_lib_path.dir
+C:/Users/16237/Desktop/idoknow/Memories-Client/Windows/qtimageformats-src/build/config.tests/binary_for_strip_built/CMakeFiles/edit_cache.dir
+C:/Users/16237/Desktop/idoknow/Memories-Client/Windows/qtimageformats-src/build/config.tests/binary_for_strip_built/CMakeFiles/rebuild_cache.dir

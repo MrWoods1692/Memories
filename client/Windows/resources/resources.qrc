@@ -1,0 +1,27 @@
+<RCC>
+    <qresource prefix="/icons">
+        <file alias="app.svg">app-icon.svg</file>
+        <file alias="ic_back.svg">icons/ic_back.svg</file>
+        <file alias="ic_prev.svg">icons/ic_prev.svg</file>
+        <file alias="ic_next.svg">icons/ic_next.svg</file>
+        <file alias="ic_zoom_in.svg">icons/ic_zoom_in.svg</file>
+        <file alias="ic_zoom_out.svg">icons/ic_zoom_out.svg</file>
+        <file alias="ic_reset.svg">icons/ic_reset.svg</file>
+        <file alias="ic_rotate_cw.svg">icons/ic_rotate_cw.svg</file>
+        <file alias="ic_rotate_ccw.svg">icons/ic_rotate_ccw.svg</file>
+        <file alias="ic_flip_h.svg">icons/ic_flip_h.svg</file>
+        <file alias="ic_flip_v.svg">icons/ic_flip_v.svg</file>
+        <file alias="ic_download.svg">icons/ic_download.svg</file>
+        <file alias="ic_share.svg">icons/ic_share.svg</file>
+        <file alias="ic_wallpaper.svg">icons/ic_wallpaper.svg</file>
+        <file alias="ic_print.svg">icons/ic_print.svg</file>
+        <file alias="ic_info.svg">icons/ic_info.svg</file>
+        <file alias="ic_copy_link.svg">icons/ic_copy_link.svg</file>
+        <file alias="down-arrow.svg">icons/down-arrow.svg</file>
+        <file alias="down-arrow-dark.svg">icons/down-arrow-dark.svg</file>
+    </qresource>
+    <qresource prefix="/style">
+        <file alias="main.qss">style.qss</file>
+        <file alias="dark.qss">style-dark.qss</file>
+    </qresource>
+</RCC>

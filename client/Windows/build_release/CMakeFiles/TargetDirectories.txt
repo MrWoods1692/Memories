@@ -1,0 +1,11 @@
+C:/Users/16237/Desktop/idoknow/Memories-Client/Windows/build_release/CMakeFiles/Memories.dir
+C:/Users/16237/Desktop/idoknow/Memories-Client/Windows/build_release/CMakeFiles/package.dir
+C:/Users/16237/Desktop/idoknow/Memories-Client/Windows/build_release/CMakeFiles/package_source.dir
+C:/Users/16237/Desktop/idoknow/Memories-Client/Windows/build_release/CMakeFiles/edit_cache.dir
+C:/Users/16237/Desktop/idoknow/Memories-Client/Windows/build_release/CMakeFiles/rebuild_cache.dir
+C:/Users/16237/Desktop/idoknow/Memories-Client/Windows/build_release/CMakeFiles/list_install_components.dir
+C:/Users/16237/Desktop/idoknow/Memories-Client/Windows/build_release/CMakeFiles/install.dir
+C:/Users/16237/Desktop/idoknow/Memories-Client/Windows/build_release/CMakeFiles/install/local.dir
+C:/Users/16237/Desktop/idoknow/Memories-Client/Windows/build_release/CMakeFiles/install/strip.dir
+C:/Users/16237/Desktop/idoknow/Memories-Client/Windows/build_release/CMakeFiles/Memories_autogen_timestamp_deps.dir
+C:/Users/16237/Desktop/idoknow/Memories-Client/Windows/build_release/CMakeFiles/Memories_autogen.dir

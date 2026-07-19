@@ -1,0 +1,3 @@
+"C:\Program Files\CMake\bin\cmake.exe" -E rm -f CMakeFiles\Memories.dir/objects.a
+C:\Qt\Tools\mingw1310_64\bin\ar.exe qc CMakeFiles\Memories.dir/objects.a @CMakeFiles\Memories.dir\objects1.rsp
+C:\Qt\Tools\mingw1310_64\bin\c++.exe -O3 -DNDEBUG -mwindows -Wl,-subsystem,windows -Wl,--whole-archive CMakeFiles\Memories.dir/objects.a -Wl,--no-whole-archive -o Memories.exe -Wl,--out-implib,libMemories.dll.a -Wl,--major-image-version,0,--minor-image-version,0 @CMakeFiles\Memories.dir\linkLibs.rsp

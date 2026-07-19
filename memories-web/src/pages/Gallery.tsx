@@ -11,6 +11,7 @@ import {
 } from "@ant-design/icons";
 import { fetchImages, extractImageBedFilename, queryImageInfo } from "@/api";
 import { useTheme } from "@/contexts/ThemeContext";
+import ExifPanel from "@/components/ExifPanel";
 import type { ImageBedInfo, ImageItem } from "@/types";
 
 const { Title, Text } = Typography;
@@ -28,6 +29,7 @@ export default function GalleryPage() {
   const [infoOpen, setInfoOpen] = useState(false);
   const [infoLoading, setInfoLoading] = useState(false);
   const [imageInfo, setImageInfo] = useState<ImageBedInfo | null>(null);
+  const [infoImageUrl, setInfoImageUrl] = useState<string>("");
 
   // 响应式断点
   const [isDesktop, setIsDesktop] = useState(
@@ -242,6 +244,7 @@ export default function GalleryPage() {
   const handleQueryInfo = useCallback(async (url: string) => {
     const filename = extractImageBedFilename(url);
     if (!filename) { message.warning("无法解析图片文件名"); return; }
+    setInfoImageUrl(url);
     setInfoOpen(true); setInfoLoading(true); setImageInfo(null);
     try { setImageInfo(await queryImageInfo(filename)); }
     catch (err) { message.error(err instanceof Error ? err.message : "查询失败"); setInfoOpen(false); }
@@ -1075,17 +1078,13 @@ toolbarRender: (originalNode: React.ReactNode, info: { current: number; actions:
         {infoLoading ? (
           <div style={{ textAlign: "center", padding: 40 }}><Spin /></div>
         ) : imageInfo ? (
+          <>
           <Descriptions column={isDesktop ? 2 : 1} size="small" bordered styles={{ label: { fontWeight: 600, whiteSpace: "nowrap", background: `${accentColor}10`, color: accentColor } }}>
             <Descriptions.Item label="文件名" span={2}>
               <Text copyable style={{ fontSize: 12 }}>{imageInfo.filename}</Text>
             </Descriptions.Item>
             <Descriptions.Item label="原始文件名" span={2}>{imageInfo.original_filename}</Descriptions.Item>
             <Descriptions.Item label="上传时间">{imageInfo.upload_date}</Descriptions.Item>
-            <Descriptions.Item label="最近访问">{imageInfo.last_accessed || "无记录"}</Descriptions.Item>
-            <Descriptions.Item label="原大小">{imageInfo.size_display.split("→")[0]?.trim() || "-"}</Descriptions.Item>
-            <Descriptions.Item label="压缩后">{imageInfo.size_display.split("→")[1]?.trim() || imageInfo.size_display}</Descriptions.Item>
-            <Descriptions.Item label="存储位置"><Tag color="blue">{imageInfo.storage_location}</Tag></Descriptions.Item>
-            <Descriptions.Item label="上传者 IP">{imageInfo.uploader_masked}</Descriptions.Item>
             {imageInfo.tags_array.length > 0 && (
               <Descriptions.Item label="标签" span={2}>
                 <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
@@ -1102,6 +1101,8 @@ toolbarRender: (originalNode: React.ReactNode, info: { current: number; actions:
               <Descriptions.Item label="加密" span={2}><Tag color="warning">密码保护</Tag></Descriptions.Item>
             )}
           </Descriptions>
+          {infoImageUrl && <ExifPanel url={infoImageUrl} accentColor={accentColor} isDesktop={isDesktop} />}
+          </>
         ) : null}
       </Modal>
 

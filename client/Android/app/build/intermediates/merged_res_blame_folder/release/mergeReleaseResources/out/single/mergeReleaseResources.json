@@ -1,0 +1,166 @@
+[
+    {
+        "merged": "com.mrcwoods.memories.app-release-4:/drawable_ic_contact.xml.flat",
+        "source": "com.mrcwoods.memories.app-main-5:/drawable/ic_contact.xml"
+    },
+    {
+        "merged": "com.mrcwoods.memories.app-release-4:/drawable_ic_download_folder.xml.flat",
+        "source": "com.mrcwoods.memories.app-main-5:/drawable/ic_download_folder.xml"
+    },
+    {
+        "merged": "com.mrcwoods.memories.app-release-4:/drawable_ic_theme_switch.xml.flat",
+        "source": "com.mrcwoods.memories.app-main-5:/drawable/ic_theme_switch.xml"
+    },
+    {
+        "merged": "com.mrcwoods.memories.app-release-4:/drawable_ic_user.xml.flat",
+        "source": "com.mrcwoods.memories.app-main-5:/drawable/ic_user.xml"
+    },
+    {
+        "merged": "com.mrcwoods.memories.app-release-4:/drawable_ic_opensource.xml.flat",
+        "source": "com.mrcwoods.memories.app-main-5:/drawable/ic_opensource.xml"
+    },
+    {
+        "merged": "com.mrcwoods.memories.app-release-4:/drawable_ic_copy_image.xml.flat",
+        "source": "com.mrcwoods.memories.app-main-5:/drawable/ic_copy_image.xml"
+    },
+    {
+        "merged": "com.mrcwoods.memories.app-release-4:/drawable_ic_menu.xml.flat",
+        "source": "com.mrcwoods.memories.app-main-5:/drawable/ic_menu.xml"
+    },
+    {
+        "merged": "com.mrcwoods.memories.app-release-4:/drawable_ic_gallery.xml.flat",
+        "source": "com.mrcwoods.memories.app-main-5:/drawable/ic_gallery.xml"
+    },
+    {
+        "merged": "com.mrcwoods.memories.app-release-4:/drawable_ic_reset.xml.flat",
+        "source": "com.mrcwoods.memories.app-main-5:/drawable/ic_reset.xml"
+    },
+    {
+        "merged": "com.mrcwoods.memories.app-release-4:/drawable_ic_rotate_cw.xml.flat",
+        "source": "com.mrcwoods.memories.app-main-5:/drawable/ic_rotate_cw.xml"
+    },
+    {
+        "merged": "com.mrcwoods.memories.app-release-4:/drawable_ic_download.xml.flat",
+        "source": "com.mrcwoods.memories.app-main-5:/drawable/ic_download.xml"
+    },
+    {
+        "merged": "com.mrcwoods.memories.app-release-4:/drawable_ic_clear.xml.flat",
+        "source": "com.mrcwoods.memories.app-main-5:/drawable/ic_clear.xml"
+    },
+    {
+        "merged": "com.mrcwoods.memories.app-release-4:/drawable_ic_github.xml.flat",
+        "source": "com.mrcwoods.memories.app-main-5:/drawable/ic_github.xml"
+    },
+    {
+        "merged": "com.mrcwoods.memories.app-release-4:/drawable_ic_plaza.xml.flat",
+        "source": "com.mrcwoods.memories.app-main-5:/drawable/ic_plaza.xml"
+    },
+    {
+        "merged": "com.mrcwoods.memories.app-release-4:/drawable_ic_back.xml.flat",
+        "source": "com.mrcwoods.memories.app-main-5:/drawable/ic_back.xml"
+    },
+    {
+        "merged": "com.mrcwoods.memories.app-release-4:/drawable_ic_flip_h.xml.flat",
+        "source": "com.mrcwoods.memories.app-main-5:/drawable/ic_flip_h.xml"
+    },
+    {
+        "merged": "com.mrcwoods.memories.app-release-4:/drawable_ic_theme.xml.flat",
+        "source": "com.mrcwoods.memories.app-main-5:/drawable/ic_theme.xml"
+    },
+    {
+        "merged": "com.mrcwoods.memories.app-release-4:/drawable_ic_load_more.xml.flat",
+        "source": "com.mrcwoods.memories.app-main-5:/drawable/ic_load_more.xml"
+    },
+    {
+        "merged": "com.mrcwoods.memories.app-release-4:/drawable_ic_rotate.xml.flat",
+        "source": "com.mrcwoods.memories.app-main-5:/drawable/ic_rotate.xml"
+    },
+    {
+        "merged": "com.mrcwoods.memories.app-release-4:/drawable_ic_rotate_ccw.xml.flat",
+        "source": "com.mrcwoods.memories.app-main-5:/drawable/ic_rotate_ccw.xml"
+    },
+    {
+        "merged": "com.mrcwoods.memories.app-release-4:/drawable_ic_privacy.xml.flat",
+        "source": "com.mrcwoods.memories.app-main-5:/drawable/ic_privacy.xml"
+    },
+    {
+        "merged": "com.mrcwoods.memories.app-release-4:/drawable_ic_wallpaper.xml.flat",
+        "source": "com.mrcwoods.memories.app-main-5:/drawable/ic_wallpaper.xml"
+    },
+    {
+        "merged": "com.mrcwoods.memories.app-release-4:/drawable_ic_copy_url.xml.flat",
+        "source": "com.mrcwoods.memories.app-main-5:/drawable/ic_copy_url.xml"
+    },
+    {
+        "merged": "com.mrcwoods.memories.app-release-4:/drawable_ic_logout.xml.flat",
+        "source": "com.mrcwoods.memories.app-main-5:/drawable/ic_logout.xml"
+    },
+    {
+        "merged": "com.mrcwoods.memories.app-release-4:/drawable_ic_print.xml.flat",
+        "source": "com.mrcwoods.memories.app-main-5:/drawable/ic_print.xml"
+    },
+    {
+        "merged": "com.mrcwoods.memories.app-release-4:/drawable_ic_terms.xml.flat",
+        "source": "com.mrcwoods.memories.app-main-5:/drawable/ic_terms.xml"
+    },
+    {
+        "merged": "com.mrcwoods.memories.app-release-4:/drawable_ic_link.xml.flat",
+        "source": "com.mrcwoods.memories.app-main-5:/drawable/ic_link.xml"
+    },
+    {
+        "merged": "com.mrcwoods.memories.app-release-4:/drawable_ic_flip_v.xml.flat",
+        "source": "com.mrcwoods.memories.app-main-5:/drawable/ic_flip_v.xml"
+    },
+    {
+        "merged": "com.mrcwoods.memories.app-release-4:/drawable_ic_security.xml.flat",
+        "source": "com.mrcwoods.memories.app-main-5:/drawable/ic_security.xml"
+    },
+    {
+        "merged": "com.mrcwoods.memories.app-release-4:/drawable_ic_upload.xml.flat",
+        "source": "com.mrcwoods.memories.app-main-5:/drawable/ic_upload.xml"
+    },
+    {
+        "merged": "com.mrcwoods.memories.app-release-4:/drawable_ic_info.xml.flat",
+        "source": "com.mrcwoods.memories.app-main-5:/drawable/ic_info.xml"
+    },
+    {
+        "merged": "com.mrcwoods.memories.app-release-4:/drawable_ic_storage.xml.flat",
+        "source": "com.mrcwoods.memories.app-main-5:/drawable/ic_storage.xml"
+    },
+    {
+        "merged": "com.mrcwoods.memories.app-release-4:/drawable_ic_app.xml.flat",
+        "source": "com.mrcwoods.memories.app-main-5:/drawable/ic_app.xml"
+    },
+    {
+        "merged": "com.mrcwoods.memories.app-release-4:/drawable_ic_copy_link.xml.flat",
+        "source": "com.mrcwoods.memories.app-main-5:/drawable/ic_copy_link.xml"
+    },
+    {
+        "merged": "com.mrcwoods.memories.app-release-4:/drawable_ic_open_web.xml.flat",
+        "source": "com.mrcwoods.memories.app-main-5:/drawable/ic_open_web.xml"
+    },
+    {
+        "merged": "com.mrcwoods.memories.app-release-4:/drawable_ic_close.xml.flat",
+        "source": "com.mrcwoods.memories.app-main-5:/drawable/ic_close.xml"
+    },
+    {
+        "merged": "com.mrcwoods.memories.app-release-4:/drawable_ic_zoom_out.xml.flat",
+        "source": "com.mrcwoods.memories.app-main-5:/drawable/ic_zoom_out.xml"
+    },
+    {
+        "merged": "com.mrcwoods.memories.app-release-4:/drawable_ic_policy.xml.flat",
+        "source": "com.mrcwoods.memories.app-main-5:/drawable/ic_policy.xml"
+    },
+    {
+        "merged": "com.mrcwoods.memories.app-release-4:/drawable_ic_profile.xml.flat",
+        "source": "com.mrcwoods.memories.app-main-5:/drawable/ic_profile.xml"
+    },
+    {
+        "merged": "com.mrcwoods.memories.app-release-4:/drawable_ic_zoom_in.xml.flat",
+        "source": "com.mrcwoods.memories.app-main-5:/drawable/ic_zoom_in.xml"
+    },
+    {
+        "merged": "com.mrcwoods.memories.app-release-4:/drawable_ic_share.xml.flat",
+        "source": "com.mrcwoods.memories.app-main-5:/drawable/ic_share.xml"
+    }
+]

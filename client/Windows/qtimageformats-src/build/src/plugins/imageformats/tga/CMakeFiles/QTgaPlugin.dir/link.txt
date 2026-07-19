@@ -1,0 +1,3 @@
+"C:\Program Files\CMake\bin\cmake.exe" -E rm -f CMakeFiles\QTgaPlugin.dir/objects.a
+C:\Qt\Tools\mingw1310_64\bin\ar.exe qc CMakeFiles\QTgaPlugin.dir/objects.a @CMakeFiles\QTgaPlugin.dir\objects1.rsp
+C:\Qt\Tools\mingw1310_64\bin\c++.exe -DNDEBUG -O2 -shared -Wl,--no-undefined -Wl,--version-script,C:/Users/16237/Desktop/idoknow/Memories-Client/Windows/qtimageformats-src/build/src/plugins/imageformats/tga/QTgaPlugin.version -o ..\..\..\..\plugins\imageformats\qtga.dll -Wl,--major-image-version,0,--minor-image-version,0 -Wl,--whole-archive CMakeFiles\QTgaPlugin.dir/objects.a -Wl,--no-whole-archive @CMakeFiles\QTgaPlugin.dir\linkLibs.rsp

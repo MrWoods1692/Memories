@@ -1,0 +1,20 @@
+[
+    {
+        "classes": [
+            {
+                "className": "QTiffPlugin",
+                "lineNumber": 13,
+                "object": true,
+                "qualifiedClassName": "QTiffPlugin",
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QImageIOPlugin"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "main.cpp",
+        "outputRevision": 68
+    }
+]

@@ -1,0 +1,18 @@
+{
+    "classes": [
+        {
+            "className": "QWebpPlugin",
+            "lineNumber": 16,
+            "object": true,
+            "qualifiedClassName": "QWebpPlugin",
+            "superClasses": [
+                {
+                    "access": "public",
+                    "name": "QImageIOPlugin"
+                }
+            ]
+        }
+    ],
+    "inputFile": "main.cpp",
+    "outputRevision": 68
+}
