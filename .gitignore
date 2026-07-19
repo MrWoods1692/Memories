@@ -1,32 +1,87 @@
-# Sensitive signing files
+# ====================
+# Sensitive / signing
+# ====================
 keystore.properties
 *.keystore
 *.jks
 
-# Build outputs
-app/build/
+# ====================
+# Gradle / Android
+# ====================
 .gradle/
+**/build/          # Android build outputs (app/build/, client/Android/app/build/)
 *.apk
 *.aab
-
-# Local properties
 local.properties
 
+# ====================
 # Node.js
+# ====================
 node_modules/
 
-# Web frontend build outputs
+# ====================
+# Web frontend dist
+# ====================
+admin/dist/
 admin-public/dist/
 memories-web/dist/
+web/dist/
 docs/api-docs/dist/
 
-# TypeScript build info
+# ====================
+# TypeScript
+# ====================
 *.tsbuildinfo
 
-# IDE
+# ====================
+# Python
+# ====================
+.venv/
+__pycache__/
+*.py[cod]
+
+# ====================
+# Vite
+# ====================
+.vite/
+
+# ====================
+# Qt / CMake (Windows client)
+# ====================
+client/Windows/build/
+client/Windows/build_release/
+client/Windows/build_msi/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+install_manifest.txt
+CPackConfig.cmake
+CPackSourceConfig.cmake
+*_autogen/
+.qt/
+
+# ====================
+# Logs
+# ====================
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# ====================
+# IDE / Editor
+# ====================
 .idea/
 *.iml
+*.swp
+*.swo
+*~
 
+# ====================
 # OS files
+# ====================
 .DS_Store
 Thumbs.db
+Desktop.ini

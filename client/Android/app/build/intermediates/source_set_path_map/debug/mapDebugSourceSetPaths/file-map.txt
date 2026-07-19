@@ -1,7 +1,0 @@
-com.mrcwoods.memories.app-pngs-0 D:\我的文件\idoknow\Memories-Client\Android\app\build\generated\res\pngs\debug
-com.mrcwoods.memories.app-resValues-1 D:\我的文件\idoknow\Memories-Client\Android\app\build\generated\res\resValues\debug
-com.mrcwoods.memories.app-packageDebugResources-2 D:\我的文件\idoknow\Memories-Client\Android\app\build\intermediates\incremental\debug\packageDebugResources\merged.dir
-com.mrcwoods.memories.app-packageDebugResources-3 D:\我的文件\idoknow\Memories-Client\Android\app\build\intermediates\incremental\debug\packageDebugResources\stripped.dir
-com.mrcwoods.memories.app-debug-4 D:\我的文件\idoknow\Memories-Client\Android\app\build\intermediates\merged_res\debug\mergeDebugResources
-com.mrcwoods.memories.app-debug-5 D:\我的文件\idoknow\Memories-Client\Android\app\src\debug\res
-com.mrcwoods.memories.app-main-6 D:\我的文件\idoknow\Memories-Client\Android\app\src\main\res
