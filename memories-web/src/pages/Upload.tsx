@@ -7,6 +7,7 @@ import {
   CloudUploadOutlined, CheckCircleOutlined, CloseCircleOutlined,
   DeleteOutlined, ReloadOutlined, ClockCircleOutlined, PlusCircleOutlined,
   AppstoreOutlined, UnorderedListOutlined, MenuOutlined, PictureOutlined,
+  CaretUpOutlined, CaretDownOutlined, AimOutlined,
 } from "@ant-design/icons";
 import { clearImagesCache, uploadImageToServer, uploadToImageBed } from "@/api";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -137,18 +138,32 @@ function ThumbImage({ url, name, size }: { url: string; name: string; size: numb
 }
 
 type ViewMode = "card" | "list" | "grid";
+type FilterStatus = "all" | "done" | "failed" | "pending";
 
 export default function UploadPage() {
   const { message } = App.useApp();
   const [records, setRecords] = useState<UploadRecord[]>(() => engine.getRecords());
   const [uploading, setUploading] = useState(() => engine.isRunning());
   const [viewMode, setViewMode] = useState<ViewMode>("card");
+  const [filterStatus, setFilterStatus] = useState<FilterStatus>("all");
   const { accentColor } = useTheme();
 
   useEffect(() => engine.subscribe((r) => { setRecords(r); setUploading(engine.isRunning()); }), []);
 
+  const filteredRecords = filterStatus === "all"
+    ? records
+    : records.filter((r) => {
+        if (filterStatus === "done") return r.status === "done";
+        if (filterStatus === "failed") return r.status === "failed";
+        return r.status === "pending" || r.status === "uploading_imagebed" || r.status === "uploading_server";
+      });
+
   const handleBeforeUpload = useCallback((file: File) => {
-    if (!file.type.startsWith("image/")) { message.warning("仅支持上传图片文件"); return Upload.LIST_IGNORE; }
+    const ext = file.name.split(".").pop()?.toLowerCase() || "";
+    const allowedExt = ["jpg", "jpeg", "png", "webp", "gif", "bmp", "heic", "heif"];
+    if (!file.type.startsWith("image/") && !allowedExt.includes(ext)) {
+      message.warning("仅支持上传图片文件"); return Upload.LIST_IGNORE;
+    }
     engine.add([{ id: uid(), fileName: file.name, fileSize: file.size, localUrl: URL.createObjectURL(file), status: "pending", createdAt: Date.now() }]);
     return false;
   }, [message]);
@@ -184,10 +199,12 @@ export default function UploadPage() {
       if (key === "upload") startUpload();
       else if (key === "select") {
         const input = document.createElement("input");
-        input.type = "file"; input.accept = "image/*"; input.multiple = true;
+        input.type = "file"; input.accept = "image/jpeg,image/png,image/webp,image/gif,image/bmp,.jpg,.jpeg,.png,.webp,.gif,.bmp,.heic,.heif"; input.multiple = true;
         input.onchange = () => {
           Array.from(input.files || []).forEach((f) => {
-            if (f.type.startsWith("image/")) {
+            const ext = f.name.split(".").pop()?.toLowerCase() || "";
+            const allowedExt = ["jpg", "jpeg", "png", "webp", "gif", "bmp", "heic", "heif"];
+            if (f.type.startsWith("image/") || allowedExt.includes(ext)) {
               engine.add([{ id: uid(), fileName: f.name, fileSize: f.size, localUrl: URL.createObjectURL(f), status: "pending", createdAt: Date.now() }]);
             }
           });
@@ -227,6 +244,7 @@ export default function UploadPage() {
   };
 
   return (
+    <>
     <Dropdown menu={uploadCtxMenu} trigger={['contextMenu']}>
     <div style={{ padding: "0 0 24px" }}>
       <div style={{ textAlign: "center", padding: "32px 16px 20px" }}>
@@ -241,7 +259,7 @@ export default function UploadPage() {
       </div>
 
       <div style={{ padding: "0 16px", maxWidth: 700, margin: "0 auto" }}>
-        <Dragger multiple accept="image/*" showUploadList={false}
+        <Dragger multiple accept="image/jpeg,image/png,image/webp,image/gif,image/bmp,.jpg,.jpeg,.png,.webp,.gif,.bmp,.heic,.heif" showUploadList={false}
           beforeUpload={handleBeforeUpload as any} disabled={uploading}
           style={{
             borderRadius: 20, padding: "8px 0",
@@ -273,9 +291,13 @@ export default function UploadPage() {
             }}>
               <div style={{ display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap" }}>
                 <Text style={{ fontSize: 13, fontWeight: 600 }}>共 {totalCount}</Text>
-                <Text style={{ fontSize: 13, color: "#52c41a" }}>✓ {doneCount}</Text>
-                {failedCount > 0 && <Text style={{ fontSize: 13, color: "#ff4d4f" }}>✕ {failedCount}</Text>}
-                {pendingCount > 0 && <Text type="secondary" style={{ fontSize: 13 }}>⏱ {pendingCount}</Text>}
+                <Segmented size="small" value={filterStatus} onChange={(v) => setFilterStatus(v as FilterStatus)}
+                  options={[
+                    { value: "all", label: `全部 ${totalCount}` },
+                    { value: "done", label: `✓ ${doneCount}` },
+                    { value: "failed", label: `✕ ${failedCount}` },
+                    { value: "pending", label: `⏱ ${pendingCount}` },
+                  ] as any} />
               </div>
               <Space size={6} wrap>
                 <Segmented size="small" value={viewMode} onChange={(v) => setViewMode(v as ViewMode)}
@@ -302,10 +324,15 @@ export default function UploadPage() {
 
         {records.length > 0 && (
           <div style={{ marginTop: 12 }}>
-            {viewMode === "card" && (
+            {filteredRecords.length === 0 && (
+              <div style={{ textAlign: "center", padding: 32, color: "var(--ant-color-text-quaternary)" }}>
+                <Text type="secondary">当前筛选条件下无记录</Text>
+              </div>
+            )}
+            {filteredRecords.length > 0 && viewMode === "card" && (
               <Space direction="vertical" style={{ width: "100%" }}>
-                {records.map((r) => (
-                  <Card key={r.id} size="small" style={{
+                {filteredRecords.map((r) => (
+                  <Card key={r.id} size="small" data-upload-id={r.id} style={{
                     borderRadius: 14, opacity: r.status === "done" ? 0.85 : 1,
                     transition: "all 0.25s",
                     border: r.status === "failed" ? "1px solid #ff4d4f44" : r.status === "done" ? `1px solid ${accentColor}33` : undefined,
@@ -344,13 +371,13 @@ export default function UploadPage() {
                 ))}
               </Space>
             )}
-            {viewMode === "list" && (
+            {filteredRecords.length > 0 && viewMode === "list" && (
               <div style={{ borderRadius: 12, overflow: "hidden", border: "1px solid var(--ant-color-border-secondary)" }}>
-                {records.map((r, i) => (
-                  <div key={r.id} style={{
+                {filteredRecords.map((r, i) => (
+                  <div key={r.id} data-upload-id={r.id} style={{
                     display: "flex", alignItems: "center", gap: 10, padding: "7px 14px",
                     background: "var(--ant-color-bg-container)",
-                    borderBottom: i < records.length - 1 ? "1px solid var(--ant-color-border-secondary)" : "none",
+                    borderBottom: i < filteredRecords.length - 1 ? "1px solid var(--ant-color-border-secondary)" : "none",
                     position: "relative", overflow: "hidden",
                   }}>
                     <Text type="secondary" style={{ fontSize: 11, width: 44, flexShrink: 0 }}>{formatTime(r.createdAt)}</Text>
@@ -376,10 +403,10 @@ export default function UploadPage() {
                 ))}
               </div>
             )}
-            {viewMode === "grid" && (
+            {filteredRecords.length > 0 && viewMode === "grid" && (
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(100px, 1fr))", gap: 8 }}>
-                {records.map((r) => (
-                  <div key={r.id} style={{
+                {filteredRecords.map((r) => (
+                  <div key={r.id} data-upload-id={r.id} style={{
                     borderRadius: 12, overflow: "hidden", background: "var(--ant-color-bg-container)",
                     border: r.status === "failed" ? "1px solid #ff4d4f44" : r.status === "done" ? `1px solid ${accentColor}33` : "1px solid var(--ant-color-border-secondary)",
                     transition: "all 0.25s",
@@ -407,5 +434,124 @@ export default function UploadPage() {
       </div>
     </div>
     </Dropdown>
+
+    {/* 右侧快速导航 */}
+    <UploadQuickNav records={records} accentColor={accentColor} />
+    </>
+  );
+}
+
+/* ===== 上传快速导航组件 ===== */
+
+function UploadQuickNav({ records, accentColor }: { records: UploadRecord[]; accentColor: string }) {
+  const [isDesktop, setIsDesktop] = useState(
+    typeof window !== "undefined" ? window.innerWidth >= 768 : false
+  );
+  useEffect(() => {
+    const onResize = () => setIsDesktop(window.innerWidth >= 768);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  if (records.length === 0) return null;
+
+  const scrollToTop = () => window.scrollTo({ top: 0, behavior: "smooth" });
+  const scrollToBottom = () => window.scrollTo({ top: document.documentElement.scrollHeight, behavior: "smooth" });
+
+  const scrollToCurrentUpload = () => {
+    const uploading = records.find(
+      (r) => r.status === "uploading_imagebed" || r.status === "uploading_server"
+    );
+    if (!uploading) return;
+    const el = document.querySelector(`[data-upload-id="${uploading.id}"]`);
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
+
+  const hasUploading = records.some(
+    (r) => r.status === "uploading_imagebed" || r.status === "uploading_server"
+  );
+
+  const btn: React.CSSProperties = {
+    cursor: "pointer",
+    width: isDesktop ? 36 : 44,
+    height: isDesktop ? 36 : 44,
+    borderRadius: "50%",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    background: `${accentColor}14`,
+    color: accentColor,
+    border: `1px solid ${accentColor}30`,
+    fontSize: isDesktop ? 14 : 16,
+    transition: "all 0.2s",
+    boxShadow: `0 2px 8px ${accentColor}18`,
+  };
+
+  return (
+    <div style={{
+      position: "fixed",
+      right: isDesktop ? 16 : 8,
+      top: "50%",
+      transform: "translateY(-50%)",
+      zIndex: 996,
+      display: "flex",
+      flexDirection: "column",
+      gap: isDesktop ? 6 : 8,
+    }}>
+      <div
+        onClick={scrollToTop}
+        style={btn}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.background = accentColor;
+          e.currentTarget.style.color = "#fff";
+          e.currentTarget.style.transform = "scale(1.1)";
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.background = `${accentColor}14`;
+          e.currentTarget.style.color = accentColor;
+          e.currentTarget.style.transform = "scale(1)";
+        }}
+      >
+        <CaretUpOutlined />
+      </div>
+
+      {hasUploading && (
+        <div
+          onClick={scrollToCurrentUpload}
+          style={{
+            ...btn,
+            background: accentColor,
+            color: "#fff",
+            boxShadow: `0 2px 12px ${accentColor}44`,
+            animation: "memories-status-pulse 2s ease-in-out infinite",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = "scale(1.1)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = "scale(1)";
+          }}
+        >
+          <AimOutlined />
+        </div>
+      )}
+
+      <div
+        onClick={scrollToBottom}
+        style={btn}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.background = accentColor;
+          e.currentTarget.style.color = "#fff";
+          e.currentTarget.style.transform = "scale(1.1)";
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.background = `${accentColor}14`;
+          e.currentTarget.style.color = accentColor;
+          e.currentTarget.style.transform = "scale(1)";
+        }}
+      >
+        <CaretDownOutlined />
+      </div>
+    </div>
   );
 }

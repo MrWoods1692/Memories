@@ -9,9 +9,10 @@ import {
   PlayCircleOutlined, PauseCircleOutlined, CaretRightOutlined,
   HeartOutlined, HeartFilled, UnorderedListOutlined,
 } from "@ant-design/icons";
-import { fetchImages, extractImageBedFilename, queryImageInfo } from "@/api";
+import { fetchImages, extractImageBedFilename, queryImageInfo, fetchAllCachedImages, prefetchImages } from "@/api";
 import { useTheme } from "@/contexts/ThemeContext";
 import ExifPanel from "@/components/ExifPanel";
+import TimelineScrollBar from "@/components/TimelineScrollBar";
 import type { ImageBedInfo, ImageItem } from "@/types";
 
 const { Title, Text } = Typography;
@@ -57,6 +58,9 @@ export default function GalleryPage() {
   // 视图模式
   type GalleryView = "grid" | "compact" | "list" | "simple" | "river" | "masonry" | "timeline" | "free";
   const [viewMode, setViewMode] = useState<GalleryView>("grid");
+
+  // 时间线视图的当前选中日期（供 TimelineScrollBar 精细滚动使用）
+  const [timelineActiveDate, setTimelineActiveDate] = useState<string>("");
 
   const viewOptions: { value: GalleryView; label: string; icon: React.ReactNode }[] = [
     { value: "grid", label: "网格", icon: <AppstoreOutlined /> },
@@ -425,6 +429,14 @@ export default function GalleryPage() {
       setTotalPages(res.totalPages); setPage(pageNum);
       retryCount.current.delete(pageNum); // 成功则清除重试记录
 
+      // 自动加载下一页（不等待滚动到底部）
+      if (pageNum < res.totalPages) {
+        pendingPage.current = pageNum + 1;
+        setTimeout(() => {
+          if (pendingPage.current === pageNum + 1) loadImages(pageNum + 1);
+        }, LOAD_INTERVAL);
+      }
+
       // 处理排队中的请求
       if (pendingPage.current !== null) {
         const next = pendingPage.current;
@@ -492,18 +504,17 @@ export default function GalleryPage() {
 
   useEffect(() => {
     const init = async () => {
-      // 1. 先从缓存加载，立即显示
-      try {
-        const cached = await fetchImages(1, 20, false);
-        if (cached.items.length > 0) {
-          setImages(cached.items);
-          setTotalPages(cached.totalPages);
-          cachedIdsRef.current = new Set(cached.items.map((i) => i.created_at));
-          setInitialLoading(false); // 有缓存，立即显示
-        }
-      } catch { /* 无缓存或出错，继续等待网络请求 */ }
+      // 1. 先从统一缓存加载全部图片，立即显示
+      const allCached = fetchAllCachedImages();
+      if (allCached.length > 0) {
+        setImages(allCached);
+        setInitialLoading(false);
+        cachedIdsRef.current = new Set(allCached.map((i) => i.created_at));
+        // 预加载缓存中的图片资源到浏览器缓存
+        prefetchImages(allCached.slice(0, 40).map((i) => i.url));
+      }
 
-      // 2. 后台同步最新数据
+      // 2. 后台同步最新数据（从 page 1 开始，自动翻页会陆续加载其余页）
       try {
         const fresh = await fetchImages(1, 20, true);
         const newItems = fresh.items.filter((i) => !cachedIdsRef.current.has(i.created_at));
@@ -513,6 +524,12 @@ export default function GalleryPage() {
         setImages(fresh.items);
         setTotalPages(fresh.totalPages);
         setPage(1);
+        // 预加载首屏图片
+        prefetchImages(fresh.items.slice(0, 20).map((i) => i.url));
+        // 首屏加载后自动开始加载后续页
+        if (fresh.totalPages > 1) {
+          setTimeout(() => loadImages(2), LOAD_INTERVAL);
+        }
       } catch {
         // 网络失败，保持缓存数据
       } finally {
@@ -731,7 +748,7 @@ export default function GalleryPage() {
               const dateStr = new Date(img.created_at).toLocaleDateString("zh-CN");
               const isSel = selected.has(img.created_at);
               return (
-                <div key={img.created_at} style={{
+                <div key={img.created_at} data-gallery-date={dateStr} data-gallery-id={img.created_at} style={{
                   height: 200,
                   flexShrink: 0,
                 }}
@@ -773,7 +790,7 @@ export default function GalleryPage() {
           </div>
         </Image.PreviewGroup>
         <div ref={observerRef} style={{ textAlign: "center", padding: "24px 16px" }}>
-          {loading && <Spin size="small" />}
+          {loading && page < totalPages && <Spin size="small" />}
           {!loading && page < totalPages && (
             <Button type="link" icon={<ArrowDownOutlined />} onClick={() => loadImages(page + 1)} style={{ fontSize: 14 }}>加载更多</Button>
           )}
@@ -805,7 +822,7 @@ toolbarRender: (originalNode: React.ReactNode, info: { current: number; actions:
             {images.map((img) => {
               const isSel = selected.has(img.created_at);
               return (
-              <div key={img.created_at} style={{
+              <div key={img.created_at} data-gallery-date={new Date(img.created_at).toLocaleDateString("zh-CN")} data-gallery-id={img.created_at} style={{
                 breakInside: "avoid", marginBottom: 0,
                 lineHeight: 0, fontSize: 0,
                 position: "relative",
@@ -832,7 +849,7 @@ toolbarRender: (originalNode: React.ReactNode, info: { current: number; actions:
           </div>
         </Image.PreviewGroup>
         <div ref={observerRef} style={{ textAlign: "center", padding: "24px 16px" }}>
-          {loading && <Spin size="small" />}
+          {loading && page < totalPages && <Spin size="small" />}
           {!loading && page < totalPages && (
             <Button type="link" icon={<ArrowDownOutlined />} onClick={() => loadImages(page + 1)} style={{ fontSize: 14 }}>加载更多</Button>
           )}
@@ -859,6 +876,8 @@ toolbarRender: (originalNode: React.ReactNode, info: { current: number; actions:
           selected={selected}
           toggleSelect={toggleSelect}
           accentColor={accentColor}
+          activeDate={timelineActiveDate}
+          onActiveDateChange={setTimelineActiveDate}
         />
       ) : viewMode === "free" ? (
         <FreeView
@@ -922,7 +941,7 @@ toolbarRender: (originalNode: React.ReactNode, info: { current: number; actions:
                 if (isSimple) {
                   /* ===== 简洁列表：仅日期 + 文件名 ===== */
                   return (
-                    <div key={img.created_at} id={`list-row-${img.created_at}`}
+                    <div key={img.created_at} id={`list-row-${img.created_at}`} data-gallery-date={dateShort} data-gallery-id={img.created_at}
                       onClick={batchMode ? () => toggleSelect(img.created_at) : undefined}
                       style={{
                         display: "flex", alignItems: "center", gap: 10,
@@ -953,7 +972,7 @@ toolbarRender: (originalNode: React.ReactNode, info: { current: number; actions:
                   );
                 }
                 return (
-                  <div key={img.created_at} id={`list-row-${img.created_at}`} className="gallery-list-row"
+                  <div key={img.created_at} id={`list-row-${img.created_at}`} className="gallery-list-row" data-gallery-date={dateShort} data-gallery-id={img.created_at}
                     onClick={batchMode ? () => toggleSelect(img.created_at) : undefined}
                     style={{
                       display: "flex", alignItems: "center", gap: 12,
@@ -1011,7 +1030,7 @@ toolbarRender: (originalNode: React.ReactNode, info: { current: number; actions:
 
               return (
                 <Dropdown key={img.created_at} menu={makeImgCtxMenu(img)} trigger={['contextMenu']}>
-                <Card id={`card-${img.created_at}`} size="small" hoverable
+                <Card id={`card-${img.created_at}`} data-gallery-date={dateStr} data-gallery-id={img.created_at} size="small" hoverable
                   style={{
                     borderRadius: 12, overflow: "hidden",
                     outline: batchMode && isSel ? `2px solid ${accentColor}` : undefined,
@@ -1051,7 +1070,7 @@ toolbarRender: (originalNode: React.ReactNode, info: { current: number; actions:
           </div>
 
           <div ref={observerRef} style={{ textAlign: "center", padding: "24px 16px" }}>
-            {loading && <Spin size="small" />}
+            {loading && page < totalPages && <Spin size="small" />}
             {!loading && page < totalPages && (
               <Button type="link" icon={<ArrowDownOutlined />}
                 onClick={() => loadImages(page + 1)} style={{ fontSize: 14 }}>加载更多</Button>
@@ -1106,6 +1125,16 @@ toolbarRender: (originalNode: React.ReactNode, info: { current: number; actions:
         ) : null}
       </Modal>
 
+      {/* 右侧时间轴快速滑动条 */}
+      <TimelineScrollBar
+        images={images}
+        accentColor={accentColor}
+        isDesktop={isDesktop}
+        viewMode={viewMode}
+        timelineActiveDate={timelineActiveDate}
+        onTimelineDateChange={setTimelineActiveDate}
+      />
+
       {/* 幻灯播放进度条 */}
       {slideshow && (
         <>
@@ -1152,7 +1181,7 @@ toolbarRender: (originalNode: React.ReactNode, info: { current: number; actions:
 
 /* ===== 时间线视图组件 ===== */
 
-function TimelineView({ images, loading, page, totalPages, loadImages, getImgProps, downloadOne, copyOne, handleQueryInfo, batchMode, selected, toggleSelect, accentColor }: {
+function TimelineView({ images, loading, page, totalPages, loadImages, getImgProps, downloadOne, copyOne, handleQueryInfo, batchMode, selected, toggleSelect, accentColor, activeDate, onActiveDateChange }: {
   images: ImageItem[];
   loading: boolean;
   page: number;
@@ -1166,9 +1195,10 @@ function TimelineView({ images, loading, page, totalPages, loadImages, getImgPro
   selected: Set<number>;
   toggleSelect: (id: number) => void;
   accentColor: string;
+  activeDate: string;
+  onActiveDateChange: (date: string) => void;
 }) {
   const timelineRef = useRef<HTMLDivElement>(null);
-  const [activeDate, setActiveDate] = useState<string>("");
 
   const makeTools = useCallback((url: string) => {
     const btnStyle: React.CSSProperties = {
@@ -1229,7 +1259,7 @@ function TimelineView({ images, loading, page, totalPages, loadImages, getImgPro
   // 默认选中最新日期
   useEffect(() => {
     if (dateGroups.length > 0 && !activeDate) {
-      setActiveDate(dateGroups[0][0]);
+      onActiveDateChange(dateGroups[0][0]);
     }
   }, [dateGroups, activeDate]);
 
@@ -1279,7 +1309,7 @@ function TimelineView({ images, loading, page, totalPages, loadImages, getImgPro
               const isActive = date === activeDate;
               const parts = date.split("/");
               return (
-                <div key={date} onClick={() => setActiveDate(date)} style={{
+                <div key={date} onClick={() => onActiveDateChange(date)} style={{
                   flexShrink: 0, cursor: "pointer",
                   textAlign: "center",
                   userSelect: "none",
@@ -1335,8 +1365,9 @@ toolbarRender: (originalNode: React.ReactNode, info: { current: number }) => {
         }}>
           {activeImages.map((img) => {
             const isSel = selected.has(img.created_at);
+            const imgDateStr = new Date(img.created_at).toLocaleDateString("zh-CN");
             return (
-            <div key={img.created_at} style={{
+            <div key={img.created_at} data-gallery-date={imgDateStr} data-gallery-id={img.created_at} style={{
               borderRadius: 8, overflow: "hidden",
               background: "var(--ant-color-fill-quaternary)",
               position: "relative",
@@ -1366,7 +1397,7 @@ toolbarRender: (originalNode: React.ReactNode, info: { current: number }) => {
       </Image.PreviewGroup>
 
       <div ref={observerRef} style={{ textAlign: "center", padding: "24px 16px" }}>
-        {loading && <Spin size="small" />}
+        {loading && page < totalPages && <Spin size="small" />}
         {!loading && page < totalPages && (
           <Button type="link" icon={<ArrowDownOutlined />} onClick={() => loadImages(page + 1)} style={{ fontSize: 14 }}>加载更多</Button>
         )}
@@ -1760,7 +1791,7 @@ function FreeView({ images, loading, page, totalPages, loadImages, getImgProps, 
       </Image.PreviewGroup>
 
       <div ref={observerRef} style={{ position: "absolute", bottom: 0, left: 0, right: 0, textAlign: "center", padding: "24px", pointerEvents: "auto" }}>
-        {loading && <Spin size="small" />}
+        {loading && page < totalPages && <Spin size="small" />}
         {!loading && page < totalPages && (
           <Button type="link" icon={<ArrowDownOutlined />} onClick={() => loadImages(page + 1)}>加载更多</Button>
         )}

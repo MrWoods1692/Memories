@@ -2,6 +2,7 @@ import type {
   AuthResponse,
   HealthResponse,
   ImageBedInfo,
+  ImageItem,
   OAuthStartResponse,
   PaginatedResponse,
   UploadImageResponse,
@@ -173,11 +174,81 @@ export function getOAuthError(): OAuthErrorInfo | null {
 /* ==================== 图片 ==================== */
 
 const IMAGES_CACHE_KEY = "images_cache";
+const IMAGES_FULL_CACHE_KEY = "images_full_cache";
 const CACHE_TTL = 10 * 60 * 1000; // 10 分钟
 
 interface CacheEntry {
   data: PaginatedResponse;
   timestamp: number;
+}
+
+interface FullCacheEntry {
+  /** 去重后的全部图片列表（按 created_at 降序） */
+  items: ImageItem[];
+  /** 已知的总页数（可能过期，仅参考） */
+  totalPages: number;
+  timestamp: number;
+}
+
+/** 获取缓存中的全部图片（合并所有分页缓存），供首屏瞬时展示 */
+export function fetchAllCachedImages(): ImageItem[] {
+  try {
+    // 优先读统一缓存
+    const fullRaw = localStorage.getItem(IMAGES_FULL_CACHE_KEY);
+    if (fullRaw) {
+      const entry: FullCacheEntry = JSON.parse(fullRaw);
+      if (Date.now() - entry.timestamp < CACHE_TTL) {
+        return entry.items;
+      }
+    }
+  } catch { /* ignore */ }
+
+  // 降级：合并所有分页缓存
+  try {
+    const allItems: ImageItem[] = [];
+    const seen = new Set<number>();
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!key?.startsWith(`${IMAGES_CACHE_KEY}_`)) continue;
+      try {
+        const raw = localStorage.getItem(key);
+        if (!raw) continue;
+        const entry: CacheEntry = JSON.parse(raw);
+        if (Date.now() - entry.timestamp >= CACHE_TTL) continue;
+        for (const item of entry.data.items) {
+          if (!seen.has(item.created_at)) {
+            seen.add(item.created_at);
+            allItems.push(item);
+          }
+        }
+      } catch { /* skip corrupt entry */ }
+    }
+    // 按时间降序
+    allItems.sort((a, b) => b.created_at - a.created_at);
+    return allItems;
+  } catch { return []; }
+}
+
+/** 更新统一全量缓存 */
+function updateFullCache(items: ImageItem[], totalPages: number) {
+  try {
+    const existing = new Map<number, ImageItem>();
+    // 先加载现有缓存
+    const fullRaw = localStorage.getItem(IMAGES_FULL_CACHE_KEY);
+    if (fullRaw) {
+      const entry: FullCacheEntry = JSON.parse(fullRaw);
+      entry.items.forEach((item) => existing.set(item.created_at, item));
+    }
+    // 合并新数据（新数据覆盖旧数据）
+    items.forEach((item) => existing.set(item.created_at, item));
+    // 按时间降序
+    const merged = Array.from(existing.values()).sort((a, b) => b.created_at - a.created_at);
+    localStorage.setItem(IMAGES_FULL_CACHE_KEY, JSON.stringify({
+      items: merged,
+      totalPages,
+      timestamp: Date.now(),
+    }));
+  } catch { /* quota exceeded */ }
 }
 
 /** GET /images?page=1&limit=20 — 带本地缓存，forceRefresh 可跳过缓存 */
@@ -188,7 +259,7 @@ export async function fetchImages(
 ): Promise<PaginatedResponse> {
   const cacheKey = `${IMAGES_CACHE_KEY}_${page}_${limit}`;
 
-  // 尝试读取缓存（forceRefresh 时跳过）
+  // 尝试读取分页缓存（forceRefresh 时跳过）
   if (!forceRefresh) {
     try {
       const raw = localStorage.getItem(cacheKey);
@@ -204,10 +275,13 @@ export async function fetchImages(
   // 请求新数据
   const data = await getRequest<PaginatedResponse>(`/images?page=${page}&limit=${limit}`);
 
-  // 写入缓存
+  // 写入分页缓存
   try {
     localStorage.setItem(cacheKey, JSON.stringify({ data, timestamp: Date.now() }));
-  } catch { /* quota exceeded, ignore */ }
+  } catch { /* ignore */ }
+
+  // 同时更新统一全量缓存
+  updateFullCache(data.items, data.totalPages);
 
   return data;
 }
@@ -221,7 +295,26 @@ export function clearImagesCache(): void {
       if (key?.startsWith(IMAGES_CACHE_KEY)) keys.push(key);
     }
     keys.forEach((k) => localStorage.removeItem(k));
+    localStorage.removeItem(IMAGES_FULL_CACHE_KEY);
   } catch { /* ignore */ }
+}
+
+/** 图片资源预加载：将 URL 列表注入 <link rel="prefetch"> 让浏览器后台缓存 */
+export function prefetchImages(urls: string[]): void {
+  const existing = new Set(
+    Array.from(document.querySelectorAll('link[rel="prefetch"][data-memories-prefetch]'))
+      .map((el) => el.getAttribute("href"))
+  );
+  urls.forEach((url) => {
+    if (existing.has(url)) return;
+    const link = document.createElement("link");
+    link.rel = "prefetch";
+    link.href = url;
+    link.setAttribute("data-memories-prefetch", "");
+    // as="image" 让浏览器按图片缓存策略处理
+    link.setAttribute("as", "image");
+    document.head.appendChild(link);
+  });
 }
 
 /** POST /images — 上传图片 URL 到服务端 */
