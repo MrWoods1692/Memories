@@ -147,7 +147,7 @@ const AboutPage: React.FC = () => {
                   ))}
                   <div className="flex items-center justify-between pt-3">
                     <span className="font-semibold">{t.aboutPage.costTotal}</span>
-                    <span className="font-bold text-lg text-primary tabular-nums">¥3,951</span>
+                    <span className="font-bold text-lg text-primary tabular-nums">¥4,171</span>
                   </div>
                 </div>
               </CardContent>
