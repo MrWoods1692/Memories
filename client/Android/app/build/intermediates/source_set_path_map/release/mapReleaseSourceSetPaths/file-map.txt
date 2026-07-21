@@ -1,0 +1,7 @@
+com.mrcwoods.memories.app-pngs-0 /home/mrcwoods/code/Memories/client/Android/app/build/generated/res/pngs/release
+com.mrcwoods.memories.app-resValues-1 /home/mrcwoods/code/Memories/client/Android/app/build/generated/res/resValues/release
+com.mrcwoods.memories.app-packageReleaseResources-2 /home/mrcwoods/code/Memories/client/Android/app/build/intermediates/incremental/release/packageReleaseResources/merged.dir
+com.mrcwoods.memories.app-packageReleaseResources-3 /home/mrcwoods/code/Memories/client/Android/app/build/intermediates/incremental/release/packageReleaseResources/stripped.dir
+com.mrcwoods.memories.app-release-4 /home/mrcwoods/code/Memories/client/Android/app/build/intermediates/merged_res/release/mergeReleaseResources
+com.mrcwoods.memories.app-main-5 /home/mrcwoods/code/Memories/client/Android/app/src/main/res
+com.mrcwoods.memories.app-release-6 /home/mrcwoods/code/Memories/client/Android/app/src/release/res

@@ -1,0 +1,4 @@
+#Tue Jul 21 12:50:36 CST 2026
+base.0=/home/mrcwoods/code/Memories/client/Android/app/build/intermediates/dex/release/mergeDexRelease/classes.dex
+renamed.0=classes.dex
+path.0=classes.dex

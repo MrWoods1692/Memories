@@ -42,85 +42,23 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     );
 
     /**
-     * 获取数据库路径：统一使用内部存储。
-     * Android 11+ 的 Scoped Storage 禁止 SQLite 直接打开外部路径，
-     * 数据持久化通过 {@link #backupToExternal()} 实现。
+     * 获取数据库路径：直接使用外部存储 /storage/emulated/0/Memories/，
+     * 这样卸载应用后数据库依然保留。
+     * 应用已申请 MANAGE_EXTERNAL_STORAGE 权限。
      */
     public static String resolveDatabasePath(Context ctx) {
         if (dbPath != null) return dbPath;
-        dbPath = ctx.getDatabasePath(DB_NAME).getAbsolutePath();
+        File extDir = new File(Environment.getExternalStorageDirectory(), "Memories");
+        if (!extDir.exists()) {
+            extDir.mkdirs();
+        }
+        dbPath = new File(extDir, DB_NAME).getAbsolutePath();
         return dbPath;
     }
 
-    /** 外部备份文件路径（卸载后保留） */
-    public static File getExternalBackupFile() {
-        return new File(Environment.getExternalStorageDirectory(), "Memories/" + DB_NAME);
-    }
-
-    private static volatile boolean restoring = false;
-
-    /**
-     * 从外部备份恢复数据（内部库为空且有外部备份时自动执行）。
-     * 应在首次 getSharedDb() 之后调用。
-     */
-    public void ensureRestoredFromExternal() {
-        if (restoring) return; // 防止递归
-        restoring = true;
-        try {
-            SQLiteDatabase db = getSharedDb();
-            Cursor c = db.rawQuery("SELECT COUNT(*) FROM images", null);
-            boolean isEmpty = !c.moveToFirst() || c.getInt(0) == 0;
-            c.close();
-
-            if (isEmpty) {
-                File ext = getExternalBackupFile();
-                if (ext.exists() && ext.length() > 0) {
-                    if (sharedDb != null && sharedDb.isOpen()) {
-                        sharedDb.close();
-                    }
-                    sharedDb = null;
-                    try {
-                        copyFile(ext, new File(dbPath));
-                        Log.i("DatabaseHelper", "Restored DB from external backup (" + ext.length() + " bytes)");
-                    } catch (Exception e) {
-                        Log.w("DatabaseHelper", "Failed to restore from external backup, will use empty DB", e);
-                    }
-                    // 确保数据库连接已重新打开（无论恢复成功与否）
-                    getSharedDb();
-                }
-            }
-        } catch (Exception e) {
-            Log.w("DatabaseHelper", "Failed to check/restore from external backup", e);
-        } finally {
-            restoring = false;
-        }
-    }
-
-    private static volatile long lastBackupTime = 0;
-    private static final long BACKUP_COOLDOWN_MS = 10_000; // 10 秒冷却
-
-    /** 备份内部数据库到外部存储（异步，带冷却，卸载后数据保留） */
-    public void backupToExternal() {
-        long now = System.currentTimeMillis();
-        if (now - lastBackupTime < BACKUP_COOLDOWN_MS) return;
-        lastBackupTime = now;
-
-        requestLogExecutor.execute(() -> {
-            try {
-                SQLiteDatabase db = getSharedDb();
-                if (db != null && db.isOpen()) {
-                    db.execSQL("PRAGMA wal_checkpoint(FULL)");
-                }
-                File ext = getExternalBackupFile();
-                File extDir = ext.getParentFile();
-                if (extDir != null && !extDir.exists()) {
-                    extDir.mkdirs();
-                }
-                copyFile(new File(dbPath), ext);
-            } catch (Exception e) {
-                Log.w("DatabaseHelper", "Failed to backup to external", e);
-            }
-        });
+    /** 获取数据库文件（供导入/导出使用） */
+    public static File getDatabaseFile() {
+        return new File(dbPath != null ? dbPath : Environment.getExternalStorageDirectory() + "/Memories/" + DB_NAME);
     }
 
     private static void copyFile(File src, File dest) throws Exception {
@@ -137,19 +75,73 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         }
     }
 
+    /**
+     * 从外部文件导入数据库。关闭当前连接，用源文件替换当前数据库，再重新打开。
+     * @param sourceFile 源数据库文件
+     * @return 导入后的 images 表行数，-1 表示失败
+     */
+    public long importDatabase(File sourceFile) throws Exception {
+        if (sourceFile == null || !sourceFile.exists() || sourceFile.length() == 0) {
+            throw new Exception("源文件不存在或为空");
+        }
+
+        // 验证源文件是有效的 SQLite 数据库
+        SQLiteDatabase testDb = null;
+        try {
+            testDb = SQLiteDatabase.openDatabase(
+                    sourceFile.getAbsolutePath(), null, SQLiteDatabase.OPEN_READONLY);
+            Cursor c = testDb.rawQuery("SELECT COUNT(*) FROM images", null);
+            if (!c.moveToFirst()) {
+                c.close();
+                testDb.close();
+                throw new Exception("无法读取源数据库的 images 表");
+            }
+            c.close();
+        } catch (Exception e) {
+            if (testDb != null) testDb.close();
+            throw new Exception("源文件不是有效的 Memories 数据库: " + e.getMessage());
+        }
+        if (testDb != null) testDb.close();
+
+        // 关闭当前数据库连接
+        if (sharedDb != null && sharedDb.isOpen()) {
+            sharedDb.close();
+        }
+        sharedDb = null;
+
+        // 复制源文件到目标路径（覆盖）
+        File targetFile = new File(dbPath);
+        copyFile(sourceFile, targetFile);
+
+        // 清理可能的 WAL 文件（外部存储不支持）
+        File walFile = new File(dbPath + "-wal");
+        if (walFile.exists()) walFile.delete();
+        File shmFile = new File(dbPath + "-shm");
+        if (shmFile.exists()) shmFile.delete();
+        File journalFile = new File(dbPath + "-journal");
+        if (journalFile.exists()) journalFile.delete();
+
+        // 重新打开数据库
+        SQLiteDatabase db = getSharedDb();
+        Cursor c = db.rawQuery("SELECT COUNT(*) FROM images", null);
+        long count = c.moveToFirst() ? c.getLong(0) : 0;
+        c.close();
+
+        Log.i("DatabaseHelper", "Database imported successfully, " + count + " images");
+        return count;
+    }
+
     public DatabaseHelper(Context ctx) {
         super(ctx, resolveDatabasePath(ctx), null, DB_VERSION);
-        // 每次数据库写入后自动备份到外部存储
-        WriteQueue.setOnAfterWrite(this::backupToExternal);
     }
 
     /** 共享连接，确保 WriteQueue 写入对所有实例可见 */
     private synchronized SQLiteDatabase getSharedDb() {
         if (sharedDb == null || !sharedDb.isOpen()) {
-            boolean firstOpen = (sharedDb == null);
             sharedDb = super.getWritableDatabase();
             try {
-                sharedDb.execSQL("PRAGMA journal_mode=WAL");
+                // 外部存储不支持 WAL 模式的文件锁，使用 DELETE 模式
+                sharedDb.execSQL("PRAGMA journal_mode=DELETE");
                 sharedDb.execSQL("PRAGMA synchronous=NORMAL");
                 sharedDb.execSQL("PRAGMA temp_store=MEMORY");
                 sharedDb.execSQL("PRAGMA locking_mode=NORMAL");
@@ -158,10 +150,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 sharedDb.execSQL("PRAGMA cache_size=-8000");
                 sharedDb.execSQL("PRAGMA mmap_size=33554432");
             } catch (Exception ignored) {
-                // WAL 对部分设备/路径可能不支持，降级为普通模式即可
-            }
-            if (firstOpen) {
-                ensureRestoredFromExternal();
+                // 部分 PRAGMA 可能不支持，降级即可
             }
         }
         return sharedDb;
@@ -208,7 +197,9 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 ContentValues cv = new ContentValues();
                 cv.put("url", url);
                 cv.put("created_at", System.currentTimeMillis());
-                return db.insert("images", null, cv);
+                long result = db.insert("images", null, cv);
+                markDatabaseDirty();
+                return result;
             }).get();
         } catch (Exception e) {
             Log.e("DatabaseHelper", "addImage error", e);
@@ -439,6 +430,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             return WriteQueue.submit(() -> {
                 SQLiteDatabase db = getSharedDb();
                 int rows = db.delete("images", "rowid=?", new String[]{String.valueOf(id)});
+                if (rows > 0) markDatabaseDirty();
                 return rows > 0;
             }).get();
         } catch (Exception e) {
@@ -454,6 +446,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 ContentValues cv = new ContentValues();
                 cv.put("status", status);
                 int rows = db.update("images", cv, "rowid=?", new String[]{String.valueOf(id)});
+                if (rows > 0) markDatabaseDirty();
                 return rows > 0;
             }).get();
         } catch (Exception e) {
@@ -479,6 +472,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 cv.put("qq", qq);
                 cv.put("role", role);
                 db.insertWithOnConflict("users", null, cv, SQLiteDatabase.CONFLICT_REPLACE);
+                markDatabaseDirty();
                 return null;
             }).get();
         } catch (Exception e) {
@@ -515,6 +509,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 cv.put("k", k);
                 cv.put("v", v);
                 db.insertWithOnConflict("config", null, cv, SQLiteDatabase.CONFLICT_REPLACE);
+                // 不在此处标记脏数据，避免备份配置的写入触发循环
                 return null;
             }).get();
         } catch (Exception e) {
@@ -553,6 +548,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             return WriteQueue.submit(() -> {
                 SQLiteDatabase db = getSharedDb();
                 int rows = db.delete("users", "qq=?", new String[]{qq});
+                if (rows > 0) markDatabaseDirty();
                 return rows > 0;
             }).get();
         } catch (Exception e) {
@@ -572,6 +568,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 cv.put("reason", reason != null ? reason : "");
                 cv.put("banned_at", System.currentTimeMillis());
                 db.insertWithOnConflict("banned_users", null, cv, SQLiteDatabase.CONFLICT_REPLACE);
+                markDatabaseDirty();
                 return null;
             }).get();
         } catch (Exception e) {
@@ -584,6 +581,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             return WriteQueue.submit(() -> {
                 SQLiteDatabase db = getSharedDb();
                 int rows = db.delete("banned_users", "qq=?", new String[]{qq});
+                if (rows > 0) markDatabaseDirty();
                 return rows > 0;
             }).get();
         } catch (Exception e) {
@@ -954,7 +952,9 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         try {
             return WriteQueue.submit(() -> {
                 SQLiteDatabase db = getSharedDb();
-                return db.delete("images", "status=?", new String[]{"2"});
+                int deleted = db.delete("images", "status=?", new String[]{"2"});
+                if (deleted > 0) markDatabaseDirty();
+                return deleted;
             }).get();
         } catch (Exception e) {
             Log.e("DatabaseHelper", "cleanupRejectedImages error", e);
@@ -1005,5 +1005,28 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             Log.e("DatabaseHelper", "cleanupOldDailyStats error", e);
             return 0;
         }
+    }
+
+    // ==================== 数据库备份追踪 ====================
+
+    /**
+     * 标记数据库已被修改（在每次写操作后调用）。
+     * 设置 config 中的 last_db_change_ts 为当前时间戳。
+     */
+    private void markDatabaseDirty() {
+        try {
+            SQLiteDatabase db = getSharedDb();
+            ContentValues cv = new ContentValues();
+            cv.put("k", "last_db_change_ts");
+            cv.put("v", String.valueOf(System.currentTimeMillis()));
+            db.insertWithOnConflict("config", null, cv, SQLiteDatabase.CONFLICT_REPLACE);
+        } catch (Exception e) {
+            Log.e("DatabaseHelper", "markDatabaseDirty error", e);
+        }
+    }
+
+    private static long parseLong(String s, long def) {
+        if (s == null || s.isEmpty()) return def;
+        try { return Long.parseLong(s); } catch (NumberFormatException e) { return def; }
     }
 }

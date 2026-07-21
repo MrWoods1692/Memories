@@ -1,0 +1,118 @@
+[
+    {
+        "merged": "/home/mrcwoods/.gradle/daemon/8.3/com.example.memories.app-merged_res-17:/layout_activity_main.xml.flat",
+        "source": "/home/mrcwoods/.gradle/daemon/8.3/com.example.memories.app-main-18:/layout/activity_main.xml"
+    },
+    {
+        "merged": "/home/mrcwoods/.gradle/daemon/8.3/com.example.memories.app-merged_res-17:/drawable-mdpi-v4_notification_bg_normal_pressed.9.png.flat",
+        "source": "/home/mrcwoods/.gradle/daemon/8.3/com.example.memories.app-core-1.9.0-3:/drawable-mdpi-v4/notification_bg_normal_pressed.9.png"
+    },
+    {
+        "merged": "/home/mrcwoods/.gradle/daemon/8.3/com.example.memories.app-merged_res-17:/drawable-xhdpi-v4_notification_bg_normal.9.png.flat",
+        "source": "/home/mrcwoods/.gradle/daemon/8.3/com.example.memories.app-core-1.9.0-3:/drawable-xhdpi-v4/notification_bg_normal.9.png"
+    },
+    {
+        "merged": "/home/mrcwoods/.gradle/daemon/8.3/com.example.memories.app-merged_res-17:/drawable-mdpi-v4_notification_bg_low_pressed.9.png.flat",
+        "source": "/home/mrcwoods/.gradle/daemon/8.3/com.example.memories.app-core-1.9.0-3:/drawable-mdpi-v4/notification_bg_low_pressed.9.png"
+    },
+    {
+        "merged": "/home/mrcwoods/.gradle/daemon/8.3/com.example.memories.app-merged_res-17:/drawable_notification_icon_background.xml.flat",
+        "source": "/home/mrcwoods/.gradle/daemon/8.3/com.example.memories.app-core-1.9.0-3:/drawable/notification_icon_background.xml"
+    },
+    {
+        "merged": "com.example.memories.app-merged_res-17:/xml_accessibility_service_config.xml.flat",
+        "source": "com.example.memories.app-main-18:/xml/accessibility_service_config.xml"
+    },
+    {
+        "merged": "/home/mrcwoods/.gradle/daemon/8.3/com.example.memories.app-merged_res-17:/drawable-xhdpi-v4_notification_bg_normal_pressed.9.png.flat",
+        "source": "/home/mrcwoods/.gradle/daemon/8.3/com.example.memories.app-core-1.9.0-3:/drawable-xhdpi-v4/notification_bg_normal_pressed.9.png"
+    },
+    {
+        "merged": "/home/mrcwoods/.gradle/daemon/8.3/com.example.memories.app-merged_res-17:/drawable_notification_bg.xml.flat",
+        "source": "/home/mrcwoods/.gradle/daemon/8.3/com.example.memories.app-core-1.9.0-3:/drawable/notification_bg.xml"
+    },
+    {
+        "merged": "/home/mrcwoods/.gradle/daemon/8.3/com.example.memories.app-merged_res-17:/drawable-hdpi-v4_notification_bg_low_normal.9.png.flat",
+        "source": "/home/mrcwoods/.gradle/daemon/8.3/com.example.memories.app-core-1.9.0-3:/drawable-hdpi-v4/notification_bg_low_normal.9.png"
+    },
+    {
+        "merged": "/home/mrcwoods/.gradle/daemon/8.3/com.example.memories.app-merged_res-17:/drawable-xhdpi-v4_notification_bg_low_normal.9.png.flat",
+        "source": "/home/mrcwoods/.gradle/daemon/8.3/com.example.memories.app-core-1.9.0-3:/drawable-xhdpi-v4/notification_bg_low_normal.9.png"
+    },
+    {
+        "merged": "/home/mrcwoods/.gradle/daemon/8.3/com.example.memories.app-merged_res-17:/drawable-hdpi-v4_notification_bg_normal.9.png.flat",
+        "source": "/home/mrcwoods/.gradle/daemon/8.3/com.example.memories.app-core-1.9.0-3:/drawable-hdpi-v4/notification_bg_normal.9.png"
+    },
+    {
+        "merged": "/home/mrcwoods/.gradle/daemon/8.3/com.example.memories.app-merged_res-17:/layout-v21_notification_template_custom_big.xml.flat",
+        "source": "/home/mrcwoods/.gradle/daemon/8.3/com.example.memories.app-core-1.9.0-3:/layout-v21/notification_template_custom_big.xml"
+    },
+    {
+        "merged": "/home/mrcwoods/.gradle/daemon/8.3/com.example.memories.app-merged_res-17:/layout_notification_template_part_chronometer.xml.flat",
+        "source": "/home/mrcwoods/.gradle/daemon/8.3/com.example.memories.app-core-1.9.0-3:/layout/notification_template_part_chronometer.xml"
+    },
+    {
+        "merged": "/home/mrcwoods/.gradle/daemon/8.3/com.example.memories.app-merged_res-17:/drawable-v21_notification_action_background.xml.flat",
+        "source": "/home/mrcwoods/.gradle/daemon/8.3/com.example.memories.app-core-1.9.0-3:/drawable-v21/notification_action_background.xml"
+    },
+    {
+        "merged": "/home/mrcwoods/.gradle/daemon/8.3/com.example.memories.app-merged_res-17:/layout_notification_template_part_time.xml.flat",
+        "source": "/home/mrcwoods/.gradle/daemon/8.3/com.example.memories.app-core-1.9.0-3:/layout/notification_template_part_time.xml"
+    },
+    {
+        "merged": "/home/mrcwoods/.gradle/daemon/8.3/com.example.memories.app-merged_res-17:/drawable-hdpi-v4_notify_panel_notification_icon_bg.png.flat",
+        "source": "/home/mrcwoods/.gradle/daemon/8.3/com.example.memories.app-core-1.9.0-3:/drawable-hdpi-v4/notify_panel_notification_icon_bg.png"
+    },
+    {
+        "merged": "/home/mrcwoods/.gradle/daemon/8.3/com.example.memories.app-merged_res-17:/drawable-xhdpi-v4_notification_bg_low_pressed.9.png.flat",
+        "source": "/home/mrcwoods/.gradle/daemon/8.3/com.example.memories.app-core-1.9.0-3:/drawable-xhdpi-v4/notification_bg_low_pressed.9.png"
+    },
+    {
+        "merged": "/home/mrcwoods/.gradle/daemon/8.3/com.example.memories.app-merged_res-17:/drawable_notification_bg_low.xml.flat",
+        "source": "/home/mrcwoods/.gradle/daemon/8.3/com.example.memories.app-core-1.9.0-3:/drawable/notification_bg_low.xml"
+    },
+    {
+        "merged": "/home/mrcwoods/.gradle/daemon/8.3/com.example.memories.app-merged_res-17:/drawable-xhdpi-v4_notify_panel_notification_icon_bg.png.flat",
+        "source": "/home/mrcwoods/.gradle/daemon/8.3/com.example.memories.app-core-1.9.0-3:/drawable-xhdpi-v4/notify_panel_notification_icon_bg.png"
+    },
+    {
+        "merged": "/home/mrcwoods/.gradle/daemon/8.3/com.example.memories.app-merged_res-17:/drawable-hdpi-v4_notification_bg_low_pressed.9.png.flat",
+        "source": "/home/mrcwoods/.gradle/daemon/8.3/com.example.memories.app-core-1.9.0-3:/drawable-hdpi-v4/notification_bg_low_pressed.9.png"
+    },
+    {
+        "merged": "/home/mrcwoods/.gradle/daemon/8.3/com.example.memories.app-merged_res-17:/layout-v21_notification_action_tombstone.xml.flat",
+        "source": "/home/mrcwoods/.gradle/daemon/8.3/com.example.memories.app-core-1.9.0-3:/layout-v21/notification_action_tombstone.xml"
+    },
+    {
+        "merged": "/home/mrcwoods/.gradle/daemon/8.3/com.example.memories.app-merged_res-17:/layout_custom_dialog.xml.flat",
+        "source": "/home/mrcwoods/.gradle/daemon/8.3/com.example.memories.app-core-1.9.0-3:/layout/custom_dialog.xml"
+    },
+    {
+        "merged": "/home/mrcwoods/.gradle/daemon/8.3/com.example.memories.app-merged_res-17:/layout-v21_notification_action.xml.flat",
+        "source": "/home/mrcwoods/.gradle/daemon/8.3/com.example.memories.app-core-1.9.0-3:/layout-v21/notification_action.xml"
+    },
+    {
+        "merged": "/home/mrcwoods/.gradle/daemon/8.3/com.example.memories.app-merged_res-17:/layout-v21_notification_template_icon_group.xml.flat",
+        "source": "/home/mrcwoods/.gradle/daemon/8.3/com.example.memories.app-core-1.9.0-3:/layout-v21/notification_template_icon_group.xml"
+    },
+    {
+        "merged": "/home/mrcwoods/.gradle/daemon/8.3/com.example.memories.app-merged_res-17:/drawable-mdpi-v4_notify_panel_notification_icon_bg.png.flat",
+        "source": "/home/mrcwoods/.gradle/daemon/8.3/com.example.memories.app-core-1.9.0-3:/drawable-mdpi-v4/notify_panel_notification_icon_bg.png"
+    },
+    {
+        "merged": "/home/mrcwoods/.gradle/daemon/8.3/com.example.memories.app-merged_res-17:/drawable-mdpi-v4_notification_bg_low_normal.9.png.flat",
+        "source": "/home/mrcwoods/.gradle/daemon/8.3/com.example.memories.app-core-1.9.0-3:/drawable-mdpi-v4/notification_bg_low_normal.9.png"
+    },
+    {
+        "merged": "/home/mrcwoods/.gradle/daemon/8.3/com.example.memories.app-merged_res-17:/drawable_notification_tile_bg.xml.flat",
+        "source": "/home/mrcwoods/.gradle/daemon/8.3/com.example.memories.app-core-1.9.0-3:/drawable/notification_tile_bg.xml"
+    },
+    {
+        "merged": "/home/mrcwoods/.gradle/daemon/8.3/com.example.memories.app-merged_res-17:/drawable-mdpi-v4_notification_bg_normal.9.png.flat",
+        "source": "/home/mrcwoods/.gradle/daemon/8.3/com.example.memories.app-core-1.9.0-3:/drawable-mdpi-v4/notification_bg_normal.9.png"
+    },
+    {
+        "merged": "/home/mrcwoods/.gradle/daemon/8.3/com.example.memories.app-merged_res-17:/drawable-hdpi-v4_notification_bg_normal_pressed.9.png.flat",
+        "source": "/home/mrcwoods/.gradle/daemon/8.3/com.example.memories.app-core-1.9.0-3:/drawable-hdpi-v4/notification_bg_normal_pressed.9.png"
+    }
+]

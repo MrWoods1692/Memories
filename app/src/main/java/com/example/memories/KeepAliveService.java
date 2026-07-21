@@ -14,6 +14,7 @@ import android.util.Log;
 
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.io.File;
 
 /**
  * 周期性保活看门狗服务。
@@ -106,6 +107,9 @@ public class KeepAliveService extends Service {
     private void checkAndRestartServices() {
         // ========== 凌晨 4 点日志自动清理 ==========
         runDailyLogCleanup();
+
+        // ========== WebDAV 自动备份 ==========
+        runBackupCheck();
 
         boolean apiHealthy = false;
         int serverPort = 8080;
@@ -217,6 +221,79 @@ public class KeepAliveService extends Service {
         } catch (Exception e) {
             Log.e(TAG, "Daily log cleanup failed", e);
         }
+    }
+
+    // ==================== WebDAV 滚动备份 ====================
+
+    /** 上次执行滚动备份检查的时间戳 */
+    private long lastRollingCheckTs = 0;
+
+    /**
+     * WebDAV 滚动备份调度检查。
+     * KeepAliveService 每 30 秒触发一次。
+     * - 每 12 小时自动备份到 backups/rolling/memories-12h.db（覆盖）
+     * - 每 24 小时自动备份到 backups/rolling/memories-24h.db（覆盖）
+     */
+    private void runBackupCheck() {
+        long now = System.currentTimeMillis();
+        // 最多每 60 秒检查一次，避免过于频繁的 DB 读取
+        if (now - lastRollingCheckTs < 60000) return;
+        lastRollingCheckTs = now;
+
+        try {
+            DatabaseHelper db = new DatabaseHelper(this);
+
+            String webdavUrl = db.getConfig("webdav_url");
+            if (webdavUrl == null || webdavUrl.isEmpty()) return;
+            String webdavUser = db.getConfig("webdav_user");
+            String webdavPass = db.getConfig("webdav_pass");
+
+            File dbFile = DatabaseHelper.getDatabaseFile();
+            if (!dbFile.exists()) return;
+
+            // ===== 12 小时滚动备份 =====
+            long last12h = parseConfigLong(db, "last_12h_backup_ts", 0);
+            if (now - last12h >= 12L * 3600 * 1000) {
+                performRollingBackup(db, webdavUrl, webdavUser, webdavPass,
+                        dbFile, "backups/rolling/memories-12h.db", "last_12h_backup_ts");
+            }
+
+            // ===== 24 小时滚动备份 =====
+            long last24h = parseConfigLong(db, "last_24h_backup_ts", 0);
+            if (now - last24h >= 24L * 3600 * 1000) {
+                performRollingBackup(db, webdavUrl, webdavUser, webdavPass,
+                        dbFile, "backups/rolling/memories-24h.db", "last_24h_backup_ts");
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Backup check failed", e);
+        }
+    }
+
+    private long parseConfigLong(DatabaseHelper db, String key, long def) {
+        String v = db.getConfig(key);
+        if (v == null || v.isEmpty()) return def;
+        try { return Long.parseLong(v); } catch (NumberFormatException e) { return def; }
+    }
+
+    /**
+     * 执行滚动备份（覆盖式上传）
+     */
+    private void performRollingBackup(DatabaseHelper db, String webdavUrl,
+                                       String webdavUser, String webdavPass,
+                                       File dbFile, String remotePath, String configKey) {
+        new Thread(() -> {
+            try {
+                boolean ok = WebDavBackup.uploadFile(webdavUrl, webdavUser, webdavPass, dbFile, remotePath);
+                if (ok) {
+                    db.setConfig(configKey, String.valueOf(System.currentTimeMillis()));
+                    Log.i(TAG, "Rolling backup OK: " + remotePath + " (" + dbFile.length() + " bytes)");
+                } else {
+                    Log.e(TAG, "Rolling backup FAILED: " + remotePath);
+                }
+            } catch (Throwable e) {
+                Log.e(TAG, "Rolling backup error", e);
+            }
+        }, "memories-rolling-backup").start();
     }
 
     private void restartServerService() {

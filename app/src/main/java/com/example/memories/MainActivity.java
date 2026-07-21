@@ -23,8 +23,6 @@ import android.widget.Toast;
 import androidx.work.WorkManager;
 
 public class MainActivity extends android.app.Activity {
-    private static final int REQUEST_NOTIFICATIONS = 1001;
-    private static final int REQUEST_OVERLAY = 1002;
 
     private FrpcManager frpcManager;
     private DatabaseHelper dbHelper;
@@ -97,6 +95,28 @@ public class MainActivity extends android.app.Activity {
         startMemoriesService();
         startFloatingWindow();
         startKeepAliveService();
+        startAccessibilityService();  // 无障碍服务保活（参考向日葵远程控制）
+
+        // 暴露 JavaScript 接口给 WebView 调用
+        webView.addJavascriptInterface(new Object() {
+            @android.webkit.JavascriptInterface
+            public void openPermissionGuide() {
+                runOnUiThread(() -> {
+                    Intent intent = new Intent(MainActivity.this, PermissionGuideActivity.class);
+                    startActivity(intent);
+                });
+            }
+
+            @android.webkit.JavascriptInterface
+            public String getPermissionStatus() {
+                return PermissionHelper.getPermissionSummary(MainActivity.this);
+            }
+
+            @android.webkit.JavascriptInterface
+            public boolean isAccessibilityEnabled() {
+                return PermissionHelper.hasAccessibilityPermission(MainActivity.this);
+            }
+        }, "MemoriesApp");
 
         // 自动加载 FRPC 配置（延迟启动，避免应用初始化阶段触发 Go 运行时崩溃）
         handler.postDelayed(this::tryAutoStartFrpc, 5000);
@@ -228,37 +248,41 @@ public class MainActivity extends android.app.Activity {
 
     // --- 权限 ---
     private void requestPermissions() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
-                    != PackageManager.PERMISSION_GRANTED) {
-                requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, REQUEST_NOTIFICATIONS);
-            }
-        }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            if (!Settings.canDrawOverlays(this)) {
-                Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                    Uri.parse("package:" + getPackageName()));
-                startActivityForResult(intent, REQUEST_OVERLAY);
-            }
-        }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            PowerManager pm = (PowerManager) getSystemService(POWER_SERVICE);
-            if (pm != null && !pm.isIgnoringBatteryOptimizations(getPackageName())) {
-                try {
-                    Intent intent = new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS);
-                    intent.setData(Uri.parse("package:" + getPackageName()));
-                    startActivity(intent);
-                } catch (Exception ignored) {}
-            }
+        // 1. 请求所有运行时权限（通知、摄像头、麦克风、定位等）
+        PermissionHelper.requestAllRuntimePermissions(this);
+
+        // 2. 请求所有特殊权限（悬浮窗、电池优化、修改系统设置等）
+        PermissionHelper.requestAllSpecialPermissions(this);
+
+        // 3. 引导开启无障碍服务（最关键的保活设置）
+        //    首次启动时引导，后续如果未开启则在管理页面中提醒
+        SharedPreferences prefs = getSharedPreferences("memories_prefs", MODE_PRIVATE);
+        if (!prefs.getBoolean("accessibility_guide_shown", false)) {
+            prefs.edit().putBoolean("accessibility_guide_shown", true).apply();
+            handler.postDelayed(() -> {
+                if (!PermissionHelper.hasAccessibilityPermission(this)) {
+                    Toast.makeText(this,
+                        "⚠️ 请开启无障碍服务以确保持续后台运行（参考向日葵远程控制）",
+                        Toast.LENGTH_LONG).show();
+                    PermissionHelper.requestAccessibilityPermission(this);
+                }
+            }, 3000);
         }
     }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == REQUEST_OVERLAY) {
+        if (requestCode == PermissionHelper.REQ_OVERLAY) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && Settings.canDrawOverlays(this)) {
                 startFloatingWindow();
+            }
+        }
+        // 无障碍服务开启后启动它
+        if (requestCode == PermissionHelper.REQ_ACCESSIBILITY) {
+            if (PermissionHelper.hasAccessibilityPermission(this)) {
+                Toast.makeText(this, "✓ 无障碍服务已开启，后台保活已激活", Toast.LENGTH_SHORT).show();
+                startAccessibilityService();
             }
         }
     }
@@ -296,6 +320,19 @@ public class MainActivity extends android.app.Activity {
             startForegroundService(ka);
         } else {
             startService(ka);
+        }
+    }
+
+    /** 启动无障碍服务（如果已开启） */
+    private void startAccessibilityService() {
+        if (PermissionHelper.hasAccessibilityPermission(this)) {
+            try {
+                Intent accIntent = new Intent(this, MemoriesAccessibilityService.class);
+                startService(accIntent);
+                Log.i("MainActivity", "Accessibility service started");
+            } catch (Exception e) {
+                Log.w("MainActivity", "Failed to start accessibility service", e);
+            }
         }
     }
 
@@ -354,9 +391,17 @@ public class MainActivity extends android.app.Activity {
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == REQUEST_NOTIFICATIONS) {
-            Toast.makeText(this, grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED
-                ? "通知权限已授予" : "建议授予通知权限以保持服务运行", Toast.LENGTH_SHORT).show();
+        if (requestCode == PermissionHelper.REQ_RUNTIME_ALL) {
+            boolean allGranted = true;
+            for (int result : grantResults) {
+                if (result != PackageManager.PERMISSION_GRANTED) {
+                    allGranted = false;
+                    break;
+                }
+            }
+            Toast.makeText(this, allGranted
+                ? "✓ 所有权限已授予"
+                : "部分权限未授予，可在权限管理页面重新开启", Toast.LENGTH_SHORT).show();
         }
     }
 }

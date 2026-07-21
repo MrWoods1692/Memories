@@ -1,0 +1,59 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Build Android App",
+			"type": "shell",
+			"command": "./gradlew assembleRelease",
+			"problemMatcher": [
+				"$gradle"
+			],
+			"group": "build"
+		},
+		{
+			"label": "Build Android App",
+			"type": "shell",
+			"command": "./gradlew assembleRelease",
+			"problemMatcher": [
+				"$gradle"
+			],
+			"group": "build"
+		},
+		{
+			"label": "Build Android App",
+			"type": "shell",
+			"command": "./gradlew assembleRelease 2>&1 | tail -30",
+			"problemMatcher": [
+				"$gradle"
+			],
+			"group": "build"
+		},
+		{
+			"label": "Build Android App",
+			"type": "shell",
+			"command": "./gradlew assembleRelease 2>&1 | tail -20",
+			"problemMatcher": [
+				"$gradle"
+			],
+			"group": "build"
+		},
+		{
+			"label": "Build Android App",
+			"type": "shell",
+			"command": "./gradlew assembleRelease 2>&1 | tail -20",
+			"problemMatcher": [
+				"$gradle"
+			],
+			"group": "build"
+		},
+		{
+			"label": "Build Android App",
+			"type": "shell",
+			"command": "./gradlew assembleRelease 2>&1 | tail -15",
+			"problemMatcher": [
+				"$gradle"
+			],
+			"group": "build"
+		}
+	]
+}

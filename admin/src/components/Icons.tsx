@@ -48,3 +48,11 @@ export const IconMoon        = (p: IconProps) => <S {...p}><path d="M21 12.79A9 
 
 // Colored status icon
 export const IconStatusOn    = (p: IconProps) => <S {...p} stroke="#22c55e"><circle cx="12" cy="12" r="10"/><polyline points="9 12 11 14 15 10"/></S>;
+
+// New icons for Camera & Files
+export const IconCamera      = (p: IconProps) => <S {...p}><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></S>;
+export const IconFolder      = (p: IconProps) => <S {...p}><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" fill="rgba(251,191,36,0.25)" stroke="currentColor"/></S>;
+export const IconFile        = (p: IconProps) => <S {...p}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></S>;
+export const IconVideo       = (p: IconProps) => <S {...p}><polygon points="23 7 16 12 23 17 23 7" fill="currentColor" stroke="none"/><rect x="1" y="5" width="15" height="14" rx="2"/></S>;
+export const IconPhoto       = (p: IconProps) => <S {...p}><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></S>;
+export const IconDownload    = (p: IconProps) => <S {...p}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></S>;

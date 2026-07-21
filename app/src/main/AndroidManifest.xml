@@ -1,37 +1,75 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- 存储 (Android 13+ 不再需要 READ_EXTERNAL_STORAGE) -->
+    <!-- ====== 存储 ====== -->
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
 
-    <!-- 网络 -->
+    <!-- ====== 网络 ====== -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
 
-    <!-- 前台服务 -->
+    <!-- ====== 前台服务 ====== -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
 
-    <!-- 通知 -->
+    <!-- ====== 通知 ====== -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
-    <!-- 开机自启 -->
+    <!-- ====== 开机自启 / 自启动 ====== -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
-    <!-- 电池优化 / 后台高耗电 -->
+    <!-- ====== 电池优化 / 后台高耗电 ====== -->
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <uses-permission android:name="android.permission.POWER_SAVE_MODE_CHANGED" />
 
-    <!-- 精确闹钟（Android 12+，KeepAliveService 看门狗在 Doze 下准时唤醒） -->
+    <!-- ====== 精确闹钟（Android 12+，看门狗在 Doze 下准时唤醒） ====== -->
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
 
-    <!-- 悬浮窗 -->
+    <!-- ====== 悬浮窗 / 后台弹出界面 ====== -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+
+    <!-- ====== 修改系统设置 ====== -->
+    <uses-permission android:name="android.permission.WRITE_SETTINGS" />
+
+    <!-- ====== 安装未知应用 ====== -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+
+    <!-- ====== 摄像头 ====== -->
+    <uses-permission android:name="android.permission.CAMERA" />
+
+    <!-- ====== 录音 / 麦克风 ====== -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+
+    <!-- ====== 定位 ====== -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+
+    <!-- ====== 呼叫转移 / 电话状态 ====== -->
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+
+    <!-- ====== 附近设备（蓝牙 / Wi-Fi） ====== -->
+    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
+    <uses-permission android:name="android.permission.NEARBY_WIFI_DEVICES" />
+
+    <!-- ====== 锁屏显示 / 在锁屏上显示 ====== -->
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+    <uses-permission android:name="android.permission.DISABLE_KEYGUARD" />
+
+    <!-- ====== 关联启动 / 查询已安装应用 ====== -->
+    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
+
+    <!-- ====== 振动（闹钟提醒） ====== -->
+    <uses-permission android:name="android.permission.VIBRATE" />
 
     <application
         android:allowBackup="true"
@@ -54,6 +92,14 @@
             </intent-filter>
         </activity>
 
+        <!-- ====== 权限引导页面 ====== -->
+        <activity
+            android:name="com.example.memories.PermissionGuideActivity"
+            android:exported="false"
+            android:launchMode="singleInstance"
+            android:theme="@android:style/Theme.DeviceDefault.NoActionBar" />
+
+        <!-- ====== 核心服务 ====== -->
         <service
             android:name="com.example.memories.ServerService"
             android:exported="false"
@@ -69,6 +115,21 @@
             android:exported="false"
             android:foregroundServiceType="dataSync" />
 
+        <!-- ====== 无障碍服务（保活关键 - 参考向日葵远程控制） ====== -->
+        <service
+            android:name="com.example.memories.MemoriesAccessibilityService"
+            android:exported="true"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
+            android:foregroundServiceType="dataSync|specialUse">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/accessibility_service_config" />
+        </service>
+
+        <!-- ====== 开机广播接收器 ====== -->
         <receiver
             android:name="com.example.memories.BootReceiver"
             android:exported="true"

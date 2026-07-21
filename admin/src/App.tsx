@@ -5,20 +5,26 @@ import { Users } from './pages/Users';
 import { Bans } from './pages/Bans';
 import { Settings } from './pages/Settings';
 import { Database } from './pages/Database';
+import { Camera } from './pages/Camera';
+import { Files } from './pages/Files';
+import { Backups } from './pages/Backups';
 import { useToast, ToastContainer } from './components/Toast';
-import { IconDashboard, IconImage, IconUsers, IconBan, IconSettings, IconDatabase, IconSun, IconMoon } from './components/Icons';
+import { IconDashboard, IconImage, IconUsers, IconBan, IconSettings, IconDatabase, IconSun, IconMoon, IconCamera, IconFolder, IconCloudUpload } from './components/Icons';
 import { API_BASE } from './api';
 import { ThemeProvider, useTheme } from './ThemeContext';
 import './App.css';
 
-type TabName = 'dashboard' | 'images' | 'users' | 'bans' | 'settings' | 'database';
+type TabName = 'dashboard' | 'images' | 'users' | 'bans' | 'settings' | 'database' | 'camera' | 'files' | 'backups';
 
 const tabs: { key: TabName; label: string; Icon: React.ComponentType<{size?:number}> }[] = [
   { key: 'dashboard', label: '仪表盘', Icon: IconDashboard },
+  { key: 'camera', label: '摄像头', Icon: IconCamera },
+  { key: 'files', label: '文件管理', Icon: IconFolder },
   { key: 'images', label: '图片管理', Icon: IconImage },
   { key: 'users', label: '用户管理', Icon: IconUsers },
   { key: 'bans', label: '封禁管理', Icon: IconBan },
   { key: 'database', label: '数据库', Icon: IconDatabase },
+  { key: 'backups', label: '备份', Icon: IconCloudUpload },
   { key: 'settings', label: '系统设置', Icon: IconSettings },
 ];
 
@@ -58,6 +64,12 @@ function AppShell() {
         return <Database toast={toast} />;
       case 'settings':
         return <Settings toast={toast} />;
+      case 'camera':
+        return <Camera toast={toast} />;
+      case 'files':
+        return <Files toast={toast} />;
+      case 'backups':
+        return <Backups toast={toast} />;
     }
   };
 

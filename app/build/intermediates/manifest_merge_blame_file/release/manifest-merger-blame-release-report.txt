@@ -1,0 +1,520 @@
+1<?xml version="1.0" encoding="utf-8"?>
+2<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+3    package="com.example.memories"
+4    android:versionCode="7"
+5    android:versionName="0.7" >
+6
+7    <uses-sdk
+8        android:minSdkVersion="29"
+9        android:targetSdkVersion="34" />
+10
+11    <!-- ====== 存储 ====== -->
+12    <uses-permission
+12-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:4:5-108
+13        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+13-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:4:22-78
+14        android:maxSdkVersion="32" />
+14-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:4:79-105
+15    <uses-permission
+15-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:5:5-107
+16        android:name="android.permission.READ_EXTERNAL_STORAGE"
+16-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:5:22-77
+17        android:maxSdkVersion="32" />
+17-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:5:78-104
+18    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
+18-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:6:5-82
+18-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:6:22-79
+19
+20    <!-- ====== 网络 ====== -->
+21    <uses-permission android:name="android.permission.INTERNET" />
+21-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:9:5-67
+21-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:9:22-64
+22    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+22-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:10:5-79
+22-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:10:22-76
+23    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+23-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:11:5-76
+23-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:11:22-73
+24    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
+24-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:12:5-76
+24-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:12:22-73
+25    <uses-permission android:name="android.permission.WAKE_LOCK" />
+25-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:13:5-68
+25-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:13:22-65
+26
+27    <!-- ====== 前台服务 ====== -->
+28    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+28-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:16:5-77
+28-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:16:22-74
+29    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+29-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:17:5-87
+29-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:17:22-84
+30    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+30-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:18:5-89
+30-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:18:22-86
+31
+32    <!-- ====== 通知 ====== -->
+33    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+33-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:21:5-77
+33-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:21:22-74
+34
+35    <!-- ====== 开机自启 / 自启动 ====== -->
+36    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+36-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:24:5-81
+36-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:24:22-78
+37
+38    <!-- ====== 电池优化 / 后台高耗电 ====== -->
+39    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+39-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:27:5-95
+39-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:27:22-92
+40    <uses-permission android:name="android.permission.POWER_SAVE_MODE_CHANGED" />
+40-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:28:5-82
+40-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:28:22-79
+41
+42    <!-- ====== 精确闹钟（Android 12+，看门狗在 Doze 下准时唤醒） ====== -->
+43    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+43-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:31:5-79
+43-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:31:22-76
+44    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+44-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:32:5-74
+44-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:32:22-71
+45
+46    <!-- ====== 悬浮窗 / 后台弹出界面 ====== -->
+47    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+47-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:35:5-78
+47-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:35:22-75
+48
+49    <!-- ====== 修改系统设置 ====== -->
+50    <uses-permission android:name="android.permission.WRITE_SETTINGS" />
+50-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:38:5-73
+50-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:38:22-70
+51
+52    <!-- ====== 安装未知应用 ====== -->
+53    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+53-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:41:5-83
+53-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:41:22-80
+54
+55    <!-- ====== 摄像头 ====== -->
+56    <uses-permission android:name="android.permission.CAMERA" />
+56-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:44:5-65
+56-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:44:22-62
+57
+58    <!-- ====== 录音 / 麦克风 ====== -->
+59    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+59-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:47:5-71
+59-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:47:22-68
+60
+61    <!-- ====== 定位 ====== -->
+62    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+62-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:50:5-79
+62-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:50:22-76
+63    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+63-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:51:5-81
+63-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:51:22-78
+64    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+64-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:52:5-85
+64-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:52:22-82
+65
+66    <!-- ====== 呼叫转移 / 电话状态 ====== -->
+67    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+67-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:55:5-75
+67-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:55:22-72
+68
+69    <!-- ====== 附近设备（蓝牙 / Wi-Fi） ====== -->
+70    <uses-permission
+70-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:58:5-95
+71        android:name="android.permission.BLUETOOTH"
+71-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:58:22-65
+72        android:maxSdkVersion="30" />
+72-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:58:66-92
+73    <uses-permission
+73-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:59:5-101
+74        android:name="android.permission.BLUETOOTH_ADMIN"
+74-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:59:22-71
+75        android:maxSdkVersion="30" />
+75-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:59:72-98
+76    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+76-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:60:5-76
+76-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:60:22-73
+77    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
+77-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:61:5-73
+77-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:61:22-70
+78    <uses-permission android:name="android.permission.NEARBY_WIFI_DEVICES" />
+78-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:62:5-78
+78-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:62:22-75
+79
+80    <!-- ====== 锁屏显示 / 在锁屏上显示 ====== -->
+81    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+81-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:65:5-81
+81-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:65:22-78
+82    <uses-permission android:name="android.permission.DISABLE_KEYGUARD" />
+82-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:66:5-75
+82-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:66:22-72
+83
+84    <!-- ====== 关联启动 / 查询已安装应用 ====== -->
+85    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
+85-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:69:5-77
+85-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:69:22-74
+86
+87    <!-- ====== 振动（闹钟提醒） ====== -->
+88    <uses-permission android:name="android.permission.VIBRATE" />
+88-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:72:5-66
+88-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:72:22-63
+89
+90    <permission
+90-->[androidx.core:core:1.9.0] /home/mrcwoods/.gradle/caches/transforms-3/58965ab1a2bf12ef28df7731ee942225/transformed/core-1.9.0/AndroidManifest.xml:22:5-24:47
+91        android:name="com.example.memories.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
+91-->[androidx.core:core:1.9.0] /home/mrcwoods/.gradle/caches/transforms-3/58965ab1a2bf12ef28df7731ee942225/transformed/core-1.9.0/AndroidManifest.xml:23:9-81
+92        android:protectionLevel="signature" />
+92-->[androidx.core:core:1.9.0] /home/mrcwoods/.gradle/caches/transforms-3/58965ab1a2bf12ef28df7731ee942225/transformed/core-1.9.0/AndroidManifest.xml:24:9-44
+93
+94    <uses-permission android:name="com.example.memories.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" />
+94-->[androidx.core:core:1.9.0] /home/mrcwoods/.gradle/caches/transforms-3/58965ab1a2bf12ef28df7731ee942225/transformed/core-1.9.0/AndroidManifest.xml:26:5-97
+94-->[androidx.core:core:1.9.0] /home/mrcwoods/.gradle/caches/transforms-3/58965ab1a2bf12ef28df7731ee942225/transformed/core-1.9.0/AndroidManifest.xml:26:22-94
+95
+96    <application
+96-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:74:5-146:19
+97        android:allowBackup="true"
+97-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:75:9-35
+98        android:appComponentFactory="androidx.core.app.CoreComponentFactory"
+98-->[androidx.core:core:1.9.0] /home/mrcwoods/.gradle/caches/transforms-3/58965ab1a2bf12ef28df7731ee942225/transformed/core-1.9.0/AndroidManifest.xml:28:18-86
+99        android:extractNativeLibs="false"
+100        android:label="Memories"
+100-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:76:9-33
+101        android:requestLegacyExternalStorage="true"
+101-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:77:9-52
+102        android:supportsRtl="true"
+102-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:78:9-35
+103        android:theme="@android:style/Theme.DeviceDefault.NoActionBar"
+103-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:80:9-71
+104        android:usesCleartextTraffic="true" >
+104-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:79:9-44
+105
+106        <!-- Apache HTTP Legacy 库：Sardine WebDAV 依赖，解决 NoSuchFieldError -->
+107        <uses-library
+107-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:83:9-88
+108            android:name="org.apache.http.legacy"
+108-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:83:23-60
+109            android:required="false" />
+109-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:83:61-85
+110
+111        <activity
+111-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:85:9-93:20
+112            android:name="com.example.memories.MainActivity"
+112-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:86:13-61
+113            android:exported="true"
+113-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:87:13-36
+114            android:launchMode="singleInstance" >
+114-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:88:13-48
+115            <intent-filter>
+115-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:89:13-92:29
+116                <action android:name="android.intent.action.MAIN" />
+116-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:90:17-69
+116-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:90:25-66
+117
+118                <category android:name="android.intent.category.LAUNCHER" />
+118-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:91:17-77
+118-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:91:27-74
+119            </intent-filter>
+120        </activity>
+121
+122        <!-- ====== 权限引导页面 ====== -->
+123        <activity
+123-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:96:9-100:78
+124            android:name="com.example.memories.PermissionGuideActivity"
+124-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:97:13-72
+125            android:exported="false"
+125-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:98:13-37
+126            android:launchMode="singleInstance"
+126-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:99:13-48
+127            android:theme="@android:style/Theme.DeviceDefault.NoActionBar" />
+127-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:100:13-75
+128
+129        <!-- ====== 核心服务 ====== -->
+130        <service
+130-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:103:9-106:67
+131            android:name="com.example.memories.ServerService"
+131-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:104:13-62
+132            android:exported="false"
+132-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:105:13-37
+133            android:foregroundServiceType="dataSync|specialUse" />
+133-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:106:13-64
+134        <service
+134-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:108:9-111:58
+135            android:name="com.example.memories.FloatingWindow"
+135-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:109:13-63
+136            android:exported="false"
+136-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:110:13-37
+137            android:foregroundServiceType="specialUse" />
+137-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:111:13-55
+138        <service
+138-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:113:9-116:56
+139            android:name="com.example.memories.KeepAliveService"
+139-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:114:13-65
+140            android:exported="false"
+140-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:115:13-37
+141            android:foregroundServiceType="dataSync" />
+141-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:116:13-53
+142
+143        <!-- ====== 无障碍服务（保活关键 - 参考向日葵远程控制） ====== -->
+144        <service
+144-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:119:9-130:19
+145            android:name="com.example.memories.MemoriesAccessibilityService"
+145-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:120:13-77
+146            android:exported="true"
+146-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:121:13-36
+147            android:foregroundServiceType="dataSync|specialUse"
+147-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:123:13-64
+148            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE" >
+148-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:122:13-79
+149            <intent-filter>
+149-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:124:13-126:29
+150                <action android:name="android.accessibilityservice.AccessibilityService" />
+150-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:125:17-92
+150-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:125:25-89
+151            </intent-filter>
+152
+153            <meta-data
+153-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:127:13-129:72
+154                android:name="android.accessibilityservice"
+154-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:128:17-60
+155                android:resource="@xml/accessibility_service_config" />
+155-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:129:17-69
+156        </service>
+157
+158        <!-- ====== 开机广播接收器 ====== -->
+159        <receiver
+159-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:133:9-144:20
+160            android:name="com.example.memories.BootReceiver"
+160-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:134:13-61
+161            android:directBootAware="true"
+161-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:136:13-43
+162            android:exported="true" >
+162-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:135:13-36
+163            <intent-filter>
+163-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:137:13-143:29
+164                <action android:name="android.intent.action.BOOT_COMPLETED" />
+164-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:138:17-79
+164-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:138:25-76
+165                <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />
+165-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:139:17-86
+165-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:139:25-83
+166                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+166-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:140:17-82
+166-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:140:25-79
+167                <action android:name="com.htc.intent.action.QUICKBOOT_POWERON" />
+167-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:141:17-82
+167-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:141:25-79
+168                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+168-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:142:17-84
+168-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:142:25-81
+169            </intent-filter>
+170        </receiver>
+171
+172        <provider
+172-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:29:9-37:20
+173            android:name="androidx.startup.InitializationProvider"
+173-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:30:13-67
+174            android:authorities="com.example.memories.androidx-startup"
+174-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:31:13-68
+175            android:exported="false" >
+175-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:32:13-37
+176            <meta-data
+176-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:34:13-36:52
+177                android:name="androidx.work.WorkManagerInitializer"
+177-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:35:17-68
+178                android:value="androidx.startup" />
+178-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:36:17-49
+179        </provider>
+180
+181        <service
+181-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:39:9-45:35
+182            android:name="androidx.work.impl.background.systemalarm.SystemAlarmService"
+182-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:40:13-88
+183            android:directBootAware="false"
+183-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:41:13-44
+184            android:enabled="@bool/enable_system_alarm_service_default"
+184-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:42:13-72
+185            android:exported="false" />
+185-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:43:13-37
+186        <service
+186-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:46:9-52:35
+187            android:name="androidx.work.impl.background.systemjob.SystemJobService"
+187-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:47:13-84
+188            android:directBootAware="false"
+188-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:48:13-44
+189            android:enabled="@bool/enable_system_job_service_default"
+189-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:49:13-70
+190            android:exported="true"
+190-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:50:13-36
+191            android:permission="android.permission.BIND_JOB_SERVICE" />
+191-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:51:13-69
+192        <service
+192-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:53:9-59:35
+193            android:name="androidx.work.impl.foreground.SystemForegroundService"
+193-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:54:13-81
+194            android:directBootAware="false"
+194-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:55:13-44
+195            android:enabled="@bool/enable_system_foreground_service_default"
+195-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:56:13-77
+196            android:exported="false" />
+196-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:57:13-37
+197
+198        <receiver
+198-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:61:9-66:35
+199            android:name="androidx.work.impl.utils.ForceStopRunnable$BroadcastReceiver"
+199-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:62:13-88
+200            android:directBootAware="false"
+200-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:63:13-44
+201            android:enabled="true"
+201-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:64:13-35
+202            android:exported="false" />
+202-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:65:13-37
+203        <receiver
+203-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:67:9-77:20
+204            android:name="androidx.work.impl.background.systemalarm.ConstraintProxy$BatteryChargingProxy"
+204-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:68:13-106
+205            android:directBootAware="false"
+205-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:69:13-44
+206            android:enabled="false"
+206-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:70:13-36
+207            android:exported="false" >
+207-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:71:13-37
+208            <intent-filter>
+208-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:73:13-76:29
+209                <action android:name="android.intent.action.ACTION_POWER_CONNECTED" />
+209-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:74:17-87
+209-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:74:25-84
+210                <action android:name="android.intent.action.ACTION_POWER_DISCONNECTED" />
+210-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:75:17-90
+210-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:75:25-87
+211            </intent-filter>
+212        </receiver>
+213        <receiver
+213-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:78:9-88:20
+214            android:name="androidx.work.impl.background.systemalarm.ConstraintProxy$BatteryNotLowProxy"
+214-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:79:13-104
+215            android:directBootAware="false"
+215-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:80:13-44
+216            android:enabled="false"
+216-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:81:13-36
+217            android:exported="false" >
+217-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:82:13-37
+218            <intent-filter>
+218-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:84:13-87:29
+219                <action android:name="android.intent.action.BATTERY_OKAY" />
+219-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:85:17-77
+219-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:85:25-74
+220                <action android:name="android.intent.action.BATTERY_LOW" />
+220-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:86:17-76
+220-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:86:25-73
+221            </intent-filter>
+222        </receiver>
+223        <receiver
+223-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:89:9-99:20
+224            android:name="androidx.work.impl.background.systemalarm.ConstraintProxy$StorageNotLowProxy"
+224-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:90:13-104
+225            android:directBootAware="false"
+225-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:91:13-44
+226            android:enabled="false"
+226-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:92:13-36
+227            android:exported="false" >
+227-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:93:13-37
+228            <intent-filter>
+228-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:95:13-98:29
+229                <action android:name="android.intent.action.DEVICE_STORAGE_LOW" />
+229-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:96:17-83
+229-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:96:25-80
+230                <action android:name="android.intent.action.DEVICE_STORAGE_OK" />
+230-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:97:17-82
+230-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:97:25-79
+231            </intent-filter>
+232        </receiver>
+233        <receiver
+233-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:100:9-109:20
+234            android:name="androidx.work.impl.background.systemalarm.ConstraintProxy$NetworkStateProxy"
+234-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:101:13-103
+235            android:directBootAware="false"
+235-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:102:13-44
+236            android:enabled="false"
+236-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:103:13-36
+237            android:exported="false" >
+237-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:104:13-37
+238            <intent-filter>
+238-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:106:13-108:29
+239                <action android:name="android.net.conn.CONNECTIVITY_CHANGE" />
+239-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:107:17-79
+239-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:107:25-76
+240            </intent-filter>
+241        </receiver>
+242        <receiver
+242-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:110:9-121:20
+243            android:name="androidx.work.impl.background.systemalarm.RescheduleReceiver"
+243-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:111:13-88
+244            android:directBootAware="false"
+244-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:112:13-44
+245            android:enabled="false"
+245-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:113:13-36
+246            android:exported="false" >
+246-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:114:13-37
+247            <intent-filter>
+247-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:116:13-120:29
+248                <action android:name="android.intent.action.BOOT_COMPLETED" />
+248-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:138:17-79
+248-->/home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:138:25-76
+249                <action android:name="android.intent.action.TIME_SET" />
+249-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:118:17-73
+249-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:118:25-70
+250                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+250-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:119:17-81
+250-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:119:25-78
+251            </intent-filter>
+252        </receiver>
+253        <receiver
+253-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:122:9-131:20
+254            android:name="androidx.work.impl.background.systemalarm.ConstraintProxyUpdateReceiver"
+254-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:123:13-99
+255            android:directBootAware="false"
+255-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:124:13-44
+256            android:enabled="@bool/enable_system_alarm_service_default"
+256-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:125:13-72
+257            android:exported="false" >
+257-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:126:13-37
+258            <intent-filter>
+258-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:128:13-130:29
+259                <action android:name="androidx.work.impl.background.systemalarm.UpdateProxies" />
+259-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:129:17-98
+259-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:129:25-95
+260            </intent-filter>
+261        </receiver>
+262        <receiver
+262-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:132:9-142:20
+263            android:name="androidx.work.impl.diagnostics.DiagnosticsReceiver"
+263-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:133:13-78
+264            android:directBootAware="false"
+264-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:134:13-44
+265            android:enabled="true"
+265-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:135:13-35
+266            android:exported="true"
+266-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:136:13-36
+267            android:permission="android.permission.DUMP" >
+267-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:137:13-57
+268            <intent-filter>
+268-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:139:13-141:29
+269                <action android:name="androidx.work.diagnostics.REQUEST_DIAGNOSTICS" />
+269-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:140:17-88
+269-->[androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:140:25-85
+270            </intent-filter>
+271        </receiver>
+272
+273        <service
+273-->[androidx.room:room-runtime:2.5.0] /home/mrcwoods/.gradle/caches/transforms-3/4496fb5591bf03576dadc6b63572b9b4/transformed/room-runtime-2.5.0/AndroidManifest.xml:24:9-28:63
+274            android:name="androidx.room.MultiInstanceInvalidationService"
+274-->[androidx.room:room-runtime:2.5.0] /home/mrcwoods/.gradle/caches/transforms-3/4496fb5591bf03576dadc6b63572b9b4/transformed/room-runtime-2.5.0/AndroidManifest.xml:25:13-74
+275            android:directBootAware="true"
+275-->[androidx.room:room-runtime:2.5.0] /home/mrcwoods/.gradle/caches/transforms-3/4496fb5591bf03576dadc6b63572b9b4/transformed/room-runtime-2.5.0/AndroidManifest.xml:26:13-43
+276            android:exported="false" />
+276-->[androidx.room:room-runtime:2.5.0] /home/mrcwoods/.gradle/caches/transforms-3/4496fb5591bf03576dadc6b63572b9b4/transformed/room-runtime-2.5.0/AndroidManifest.xml:27:13-37
+277    </application>
+278
+279</manifest>

@@ -136,8 +136,13 @@ public class MainActivity extends Activity {
     private int currentTab;
     private boolean batchSelectMode;
     private final java.util.Set<Integer> batchSelectedIndices = new java.util.HashSet<>();
-    private GridLayout galleryGrid;
+    private ViewGroup galleryContainer;
+    private String currentViewMode = "grid";
+    private final String[] viewModes = {"grid", "compact", "list", "simple", "river", "masonry", "timeline", "free"};
+    private final String[] viewModeLabels = {"网格", "紧凑", "列表", "简洁", "河", "瀑布", "时间线", "自由"};
+    private final String[] viewModeIcons = {"ic_view_grid", "ic_view_compact", "ic_view_list", "ic_view_simple", "ic_view_river", "ic_view_masonry", "ic_view_timeline", "ic_view_free"};
     private LinearLayout shellHeader;
+    private ScrollView galleryScrollView;
     private ValueAnimator navBorderAnim;
 
     @Override
@@ -197,6 +202,10 @@ public class MainActivity extends Activity {
                 t.status = UploadTask.WAITING;
                 t.progress = 0;
                 t.message = "等待上传";
+            }
+            // 重新加入上传队列，确保重启后继续上传
+            if (t.status == UploadTask.WAITING) {
+                uploadQueue.add(() -> runUpload(t));
             }
         }
         uploadTasks.addAll(saved);
@@ -772,15 +781,17 @@ public class MainActivity extends Activity {
     private void showGallery() {
         title.setText("广场");
         content.removeAllViews();
-        ScrollView scroll = new ScrollView(this);
+        galleryScrollView = new ScrollView(this);
         LinearLayout page = vertical();
         page.setPadding(dp(14), dp(4), dp(14), dp(16));
+
+        // 视图模式切换器
+        page.addView(buildViewSwitcher(), matchWrap());
+
         page.addView(sectionTitle("流动广场"), matchWrap());
-        GridLayout grid = new GridLayout(this);
-        grid.setColumnCount(2);
-        galleryGrid = grid;
-        page.addView(grid, matchWrap());
-        loadMoreButton = button("加载更多", "ic_load_more", view -> loadGallery(grid));
+        galleryContainer = createGalleryContainer(currentViewMode);
+        page.addView(galleryContainer, matchWrap());
+        loadMoreButton = button("加载更多", "ic_load_more", view -> loadGalleryForCurrentView());
         GradientDrawable strokeBg = new GradientDrawable();
         strokeBg.setColor(Color.TRANSPARENT);
         strokeBg.setCornerRadius(dp(18));
@@ -791,25 +802,171 @@ public class MainActivity extends Activity {
         moreRow.setGravity(Gravity.CENTER);
         moreRow.addView(loadMoreButton, new LinearLayout.LayoutParams(dp(160), dp(44)));
         page.addView(moreRow, matchWrap());
-        scroll.addView(page);
-        content.addView(scroll);
+        galleryScrollView.addView(page);
+        content.addView(galleryScrollView);
+        // 重置瀑布流列计数
+        masonryColCounts[0] = 0;
+        masonryColCounts[1] = 0;
         if (galleryItems.isEmpty()) {
             syncedUrls.clear();
             nextAfterId = 0;
             mergeGalleryItems(store.loadImageUrlCache());
-            for (int i = 0; i < galleryItems.size(); i++) {
-                queueImageCard(grid, galleryItems.get(i), i);
-            }
-            loadGallery(grid);
+            renderExistingItems();
+            loadGalleryForCurrentView();
         } else {
-            for (int i = 0; i < galleryItems.size(); i++) {
-                queueImageCard(grid, galleryItems.get(i), i);
-            }
+            renderExistingItems();
         }
         // 如果处于批量选择模式，重建选择UI
         if (batchSelectMode) {
             updateBatchBar();
-            refreshAllCardSelections(grid);
+            refreshAllCardSelections(galleryContainer);
+        }
+    }
+
+    private LinearLayout buildViewSwitcher() {
+        LinearLayout switcher = horizontal();
+        switcher.setGravity(Gravity.CENTER);
+        switcher.setPadding(0, dp(4), 0, dp(6));
+        switcher.setBackground(roundedDrawable(blend(theme.secondaryButton, theme.background, 0.2f), dp(12)));
+        for (int i = 0; i < viewModes.length; i++) {
+            final String mode = viewModes[i];
+            boolean selected = currentViewMode.equals(mode);
+            LinearLayout tab = vertical();
+            tab.setGravity(Gravity.CENTER);
+            tab.setPadding(dp(6), dp(4), dp(6), dp(4));
+            ImageView icon = new ImageView(this);
+            icon.setImageResource(getResources().getIdentifier(viewModeIcons[i], "drawable", getPackageName()));
+            int iconColor = selected ? theme.primaryButton : blend(theme.secondaryText, theme.background, 0.35f);
+            icon.setColorFilter(iconColor, android.graphics.PorterDuff.Mode.SRC_IN);
+            tab.addView(icon, new LinearLayout.LayoutParams(dp(18), dp(18)));
+            TextView label = new TextView(this);
+            label.setText(viewModeLabels[i]);
+            label.setTextColor(iconColor);
+            label.setTextSize(8 * theme.fontScale);
+            label.setGravity(Gravity.CENTER);
+            label.setPadding(0, dp(1), 0, 0);
+            tab.addView(label, matchWrap());
+            tab.setOnClickListener(v -> switchViewMode(mode));
+            addPressEffect(tab);
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, dp(44), 1);
+            switcher.addView(tab, lp);
+        }
+        return switcher;
+    }
+
+    private void switchViewMode(String mode) {
+        if (currentViewMode.equals(mode)) return;
+        currentViewMode = mode;
+        showGallery();
+    }
+
+    private ViewGroup createGalleryContainer(String mode) {
+        switch (mode) {
+            case "compact":
+                GridLayout compactGrid = new GridLayout(this);
+                compactGrid.setColumnCount(3);
+                return compactGrid;
+            case "list":
+            case "simple":
+            case "timeline":
+                return vertical();
+            case "river":
+                return vertical();
+            case "masonry": {
+                LinearLayout masonryRow = horizontal();
+                masonryRow.setGravity(Gravity.TOP);
+                LinearLayout col1 = vertical();
+                col1.setTag("masonry_col_0");
+                LinearLayout col2 = vertical();
+                col2.setTag("masonry_col_1");
+                masonryRow.addView(col1, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+                masonryRow.addView(col2, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+                return masonryRow;
+            }
+            case "free":
+                return new FrameLayout(this);
+            default: // grid
+                GridLayout grid = new GridLayout(this);
+                grid.setColumnCount(2);
+                return grid;
+        }
+    }
+
+    private void renderExistingItems() {
+        if (galleryContainer == null) return;
+        galleryContainer.removeAllViews();
+        for (int i = 0; i < galleryItems.size(); i++) {
+            ImageItem item = galleryItems.get(i);
+            int idx = i;
+            galleryQueue.add(() -> imageCache.load(item.url, bitmapCallback(bitmap -> {
+                mainHandler.post(() -> addCardToContainer(galleryContainer, item, idx, bitmap, currentViewMode));
+            }, msg -> {})));
+        }
+    }
+
+    private void loadGalleryForCurrentView() {
+        if (galleryLoading) return;
+        galleryLoading = true;
+        final long requestAfterId = nextAfterId;
+        api.images(requestAfterId, uiCallback(page -> {
+            nextAfterId = page.nextAfterId == null ? nextAfterId : page.nextAfterId;
+            if (page.nextAfterId == null && loadMoreButton != null) {
+                loadMoreButton.setVisibility(View.GONE);
+            }
+            for (ImageItem item : page.items) {
+                syncedUrls.add(item.url);
+            }
+            List<ImageItem> added = mergeGalleryItems(page.items);
+            if (page.nextAfterId == null && !syncedUrls.isEmpty()) {
+                int before = galleryItems.size();
+                galleryItems.removeIf(item -> !syncedUrls.contains(item.url));
+                if (galleryItems.size() < before) {
+                    toast("已同步清理 " + (before - galleryItems.size()) + " 条失效记录");
+                }
+            }
+            store.saveImageUrlCache(galleryItems);
+            for (ImageItem item : added) {
+                queueCardForContainer(item, galleryItems.indexOf(item));
+            }
+            galleryLoading = false;
+        }, message -> {
+            galleryLoading = false;
+            toast(message);
+        }));
+    }
+
+    private void queueCardForContainer(ImageItem item, int index) {
+        galleryQueue.add(() -> imageCache.load(item.url, bitmapCallback(bitmap -> {
+            mainHandler.post(() -> addCardToContainer(galleryContainer, item, index, bitmap, currentViewMode));
+        }, this::toast)));
+    }
+
+    private void addCardToContainer(ViewGroup container, ImageItem item, int index, Bitmap bitmap, String mode) {
+        switch (mode) {
+            case "compact":
+                addCompactCard(container, item, index, bitmap);
+                break;
+            case "list":
+                addListCard(container, item, index, bitmap);
+                break;
+            case "simple":
+                addSimpleCard(container, item, index);
+                break;
+            case "river":
+                addRiverCard(container, item, index, bitmap);
+                break;
+            case "masonry":
+                addMasonryCard(container, item, index, bitmap);
+                break;
+            case "timeline":
+                addTimelineCard(container, item, index, bitmap);
+                break;
+            case "free":
+                addFreeCard(container, item, index, bitmap);
+                break;
+            default:
+                addGridCard(container, item, index, bitmap);
+                break;
         }
     }
 
@@ -820,7 +977,7 @@ public class MainActivity extends Activity {
         batchSelectedIndices.clear();
         batchSelectedIndices.add(firstIndex);
         updateBatchBar();
-        refreshAllCardSelections(galleryGrid);
+        refreshAllCardSelections(galleryContainer);
     }
 
     private void exitBatchMode() {
@@ -830,8 +987,8 @@ public class MainActivity extends Activity {
             shellHeader.removeAllViews();
             shellHeader.addView(title, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
         }
-        if (galleryGrid != null) {
-            refreshAllCardSelections(galleryGrid);
+        if (galleryContainer != null) {
+            refreshAllCardSelections(galleryContainer);
         }
     }
 
@@ -846,7 +1003,7 @@ public class MainActivity extends Activity {
             batchSelectedIndices.add(index);
         }
         updateBatchBar();
-        refreshAllCardSelections(galleryGrid);
+        refreshAllCardSelections(galleryContainer);
     }
 
     private void updateBatchBar() {
@@ -884,7 +1041,7 @@ public class MainActivity extends Activity {
                 }
             }
             updateBatchBar();
-            refreshAllCardSelections(galleryGrid);
+            refreshAllCardSelections(galleryContainer);
         });
         shellHeader.addView(selectAllBtn, compactWrap());
 
@@ -912,30 +1069,51 @@ public class MainActivity extends Activity {
         shellHeader.addView(closeBtn, new LinearLayout.LayoutParams(dp(36), dp(36)));
     }
 
-    private void refreshAllCardSelections(GridLayout grid) {
-        if (grid == null) return;
-        for (int i = 0; i < grid.getChildCount(); i++) {
-            View child = grid.getChildAt(i);
-            if (child instanceof FrameLayout) {
-                Object tag = child.getTag();
-                int realIndex;
-                if (tag instanceof Integer) {
-                    realIndex = (Integer) tag;
-                } else if (tag instanceof ImageItem) {
-                    realIndex = galleryItems.indexOf(tag);
+    private void refreshAllCardSelections(ViewGroup container) {
+        if (container == null) return;
+        refreshCardSelectionsRecursive(container);
+    }
+
+    private void refreshCardSelectionsRecursive(ViewGroup parent) {
+        for (int i = 0; i < parent.getChildCount(); i++) {
+            View child = parent.getChildAt(i);
+            if (child instanceof ViewGroup) {
+                ViewGroup vg = (ViewGroup) child;
+                Object tag = vg.getTag();
+                if (tag instanceof ImageItem || tag instanceof Integer) {
+                    int realIndex;
+                    if (tag instanceof Integer) {
+                        realIndex = (Integer) tag;
+                    } else {
+                        realIndex = galleryItems.indexOf(tag);
+                    }
+                    if (realIndex >= 0 && vg instanceof FrameLayout) {
+                        refreshCardSelection((FrameLayout) vg, realIndex);
+                    }
                 } else {
-                    continue;
+                    // 递归搜索子容器（用于 masonry 嵌套）
+                    refreshCardSelectionsRecursive(vg);
                 }
-                refreshCardSelection((FrameLayout) child, realIndex);
             }
         }
     }
 
     private void refreshCardSelection(FrameLayout card, int index) {
-        if (card.getChildCount() < 2) return;
-        View overlay = card.getChildAt(1);
-        if (!(overlay instanceof FrameLayout)) return;
-        FrameLayout checkOverlay = (FrameLayout) overlay;
+        // 查找 checkOverlay（第二个子视图或带有 checkOverlay tag 的视图）
+        FrameLayout checkOverlay = null;
+        for (int i = 0; i < card.getChildCount(); i++) {
+            View child = card.getChildAt(i);
+            if (child instanceof FrameLayout && !(child instanceof ImageView)) {
+                // 检查是否不是 ImageView 子类
+                boolean isImage = false;
+                if (child instanceof android.widget.ImageView) isImage = true;
+                if (!isImage) {
+                    checkOverlay = (FrameLayout) child;
+                    break;
+                }
+            }
+        }
+        if (checkOverlay == null) return;
 
         boolean selected = batchSelectedIndices.contains(index);
         GradientDrawable bg = new GradientDrawable();
@@ -1078,7 +1256,7 @@ public class MainActivity extends Activity {
             }
             store.saveImageUrlCache(galleryItems);
             for (ImageItem item : added) {
-                queueImageCard(grid, item, galleryItems.indexOf(item));
+                queueCardForContainer(item, galleryItems.indexOf(item));
             }
             galleryLoading = false;
         }, message -> {
@@ -1125,33 +1303,320 @@ public class MainActivity extends Activity {
         return candidate.id < current.id;
     }
 
-    private void queueImageCard(GridLayout grid, ImageItem item, int index) {
-        galleryQueue.add(() -> imageCache.load(item.url, bitmapCallback(bitmap -> addImageCard(grid, item, index, bitmap), this::toast)));
+    // ============ 视图模式渲染方法 ============
+
+    private void addGridCard(ViewGroup container, ImageItem item, int index, Bitmap bitmap) {
+        GridLayout grid = (GridLayout) container;
+        FrameLayout card = buildImageCard(item, index, bitmap, dp(14));
+        int cardSize = (getResources().getDisplayMetrics().widthPixels - dp(44)) / 2;
+        GridLayout.LayoutParams params = new GridLayout.LayoutParams();
+        params.width = cardSize;
+        params.height = cardSize;
+        params.setMargins(dp(4), dp(4), dp(4), dp(4));
+        grid.addView(card, params);
     }
 
-    private void addImageCard(GridLayout grid, ImageItem item, int index, Bitmap bitmap) {
-        // 外层容器，裁剪为圆角以匹配图片形状
+    private void addCompactCard(ViewGroup container, ImageItem item, int index, Bitmap bitmap) {
+        GridLayout grid = (GridLayout) container;
+        FrameLayout card = buildImageCard(item, index, bitmap, dp(10));
+        int screenW = getResources().getDisplayMetrics().widthPixels;
+        int cardSize = (screenW - dp(48)) / 3;
+        GridLayout.LayoutParams params = new GridLayout.LayoutParams();
+        params.width = cardSize;
+        params.height = cardSize;
+        params.setMargins(dp(3), dp(3), dp(3), dp(3));
+        grid.addView(card, params);
+    }
+
+    private void addListCard(ViewGroup container, ImageItem item, int index, Bitmap bitmap) {
+        LinearLayout list = (LinearLayout) container;
+        int screenW = getResources().getDisplayMetrics().widthPixels;
+
         FrameLayout card = new FrameLayout(this);
-        int cardSize = (getResources().getDisplayMetrics().widthPixels - dp(44)) / 2;
-        card.setLayoutParams(new FrameLayout.LayoutParams(cardSize, cardSize));
+        card.setTag(item);
+        LinearLayout row = horizontal();
+        row.setPadding(dp(4), dp(4), dp(4), dp(4));
+        row.setBackground(glassDrawable());
+
+        // 缩略图
+        ImageView thumb = new ImageView(this);
+        int thumbSize = dp(72);
+        thumb.setImageBitmap(roundedBitmap(bitmap, dp(10)));
+        thumb.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        row.addView(thumb, new LinearLayout.LayoutParams(thumbSize, thumbSize));
+
+        // 文本信息
+        LinearLayout info = vertical();
+        info.setPadding(dp(12), dp(4), dp(4), dp(4));
+        String fileName = item.url.substring(item.url.lastIndexOf('/') + 1);
+        if (fileName.length() > 30) fileName = fileName.substring(0, 27) + "...";
+        TextView nameText = text(fileName, 14, true);
+        info.addView(nameText, matchWrap());
+        TextView dateText = text(formatTime(item.uploadedAt), 11, false);
+        info.addView(dateText, matchWrap());
+
+        // 格式标签
+        String ext = item.url.contains(".") ? item.url.substring(item.url.lastIndexOf('.') + 1).toUpperCase() : "图片";
+        View tagView = statusPill(ext, blend(theme.primaryButton, theme.secondaryText, 0.5f));
+        info.addView(tagView, compactWrap());
+
+        row.addView(info, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+
+        // 操作按钮
+        LinearLayout actions = horizontal();
+        actions.setGravity(Gravity.CENTER_VERTICAL);
+        Button previewBtn = iconButton("ic_gallery", v -> showImageDialogAt(index));
+        actions.addView(previewBtn, new LinearLayout.LayoutParams(dp(36), dp(36)));
+        Button downloadBtn = iconButton("ic_download", v -> imageCache.load(item.url, bitmapCallback(b -> downloadImage(b, item), this::toast)));
+        actions.addView(downloadBtn, new LinearLayout.LayoutParams(dp(36), dp(36)));
+        Button shareBtn = iconButton("ic_share", v -> imageCache.load(item.url, bitmapCallback(b -> shareImage(b, item), this::toast)));
+        actions.addView(shareBtn, new LinearLayout.LayoutParams(dp(36), dp(36)));
+        Button copyBtn = iconButton("ic_copy_url", v -> copyImageUrl(item.url));
+        actions.addView(copyBtn, new LinearLayout.LayoutParams(dp(36), dp(36)));
+        row.addView(actions, compactWrap());
+        card.addView(row, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+
+        // 选择遮罩
+        FrameLayout checkOverlay = buildCheckOverlay(item, index);
+        card.addView(checkOverlay, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        setupCardListeners(card, item);
+        LinearLayout.LayoutParams params = matchWrap();
+        params.setMargins(dp(2), dp(3), dp(2), dp(3));
+        list.addView(card, params);
+    }
+
+    private void addSimpleCard(ViewGroup container, ImageItem item, int index) {
+        LinearLayout list = (LinearLayout) container;
+        LinearLayout row = horizontal();
+        row.setPadding(dp(14), dp(10), dp(14), dp(10));
+        row.setBackground(rippleDrawable(theme.secondaryButton, dp(12)));
+        row.setOnClickListener(v -> showImageDialogAt(index));
+
+        String fileName = item.url.substring(item.url.lastIndexOf('/') + 1);
+        if (fileName.length() > 35) fileName = fileName.substring(0, 32) + "...";
+
+        TextView dateText = text(formatTime(item.uploadedAt), 12, false);
+        dateText.setPadding(0, 0, dp(12), 0);
+        row.addView(dateText, compactWrap());
+
+        TextView nameText = text(fileName, 14, true);
+        row.addView(nameText, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+
+        addPressEffect(row);
+        LinearLayout.LayoutParams params = matchWrap();
+        params.setMargins(dp(2), dp(2), dp(2), dp(2));
+        list.addView(row, params);
+    }
+
+    private void addRiverCard(ViewGroup container, ImageItem item, int index, Bitmap bitmap) {
+        LinearLayout riverContainer = (LinearLayout) container;
+        // 每 6 张图片为一行
+        int itemsPerRow = 6;
+        int rowIndex = index / itemsPerRow;
+        int colInRow = index % itemsPerRow;
+
+        // 找到或创建对应的行
+        HorizontalScrollView hScroll = null;
+        LinearLayout hRow = null;
+        for (int i = 0; i < riverContainer.getChildCount(); i++) {
+            View child = riverContainer.getChildAt(i);
+            Object tagObj = child.getTag();
+            if (child instanceof HorizontalScrollView && tagObj instanceof Integer && ((Integer) tagObj) == rowIndex) {
+                hScroll = (HorizontalScrollView) child;
+                hRow = (LinearLayout) hScroll.getChildAt(0);
+                break;
+            }
+        }
+        if (hRow == null) {
+            hScroll = new HorizontalScrollView(this);
+            hScroll.setTag(rowIndex);
+            hScroll.setHorizontalScrollBarEnabled(false);
+            hRow = horizontal();
+            hScroll.addView(hRow, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(200)));
+            LinearLayout.LayoutParams scrollParams = matchWrap();
+            scrollParams.setMargins(0, dp(4), 0, dp(4));
+            riverContainer.addView(hScroll, scrollParams);
+        }
+
+        // 添加图片到行
+        FrameLayout card = buildImageCard(item, index, bitmap, dp(10));
+        int cardH = dp(180);
+        int cardW = (int) (cardH * ((float) bitmap.getWidth() / bitmap.getHeight()));
+        cardW = Math.max(dp(80), Math.min(cardW, dp(280)));
+        FrameLayout.LayoutParams flp = new FrameLayout.LayoutParams(cardW, cardH);
+        flp.setMargins(dp(4), dp(10), dp(4), dp(10));
+        card.setLayoutParams(flp);
+        hRow.addView(card, flp);
+    }
+
+    private int[] masonryColCounts = new int[2];
+
+    private void addMasonryCard(ViewGroup container, ImageItem item, int index, Bitmap bitmap) {
+        LinearLayout masonryRow = (LinearLayout) container;
+        // 选择高度较小的列添加
+        int col = masonryColCounts[0] <= masonryColCounts[1] ? 0 : 1;
+        LinearLayout colLayout = (LinearLayout) masonryRow.getChildAt(col);
+
+        FrameLayout card = new FrameLayout(this);
+        card.setTag(item);
+        int screenW = getResources().getDisplayMetrics().widthPixels;
+        int colW = (screenW - dp(48)) / 2;
+
+        // 根据图片比例计算高度
+        float aspect = (float) bitmap.getWidth() / bitmap.getHeight();
+        int imgH = (int) (colW / aspect);
+        imgH = Math.max(dp(80), Math.min(imgH, dp(400)));
+
+        ImageView image = new ImageView(this);
+        image.setImageBitmap(roundedBitmap(bitmap, dp(10)));
+        image.setScaleType(ImageView.ScaleType.FIT_XY);
+        card.addView(image, new FrameLayout.LayoutParams(colW, imgH));
+
+        FrameLayout checkOverlay = buildCheckOverlay(item, index);
+        card.addView(checkOverlay, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        setupCardListeners(card, item);
+
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(colW, imgH);
+        params.setMargins(dp(3), dp(3), dp(3), dp(3));
+        colLayout.addView(card, params);
+
+        // 更新列计数（根据总高度）
+        masonryColCounts[col] += imgH + dp(6);
+    }
+
+    private void addTimelineCard(ViewGroup container, ImageItem item, int index, Bitmap bitmap) {
+        LinearLayout timeline = (LinearLayout) container;
+        String dateLabel = formatDateLabel(item.uploadedAt);
+
+        // 检查是否需要添加日期分隔头
+        boolean needsHeader = true;
+        for (int i = 0; i < timeline.getChildCount(); i++) {
+            View child = timeline.getChildAt(i);
+            if (child instanceof TextView && dateLabel.equals(child.getTag())) {
+                needsHeader = false;
+                break;
+            }
+        }
+        if (needsHeader && (index == 0 || !formatDateLabel(galleryItems.get(Math.max(0, index - 1)).uploadedAt).equals(dateLabel))) {
+            // 添加日期头
+            LinearLayout dateHeader = horizontal();
+            dateHeader.setPadding(dp(4), dp(16), dp(4), dp(8));
+            View dot = new View(this);
+            dot.setBackground(roundedDrawable(theme.primaryButton, dp(4)));
+            dot.setTag("timeline_dot");
+            dateHeader.addView(dot, new LinearLayout.LayoutParams(dp(8), dp(8)));
+            View line = new View(this);
+            line.setBackgroundColor(blend(theme.secondaryButton, theme.primaryText, 0.15f));
+            line.setTag("timeline_line");
+            dateHeader.addView(line, new LinearLayout.LayoutParams(dp(32), dp(1)));
+            TextView dateTitle = text(dateLabel, 14, true);
+            dateTitle.setTag(dateLabel);
+            dateHeader.addView(dateTitle, compactWrap());
+            timeline.addView(dateHeader, matchWrap());
+        }
+
+        // 图片卡片（时间线风格：小图 + 时间）
+        LinearLayout card = horizontal();
+        card.setPadding(dp(8), dp(4), dp(8), dp(4));
+
+        ImageView thumb = new ImageView(this);
+        int thumbSize = dp(56);
+        thumb.setImageBitmap(roundedBitmap(bitmap, dp(8)));
+        thumb.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        card.addView(thumb, new LinearLayout.LayoutParams(thumbSize, thumbSize));
+
+        LinearLayout info = vertical();
+        info.setPadding(dp(10), 0, 0, 0);
+        String timeStr = formatTime(item.uploadedAt);
+        if (timeStr.length() > 16) timeStr = timeStr.substring(11);
+        TextView timeText = text(timeStr, 12, false);
+        info.addView(timeText, matchWrap());
+        String fileName = item.url.substring(item.url.lastIndexOf('/') + 1);
+        if (fileName.length() > 25) fileName = fileName.substring(0, 22) + "...";
+        TextView nameText = text(fileName, 13, true);
+        info.addView(nameText, matchWrap());
+        card.addView(info, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+
+        card.setOnClickListener(v -> showImageDialogAt(index));
+        card.setBackground(rippleDrawable(theme.secondaryButton, dp(12)));
+        addPressEffect(card);
+
+        LinearLayout.LayoutParams params = matchWrap();
+        params.setMargins(dp(4), dp(3), dp(4), dp(3));
+        timeline.addView(card, params);
+    }
+
+    private java.util.Random freeRandom = new java.util.Random(42);
+
+    private void addFreeCard(ViewGroup container, ImageItem item, int index, Bitmap bitmap) {
+        FrameLayout freeLayout = (FrameLayout) container;
+        int screenW = getResources().getDisplayMetrics().widthPixels;
+        int screenH = freeLayout.getHeight() > 0 ? freeLayout.getHeight() : dp(1200);
+
+        FrameLayout card = new FrameLayout(this);
+        card.setTag(item);
+        int size = dp(80 + freeRandom.nextInt(60));
+
+        ImageView image = new ImageView(this);
+        image.setImageBitmap(roundedBitmap(bitmap, dp(8)));
+        image.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        card.addView(image, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+
+        // 随机旋转
+        float rotation = (freeRandom.nextFloat() - 0.5f) * 16f;
+
+        int maxX = Math.max(screenW - size, dp(20));
+        int maxY = Math.max(screenH - size - dp(80), dp(20));
+        int x = freeRandom.nextInt(maxX);
+        int y = freeRandom.nextInt(maxY);
+
+        FrameLayout checkOverlay = buildCheckOverlay(item, index);
+        card.addView(checkOverlay, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        setupCardListeners(card, item);
+
+        FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(size, size);
+        params.setMargins(x, y, 0, 0);
+        card.setRotation(rotation);
+        card.setElevation(dp(2));
+        freeLayout.addView(card, params);
+    }
+
+    // ============ 卡片构建工具方法 ============
+
+    private FrameLayout buildImageCard(ImageItem item, int index, Bitmap bitmap, int radius) {
+        FrameLayout card = new FrameLayout(this);
         card.setTag(item);
         if (Build.VERSION.SDK_INT >= 21) {
             card.setClipToOutline(true);
+            final int fRadius = radius;
             card.setOutlineProvider(new android.view.ViewOutlineProvider() {
                 @Override
                 public void getOutline(View view, android.graphics.Outline outline) {
-                    outline.setRoundRect(0, 0, view.getWidth(), view.getHeight(), dp(14));
+                    outline.setRoundRect(0, 0, view.getWidth(), view.getHeight(), fRadius);
                 }
             });
         }
 
         ImageView image = new ImageView(this);
-        image.setImageBitmap(squareRoundedBitmap(bitmap, dp(14)));
+        if (radius >= dp(14)) {
+            image.setImageBitmap(squareRoundedBitmap(bitmap, radius));
+        } else {
+            image.setImageBitmap(roundedBitmap(bitmap, radius));
+        }
         image.setScaleType(ImageView.ScaleType.FIT_XY);
         card.addView(image, new FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
 
-        // 选择标记层 - 与图片框完全一致的圆角遮罩
+        FrameLayout checkOverlay = buildCheckOverlay(item, index);
+        card.addView(checkOverlay, new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
+
+        setupCardListeners(card, item);
+        addPressEffect(image);
+        return card;
+    }
+
+    private FrameLayout buildCheckOverlay(ImageItem item, int index) {
         FrameLayout checkOverlay = new FrameLayout(this);
         GradientDrawable overlayBg = new GradientDrawable();
         int itemIndex = galleryItems.indexOf(item);
@@ -1160,7 +1625,6 @@ public class MainActivity extends Activity {
         checkOverlay.setBackground(overlayBg);
         checkOverlay.setClickable(false);
 
-        // 选中勾号
         if (batchSelectedIndices.contains(itemIndex)) {
             TextView checkMark = new TextView(this);
             checkMark.setText("✓");
@@ -1174,10 +1638,10 @@ public class MainActivity extends Activity {
             checkParams.setMargins(dp(8), dp(8), 0, 0);
             checkOverlay.addView(checkMark, checkParams);
         }
-        card.addView(checkOverlay, new FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
+        return checkOverlay;
+    }
 
-        // 点击/长按事件 - 从 galleryItems 中查找真实索引
+    private void setupCardListeners(FrameLayout card, ImageItem item) {
         card.setOnClickListener(view -> {
             ImageItem clickedItem = (ImageItem) view.getTag();
             int idx = galleryItems.indexOf(clickedItem);
@@ -1198,13 +1662,12 @@ public class MainActivity extends Activity {
             }
             return true;
         });
-        addPressEffect(image);
+    }
 
-        GridLayout.LayoutParams params = new GridLayout.LayoutParams();
-        params.width = cardSize;
-        params.height = cardSize;
-        params.setMargins(dp(4), dp(4), dp(4), dp(4));
-        grid.addView(card, params);
+    private String formatDateLabel(long timestamp) {
+        if (timestamp <= 0) return "未知日期";
+        long millis = timestamp < 100000000000L ? timestamp * 1000L : timestamp;
+        return new SimpleDateFormat("yyyy年M月d日", Locale.CHINA).format(new Date(millis));
     }
 
     private void showImageDialogAt(int index) {
@@ -1705,19 +2168,30 @@ public class MainActivity extends Activity {
         uploadQueue.add(() -> runUpload(task));
     }
 
+    private volatile boolean uploadUiRefreshQueued;
+
+    private void debounceShowUpload() {
+        if (uploadUiRefreshQueued) return;
+        uploadUiRefreshQueued = true;
+        mainHandler.post(() -> {
+            uploadUiRefreshQueued = false;
+            showUpload();
+        });
+    }
+
     private void runUpload(UploadTask task) {
         task.status = UploadTask.UPLOADING;
         task.progress = 20;
         task.message = "上传到图床";
         updateUploadNotification(task, task.message, task.progress, false);
-        mainHandler.post(() -> showUpload());
+        debounceShowUpload();
         long uploadAnimMs = 1000 + (long)(Math.random() * 3000);
         ValueAnimator uploadAnim = ValueAnimator.ofFloat(20f, 68f);
         uploadAnim.setDuration(uploadAnimMs);
         uploadAnim.addUpdateListener(animation -> {
             task.progress = (Float) animation.getAnimatedValue();
             updateUploadNotification(task, task.message, task.progress, false);
-            mainHandler.post(() -> showUpload());
+            debounceShowUpload();
         });
         uploadAnim.start();
         Runnable uploadFloor = new Runnable() {
@@ -1726,7 +2200,7 @@ public class MainActivity extends Activity {
                 if (task.progress < 68) {
                     task.progress = Math.min(68, task.progress + 0.1f);
                     updateUploadNotification(task, task.message, task.progress, false);
-                    mainHandler.post(() -> showUpload());
+                    debounceShowUpload();
                 }
                 mainHandler.postDelayed(this, 1000);
             }
@@ -1738,14 +2212,14 @@ public class MainActivity extends Activity {
             task.progress = 70;
             task.message = "写入 Memories API";
             updateUploadNotification(task, task.message, task.progress, false);
-            mainHandler.post(() -> showUpload());
+            debounceShowUpload();
             long writeAnimMs = 500 + (long)(Math.random() * 1500);
             ValueAnimator writeAnim = ValueAnimator.ofFloat(70f, 99f);
             writeAnim.setDuration(writeAnimMs);
             writeAnim.addUpdateListener(animation -> {
                 task.progress = (Float) animation.getAnimatedValue();
                 updateUploadNotification(task, task.message, task.progress, false);
-                mainHandler.post(() -> showUpload());
+                debounceShowUpload();
             });
             writeAnim.start();
             Runnable writeFloor = new Runnable() {
@@ -1754,7 +2228,7 @@ public class MainActivity extends Activity {
                     if (task.progress < 99) {
                         task.progress = Math.min(99, task.progress + 0.1f);
                         updateUploadNotification(task, task.message, task.progress, false);
-                        mainHandler.post(() -> showUpload());
+                        debounceShowUpload();
                     }
                     mainHandler.postDelayed(this, 1000);
                 }
@@ -1901,7 +2375,7 @@ public class MainActivity extends Activity {
             topRow.setOrientation(LinearLayout.HORIZONTAL);
             topRow.setGravity(Gravity.CENTER_VERTICAL);
 
-            // 缩略图
+            // 缩略图 - 异步加载，避免阻塞主线程
             ImageView thumbnail = new ImageView(this);
             thumbnail.setScaleType(ImageView.ScaleType.CENTER_CROP);
             int thumbSize = dp(56);
@@ -1909,30 +2383,59 @@ public class MainActivity extends Activity {
             thumbParams.setMargins(0, 0, dp(14), 0);
             topRow.addView(thumbnail, thumbParams);
 
-            boolean thumbLoaded = false;
-            try {
-                android.graphics.Bitmap thumbBmp = MediaStore.Images.Media.getBitmap(getContentResolver(), task.uri);
-                if (thumbBmp != null) {
-                    thumbnail.setImageBitmap(roundedBitmap(
-                            Bitmap.createScaledBitmap(thumbBmp, thumbSize, thumbSize, true), dp(12)));
-                    thumbLoaded = true;
+            // 先显示占位图标
+            int iconRes = task.status == UploadTask.DONE
+                    ? getResources().getIdentifier("ic_gallery", "drawable", getPackageName())
+                    : getResources().getIdentifier("ic_upload", "drawable", getPackageName());
+            thumbnail.setImageResource(iconRes);
+            thumbnail.setPadding(dp(12), dp(12), dp(12), dp(12));
+            thumbnail.setBackground(roundedDrawable(
+                    task.status == UploadTask.FAILED
+                            ? blend(Color.rgb(205, 93, 61), theme.background, 0.6f)
+                            : theme.secondaryButton,
+                    dp(12)));
+            thumbnail.setScaleType(ImageView.ScaleType.FIT_CENTER);
+
+            // 后台线程加载缩略图，避免 MediaStore.getBitmap 阻塞主线程
+            final int fThumbSize = thumbSize;
+            new Thread(() -> {
+                try {
+                    android.graphics.BitmapFactory.Options opts = new android.graphics.BitmapFactory.Options();
+                    opts.inJustDecodeBounds = true;
+                    try (java.io.InputStream is = getContentResolver().openInputStream(task.uri)) {
+                        if (is != null) {
+                            android.graphics.BitmapFactory.decodeStream(is, null, opts);
+                        }
+                    }
+                    // 计算采样率，目标 thumbSize
+                    int sampleSize = 1;
+                    if (opts.outWidth > 0 && opts.outHeight > 0) {
+                        int maxDim = Math.max(opts.outWidth, opts.outHeight);
+                        while (maxDim / sampleSize > fThumbSize * 2) {
+                            sampleSize *= 2;
+                        }
+                    }
+                    opts.inJustDecodeBounds = false;
+                    opts.inSampleSize = sampleSize;
+                    android.graphics.Bitmap thumbBmp = null;
+                    try (java.io.InputStream is = getContentResolver().openInputStream(task.uri)) {
+                        if (is != null) {
+                            thumbBmp = android.graphics.BitmapFactory.decodeStream(is, null, opts);
+                        }
+                    }
+                    if (thumbBmp != null) {
+                        final android.graphics.Bitmap finalThumb = thumbBmp;
+                        mainHandler.post(() -> {
+                            thumbnail.setImageBitmap(roundedBitmap(
+                                    Bitmap.createScaledBitmap(finalThumb, fThumbSize, fThumbSize, true), dp(12)));
+                            thumbnail.setPadding(0, 0, 0, 0);
+                            thumbnail.setBackground(null);
+                            thumbnail.setScaleType(ImageView.ScaleType.CENTER_CROP);
+                        });
+                    }
+                } catch (Exception ignored) {
                 }
-            } catch (Exception ignored) {
-            }
-            if (!thumbLoaded) {
-                // 缩略图加载失败，根据状态显示不同占位图标
-                int iconRes = task.status == UploadTask.DONE
-                        ? getResources().getIdentifier("ic_gallery", "drawable", getPackageName())
-                        : getResources().getIdentifier("ic_upload", "drawable", getPackageName());
-                thumbnail.setImageResource(iconRes);
-                thumbnail.setPadding(dp(12), dp(12), dp(12), dp(12));
-                thumbnail.setBackground(roundedDrawable(
-                        task.status == UploadTask.FAILED
-                                ? blend(Color.rgb(205, 93, 61), theme.background, 0.6f)
-                                : theme.secondaryButton,
-                        dp(12)));
-                thumbnail.setScaleType(ImageView.ScaleType.FIT_CENTER);
-            }
+            }).start();
 
             // 文件信息列
             LinearLayout infoCol = new LinearLayout(this);

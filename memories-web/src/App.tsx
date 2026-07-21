@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { ConfigProvider, App as AntdApp, theme } from "antd";
 import zhCN from "antd/locale/zh_CN";
+import { Analytics } from "@vercel/analytics/react";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { ThemeProvider, useTheme } from "@/contexts/ThemeContext";
 import AppLayout from "@/components/AppLayout";
@@ -93,6 +94,7 @@ export default function App() {
   return (
     <ThemeProvider>
       <ThemedApp />
+      <Analytics />
     </ThemeProvider>
   );
 }

@@ -1,0 +1,986 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<incidents format="6" by="lint 8.5.2" type="incidents">
+
+    <incident
+        id="VectorPath"
+        severity="warning"
+        message="Very long vector path (1184 characters), which is bad for performance. Considering reducing precision, removing minor details or rasterizing vector.">
+        <location
+            file="${:app*debug*MAIN*sourceProvider*0*resDir*0}/drawable/ic_clear.xml"
+            line="5"
+            column="57"
+            startOffset="1259"
+            endLine="5"
+            endColumn="1241"
+            endOffset="2443"/>
+    </incident>
+
+    <incident
+        id="VectorPath"
+        severity="warning"
+        message="Very long vector path (1268 characters), which is bad for performance. Considering reducing precision, removing minor details or rasterizing vector.">
+        <location
+            file="${:app*debug*MAIN*sourceProvider*0*resDir*0}/drawable/ic_close.xml"
+            line="3"
+            column="57"
+            startOffset="267"
+            endLine="3"
+            endColumn="1325"
+            endOffset="1535"/>
+    </incident>
+
+    <incident
+        id="VectorPath"
+        severity="warning"
+        message="Very long vector path (1140 characters), which is bad for performance. Considering reducing precision, removing minor details or rasterizing vector.">
+        <location
+            file="${:app*debug*MAIN*sourceProvider*0*resDir*0}/drawable/ic_copy_image.xml"
+            line="4"
+            column="57"
+            startOffset="484"
+            endLine="4"
+            endColumn="1197"
+            endOffset="1624"/>
+    </incident>
+
+    <incident
+        id="VectorPath"
+        severity="warning"
+        message="Very long vector path (1200 characters), which is bad for performance. Considering reducing precision, removing minor details or rasterizing vector.">
+        <location
+            file="${:app*debug*MAIN*sourceProvider*0*resDir*0}/drawable/ic_copy_image.xml"
+            line="5"
+            column="57"
+            startOffset="1686"
+            endLine="5"
+            endColumn="1257"
+            endOffset="2886"/>
+    </incident>
+
+    <incident
+        id="VectorPath"
+        severity="warning"
+        message="Very long vector path (869 characters), which is bad for performance. Considering reducing precision, removing minor details or rasterizing vector.">
+        <location
+            file="${:app*debug*MAIN*sourceProvider*0*resDir*0}/drawable/ic_download.xml"
+            line="8"
+            column="27"
+            startOffset="456"
+            endLine="8"
+            endColumn="896"
+            endOffset="1325"/>
+    </incident>
+
+    <incident
+        id="VectorPath"
+        severity="warning"
+        message="Very long vector path (1368 characters), which is bad for performance. Considering reducing precision, removing minor details or rasterizing vector.">
+        <location
+            file="${:app*debug*MAIN*sourceProvider*0*resDir*0}/drawable/ic_download_folder.xml"
+            line="6"
+            column="57"
+            startOffset="1167"
+            endLine="6"
+            endColumn="1425"
+            endOffset="2535"/>
+    </incident>
+
+    <incident
+        id="VectorPath"
+        severity="warning"
+        message="Very long vector path (986 characters), which is bad for performance. Considering reducing precision, removing minor details or rasterizing vector.">
+        <location
+            file="${:app*debug*MAIN*sourceProvider*0*resDir*0}/drawable/ic_github.xml"
+            line="10"
+            column="27"
+            startOffset="309"
+            endLine="10"
+            endColumn="1013"
+            endOffset="1295"/>
+    </incident>
+
+    <incident
+        id="VectorPath"
+        severity="warning"
+        message="Very long vector path (2084 characters), which is bad for performance. Considering reducing precision, removing minor details or rasterizing vector.">
+        <location
+            file="${:app*debug*MAIN*sourceProvider*0*resDir*0}/drawable/ic_plaza.xml"
+            line="41"
+            column="57"
+            startOffset="10907"
+            endLine="41"
+            endColumn="2141"
+            endOffset="12991"/>
+    </incident>
+
+    <incident
+        id="VectorPath"
+        severity="warning"
+        message="Very long vector path (1458 characters), which is bad for performance. Considering reducing precision, removing minor details or rasterizing vector.">
+        <location
+            file="${:app*debug*MAIN*sourceProvider*0*resDir*0}/drawable/ic_policy.xml"
+            line="11"
+            column="57"
+            startOffset="3878"
+            endLine="11"
+            endColumn="1515"
+            endOffset="5336"/>
+    </incident>
+
+    <incident
+        id="VectorPath"
+        severity="warning"
+        message="Very long vector path (893 characters), which is bad for performance. Considering reducing precision, removing minor details or rasterizing vector.">
+        <location
+            file="${:app*debug*MAIN*sourceProvider*0*resDir*0}/drawable/ic_policy.xml"
+            line="14"
+            column="57"
+            startOffset="6555"
+            endLine="14"
+            endColumn="950"
+            endOffset="7448"/>
+    </incident>
+
+    <incident
+        id="VectorPath"
+        severity="warning"
+        message="Very long vector path (2063 characters), which is bad for performance. Considering reducing precision, removing minor details or rasterizing vector.">
+        <location
+            file="${:app*debug*MAIN*sourceProvider*0*resDir*0}/drawable/ic_privacy.xml"
+            line="10"
+            column="27"
+            startOffset="863"
+            endLine="10"
+            endColumn="2090"
+            endOffset="2926"/>
+    </incident>
+
+    <incident
+        id="VectorPath"
+        severity="warning"
+        message="Very long vector path (1767 characters), which is bad for performance. Considering reducing precision, removing minor details or rasterizing vector.">
+        <location
+            file="${:app*debug*MAIN*sourceProvider*0*resDir*0}/drawable/ic_rotate.xml"
+            line="6"
+            column="57"
+            startOffset="1570"
+            endLine="6"
+            endColumn="1824"
+            endOffset="3337"/>
+    </incident>
+
+    <incident
+        id="VectorPath"
+        severity="warning"
+        message="Very long vector path (1138 characters), which is bad for performance. Considering reducing precision, removing minor details or rasterizing vector.">
+        <location
+            file="${:app*debug*MAIN*sourceProvider*0*resDir*0}/drawable/ic_security.xml"
+            line="8"
+            column="27"
+            startOffset="816"
+            endLine="8"
+            endColumn="1165"
+            endOffset="1954"/>
+    </incident>
+
+    <incident
+        id="VectorPath"
+        severity="warning"
+        message="Very long vector path (1488 characters), which is bad for performance. Considering reducing precision, removing minor details or rasterizing vector.">
+        <location
+            file="${:app*debug*MAIN*sourceProvider*0*resDir*0}/drawable/ic_security.xml"
+            line="10"
+            column="27"
+            startOffset="2025"
+            endLine="10"
+            endColumn="1515"
+            endOffset="3513"/>
+    </incident>
+
+    <incident
+        id="VectorPath"
+        severity="warning"
+        message="Very long vector path (995 characters), which is bad for performance. Considering reducing precision, removing minor details or rasterizing vector.">
+        <location
+            file="${:app*debug*MAIN*sourceProvider*0*resDir*0}/drawable/ic_storage.xml"
+            line="8"
+            column="57"
+            startOffset="1982"
+            endLine="8"
+            endColumn="1052"
+            endOffset="2977"/>
+    </incident>
+
+    <incident
+        id="VectorPath"
+        severity="warning"
+        message="Very long vector path (956 characters), which is bad for performance. Considering reducing precision, removing minor details or rasterizing vector.">
+        <location
+            file="${:app*debug*MAIN*sourceProvider*0*resDir*0}/drawable/ic_terms.xml"
+            line="6"
+            column="27"
+            startOffset="286"
+            endLine="6"
+            endColumn="983"
+            endOffset="1242"/>
+    </incident>
+
+    <incident
+        id="VectorPath"
+        severity="warning"
+        message="Very long vector path (801 characters), which is bad for performance. Considering reducing precision, removing minor details or rasterizing vector.">
+        <location
+            file="${:app*debug*MAIN*sourceProvider*0*resDir*0}/drawable/ic_terms.xml"
+            line="8"
+            column="27"
+            startOffset="1313"
+            endLine="8"
+            endColumn="828"
+            endOffset="2114"/>
+    </incident>
+
+    <incident
+        id="ClickableViewAccessibility"
+        severity="warning"
+        message="`onTouch` lambda should call `View#performClick` when a click is detected">
+        <location
+            file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/mrcwoods/memories/MainActivity.java"
+            line="766"
+            column="36"
+            startOffset="33379"
+            endLine="778"
+            endColumn="10"
+            endOffset="33896"/>
+    </incident>
+
+    <incident
+        id="ClickableViewAccessibility"
+        severity="warning"
+        message="`onTouch` lambda should call `View#performClick` when a click is detected">
+        <location
+            file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/mrcwoods/memories/MainActivity.java"
+            line="1757"
+            column="47"
+            startOffset="76864"
+            endLine="1817"
+            endColumn="14"
+            endOffset="80102"/>
+    </incident>
+
+    <incident
+        id="ClickableViewAccessibility"
+        severity="warning"
+        message="`onTouch` lambda should call `View#performClick` when a click is detected">
+        <location
+            file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/mrcwoods/memories/MainActivity.java"
+            line="1946"
+            column="37"
+            startOffset="86493"
+            endLine="1990"
+            endColumn="10"
+            endOffset="88372"/>
+    </incident>
+
+    <incident
+        id="ClickableViewAccessibility"
+        severity="warning"
+        message="`onTouch` lambda should call `View#performClick` when a click is detected">
+        <location
+            file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/mrcwoods/memories/MainActivity.java"
+            line="3038"
+            column="34"
+            startOffset="138853"
+            endLine="3075"
+            endColumn="10"
+            endOffset="141261"/>
+    </incident>
+
+    <incident
+        id="ClickableViewAccessibility"
+        severity="warning"
+        message="`onTouch` lambda should call `View#performClick` when a click is detected">
+        <location
+            file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/mrcwoods/memories/MainActivity.java"
+            line="3607"
+            column="33"
+            startOffset="167033"
+            endLine="3614"
+            endColumn="10"
+            endOffset="167492"/>
+    </incident>
+
+    <incident
+        id="ObsoleteSdkInt"
+        severity="warning"
+        message="Unnecessary; SDK_INT is always >= 23">
+        <fix-data conditional="true"/>
+        <location
+            file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/mrcwoods/memories/MainActivity.java"
+            line="188"
+            column="13"
+            startOffset="6900"
+            endLine="188"
+            endColumn="40"
+            endOffset="6927"/>
+    </incident>
+
+    <incident
+        id="WrongConstant"
+        severity="error"
+        message="Must be one or more of: Intent.FLAG_GRANT_READ_URI_PERMISSION, Intent.FLAG_GRANT_WRITE_URI_PERMISSION">
+        <location
+            file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/mrcwoods/memories/MainActivity.java"
+            line="229"
+            column="72"
+            startOffset="8770"
+            endLine="229"
+            endColumn="77"
+            endOffset="8775"/>
+    </incident>
+
+    <incident
+        id="ObsoleteSdkInt"
+        severity="warning"
+        message="Unnecessary; SDK_INT is never &lt; 23">
+        <fix-data conditional="false"/>
+        <location
+            file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/mrcwoods/memories/MainActivity.java"
+            line="247"
+            column="13"
+            startOffset="9440"
+            endLine="247"
+            endColumn="39"
+            endOffset="9466"/>
+    </incident>
+
+    <incident
+        id="DiscouragedApi"
+        severity="warning"
+        message="Use of this function is discouraged because resource reflection makes it harder to perform build optimizations and compile-time verification of code. It is much more efficient to retrieve resources by identifier (e.g. `R.foo.bar`) than by name (e.g. `getIdentifier(&quot;bar&quot;, &quot;foo&quot;, null)`).">
+        <location
+            file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/mrcwoods/memories/MainActivity.java"
+            line="278"
+            column="46"
+            startOffset="11041"
+            endLine="278"
+            endColumn="59"
+            endOffset="11054"/>
+    </incident>
+
+    <incident
+        id="DiscouragedApi"
+        severity="warning"
+        message="Use of this function is discouraged because resource reflection makes it harder to perform build optimizations and compile-time verification of code. It is much more efficient to retrieve resources by identifier (e.g. `R.foo.bar`) than by name (e.g. `getIdentifier(&quot;bar&quot;, &quot;foo&quot;, null)`).">
+        <location
+            file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/mrcwoods/memories/MainActivity.java"
+            line="334"
+            column="49"
+            startOffset="13273"
+            endLine="334"
+            endColumn="62"
+            endOffset="13286"/>
+    </incident>
+
+    <incident
+        id="SetJavaScriptEnabled"
+        severity="warning"
+        message="Using `setJavaScriptEnabled` can introduce XSS vulnerabilities into your application, review carefully">
+        <location
+            file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/mrcwoods/memories/MainActivity.java"
+            line="480"
+            column="9"
+            startOffset="20000"
+            endLine="480"
+            endColumn="57"
+            endOffset="20048"/>
+    </incident>
+
+    <incident
+        id="ObsoleteSdkInt"
+        severity="warning"
+        message="Unnecessary; SDK_INT is always >= 23">
+        <fix-data conditional="true"/>
+        <location
+            file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/mrcwoods/memories/MainActivity.java"
+            line="484"
+            column="13"
+            startOffset="20230"
+            endLine="484"
+            endColumn="40"
+            endOffset="20257"/>
+    </incident>
+
+    <incident
+        id="DiscouragedApi"
+        severity="warning"
+        message="Use of this function is discouraged because resource reflection makes it harder to perform build optimizations and compile-time verification of code. It is much more efficient to retrieve resources by identifier (e.g. `R.foo.bar`) than by name (e.g. `getIdentifier(&quot;bar&quot;, &quot;foo&quot;, null)`).">
+        <location
+            file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/mrcwoods/memories/MainActivity.java"
+            line="498"
+            column="50"
+            startOffset="20802"
+            endLine="498"
+            endColumn="63"
+            endOffset="20815"/>
+    </incident>
+
+    <incident
+        id="ObsoleteSdkInt"
+        severity="warning"
+        message="Unnecessary; SDK_INT is always >= 23">
+        <fix-data conditional="true"/>
+        <location
+            file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/mrcwoods/memories/MainActivity.java"
+            line="515"
+            column="13"
+            startOffset="21785"
+            endLine="515"
+            endColumn="40"
+            endOffset="21812"/>
+    </incident>
+
+    <incident
+        id="ObsoleteSdkInt"
+        severity="warning"
+        message="Unnecessary; SDK_INT is always >= 23">
+        <fix-data conditional="true"/>
+        <location
+            file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/mrcwoods/memories/MainActivity.java"
+            line="590"
+            column="13"
+            startOffset="25019"
+            endLine="590"
+            endColumn="40"
+            endOffset="25046"/>
+    </incident>
+
+    <incident
+        id="ObsoleteSdkInt"
+        severity="warning"
+        message="Unnecessary; SDK_INT is always >= 23">
+        <fix-data conditional="true"/>
+        <location
+            file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/mrcwoods/memories/MainActivity.java"
+            line="695"
+            column="13"
+            startOffset="29771"
+            endLine="695"
+            endColumn="40"
+            endOffset="29798"/>
+    </incident>
+
+    <incident
+        id="ClickableViewAccessibility"
+        severity="warning"
+        message="Custom view ``FrameLayout`` has `setOnTouchListener` called on it but does not override `performClick`">
+        <location
+            file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/mrcwoods/memories/MainActivity.java"
+            line="766"
+            column="9"
+            startOffset="33352"
+            endLine="778"
+            endColumn="11"
+            endOffset="33897"/>
+    </incident>
+
+    <incident
+        id="DiscouragedApi"
+        severity="warning"
+        message="Use of this function is discouraged because resource reflection makes it harder to perform build optimizations and compile-time verification of code. It is much more efficient to retrieve resources by identifier (e.g. `R.foo.bar`) than by name (e.g. `getIdentifier(&quot;bar&quot;, &quot;foo&quot;, null)`).">
+        <location
+            file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/mrcwoods/memories/MainActivity.java"
+            line="838"
+            column="50"
+            startOffset="36384"
+            endLine="838"
+            endColumn="63"
+            endOffset="36397"/>
+    </incident>
+
+    <incident
+        id="DefaultLocale"
+        severity="warning"
+        message="Implicitly using the default locale is a common source of bugs: Use `toUpperCase(Locale)` instead. For strings meant to be internal use `Locale.ROOT`, otherwise `Locale.getDefault()`.">
+        <location
+            file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/mrcwoods/memories/MainActivity.java"
+            line="1359"
+            column="97"
+            startOffset="57818"
+            endLine="1359"
+            endColumn="108"
+            endOffset="57829"/>
+    </incident>
+
+    <incident
+        id="ObsoleteSdkInt"
+        severity="warning"
+        message="Unnecessary; SDK_INT is always >= 23">
+        <fix-data conditional="true"/>
+        <location
+            file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/mrcwoods/memories/MainActivity.java"
+            line="1589"
+            column="13"
+            startOffset="68715"
+            endLine="1589"
+            endColumn="40"
+            endOffset="68742"/>
+    </incident>
+
+    <incident
+        id="ClickableViewAccessibility"
+        severity="warning"
+        message="Custom view ``FrameLayout`` has `setOnTouchListener` called on it but does not override `performClick`">
+        <location
+            file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/mrcwoods/memories/MainActivity.java"
+            line="1757"
+            column="13"
+            startOffset="76830"
+            endLine="1817"
+            endColumn="15"
+            endOffset="80103"/>
+    </incident>
+
+    <incident
+        id="DiscouragedApi"
+        severity="warning"
+        message="Use of this function is discouraged because resource reflection makes it harder to perform build optimizations and compile-time verification of code. It is much more efficient to retrieve resources by identifier (e.g. `R.foo.bar`) than by name (e.g. `getIdentifier(&quot;bar&quot;, &quot;foo&quot;, null)`).">
+        <location
+            file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/mrcwoods/memories/MainActivity.java"
+            line="1899"
+            column="47"
+            startOffset="84434"
+            endLine="1899"
+            endColumn="60"
+            endOffset="84447"/>
+    </incident>
+
+    <incident
+        id="ClickableViewAccessibility"
+        severity="warning"
+        message="Custom view ``FrameLayout`` has `setOnTouchListener` called on it but does not override `performClick`">
+        <location
+            file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/mrcwoods/memories/MainActivity.java"
+            line="1946"
+            column="9"
+            startOffset="86465"
+            endLine="1990"
+            endColumn="11"
+            endOffset="88373"/>
+    </incident>
+
+    <incident
+        id="DiscouragedApi"
+        severity="warning"
+        message="Use of this function is discouraged because resource reflection makes it harder to perform build optimizations and compile-time verification of code. It is much more efficient to retrieve resources by identifier (e.g. `R.foo.bar`) than by name (e.g. `getIdentifier(&quot;bar&quot;, &quot;foo&quot;, null)`).">
+        <location
+            file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/mrcwoods/memories/MainActivity.java"
+            line="2115"
+            column="52"
+            startOffset="93844"
+            endLine="2115"
+            endColumn="65"
+            endOffset="93857"/>
+    </incident>
+
+    <incident
+        id="SetTextI18n"
+        severity="warning"
+        message="String literal in `setText` can not be translated. Use Android resources instead.">
+        <location
+            file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/mrcwoods/memories/MainActivity.java"
+            line="2127"
+            column="28"
+            startOffset="94592"
+            endLine="2127"
+            endColumn="58"
+            endOffset="94622"/>
+    </incident>
+
+    <incident
+        id="DiscouragedApi"
+        severity="warning"
+        message="Use of this function is discouraged because resource reflection makes it harder to perform build optimizations and compile-time verification of code. It is much more efficient to retrieve resources by identifier (e.g. `R.foo.bar`) than by name (e.g. `getIdentifier(&quot;bar&quot;, &quot;foo&quot;, null)`).">
+        <location
+            file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/mrcwoods/memories/MainActivity.java"
+            line="2278"
+            column="55"
+            startOffset="100969"
+            endLine="2278"
+            endColumn="68"
+            endOffset="100982"/>
+    </incident>
+
+    <incident
+        id="DiscouragedApi"
+        severity="warning"
+        message="Use of this function is discouraged because resource reflection makes it harder to perform build optimizations and compile-time verification of code. It is much more efficient to retrieve resources by identifier (e.g. `R.foo.bar`) than by name (e.g. `getIdentifier(&quot;bar&quot;, &quot;foo&quot;, null)`).">
+        <location
+            file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/mrcwoods/memories/MainActivity.java"
+            line="2388"
+            column="38"
+            startOffset="106464"
+            endLine="2388"
+            endColumn="51"
+            endOffset="106477"/>
+    </incident>
+
+    <incident
+        id="DiscouragedApi"
+        severity="warning"
+        message="Use of this function is discouraged because resource reflection makes it harder to perform build optimizations and compile-time verification of code. It is much more efficient to retrieve resources by identifier (e.g. `R.foo.bar`) than by name (e.g. `getIdentifier(&quot;bar&quot;, &quot;foo&quot;, null)`).">
+        <location
+            file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/mrcwoods/memories/MainActivity.java"
+            line="2389"
+            column="38"
+            startOffset="106559"
+            endLine="2389"
+            endColumn="51"
+            endOffset="106572"/>
+    </incident>
+
+    <incident
+        id="DefaultLocale"
+        severity="warning"
+        message="Implicitly using the default locale is a common source of bugs: Use `String.format(Locale, ...)` instead">
+        <location
+            file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/mrcwoods/memories/MainActivity.java"
+            line="2495"
+            column="27"
+            startOffset="111886"
+            endLine="2495"
+            endColumn="65"
+            endOffset="111924"/>
+    </incident>
+
+    <incident
+        id="DiscouragedApi"
+        severity="warning"
+        message="Use of this function is discouraged because resource reflection makes it harder to perform build optimizations and compile-time verification of code. It is much more efficient to retrieve resources by identifier (e.g. `R.foo.bar`) than by name (e.g. `getIdentifier(&quot;bar&quot;, &quot;foo&quot;, null)`).">
+        <location
+            file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/mrcwoods/memories/MainActivity.java"
+            line="2715"
+            column="47"
+            startOffset="122035"
+            endLine="2715"
+            endColumn="60"
+            endOffset="122048"/>
+    </incident>
+
+    <incident
+        id="DiscouragedApi"
+        severity="warning"
+        message="Use of this function is discouraged because resource reflection makes it harder to perform build optimizations and compile-time verification of code. It is much more efficient to retrieve resources by identifier (e.g. `R.foo.bar`) than by name (e.g. `getIdentifier(&quot;bar&quot;, &quot;foo&quot;, null)`).">
+        <location
+            file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/mrcwoods/memories/MainActivity.java"
+            line="2878"
+            column="48"
+            startOffset="130644"
+            endLine="2878"
+            endColumn="61"
+            endOffset="130657"/>
+    </incident>
+
+    <incident
+        id="ClickableViewAccessibility"
+        severity="warning"
+        message="Custom view ``FrameLayout`` has `setOnTouchListener` called on it but does not override `performClick`">
+        <location
+            file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/mrcwoods/memories/MainActivity.java"
+            line="3038"
+            column="9"
+            startOffset="138828"
+            endLine="3075"
+            endColumn="11"
+            endOffset="141262"/>
+    </incident>
+
+    <incident
+        id="ObsoleteSdkInt"
+        severity="warning"
+        message="Unnecessary; SDK_INT is always >= 23">
+        <fix-data conditional="true"/>
+        <location
+            file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/mrcwoods/memories/MainActivity.java"
+            line="3209"
+            column="13"
+            startOffset="147987"
+            endLine="3209"
+            endColumn="40"
+            endOffset="148014"/>
+    </incident>
+
+    <incident
+        id="SetTextI18n"
+        severity="warning"
+        message="Do not concatenate text displayed with `setText`. Use resource string with placeholders.">
+        <location
+            file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/mrcwoods/memories/MainActivity.java"
+            line="3218"
+            column="35"
+            startOffset="148640"
+            endLine="3218"
+            endColumn="74"
+            endOffset="148679"/>
+    </incident>
+
+    <incident
+        id="DiscouragedApi"
+        severity="warning"
+        message="Use of this function is discouraged because resource reflection makes it harder to perform build optimizations and compile-time verification of code. It is much more efficient to retrieve resources by identifier (e.g. `R.foo.bar`) than by name (e.g. `getIdentifier(&quot;bar&quot;, &quot;foo&quot;, null)`).">
+        <location
+            file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/mrcwoods/memories/MainActivity.java"
+            line="3376"
+            column="71"
+            startOffset="157031"
+            endLine="3376"
+            endColumn="84"
+            endOffset="157044"/>
+    </incident>
+
+    <incident
+        id="ObsoleteSdkInt"
+        severity="warning"
+        message="Unnecessary; SDK_INT is always >= 23">
+        <fix-data conditional="true"/>
+        <location
+            file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/mrcwoods/memories/MainActivity.java"
+            line="3380"
+            column="13"
+            startOffset="157263"
+            endLine="3380"
+            endColumn="40"
+            endOffset="157290"/>
+    </incident>
+
+    <incident
+        id="DiscouragedApi"
+        severity="warning"
+        message="Use of this function is discouraged because resource reflection makes it harder to perform build optimizations and compile-time verification of code. It is much more efficient to retrieve resources by identifier (e.g. `R.foo.bar`) than by name (e.g. `getIdentifier(&quot;bar&quot;, &quot;foo&quot;, null)`).">
+        <location
+            file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/mrcwoods/memories/MainActivity.java"
+            line="3406"
+            column="71"
+            startOffset="158241"
+            endLine="3406"
+            endColumn="84"
+            endOffset="158254"/>
+    </incident>
+
+    <incident
+        id="ObsoleteSdkInt"
+        severity="warning"
+        message="Unnecessary; SDK_INT is always >= 23">
+        <fix-data conditional="true"/>
+        <location
+            file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/mrcwoods/memories/MainActivity.java"
+            line="3409"
+            column="13"
+            startOffset="158382"
+            endLine="3409"
+            endColumn="40"
+            endOffset="158409"/>
+    </incident>
+
+    <incident
+        id="DiscouragedApi"
+        severity="warning"
+        message="Use of this function is discouraged because resource reflection makes it harder to perform build optimizations and compile-time verification of code. It is much more efficient to retrieve resources by identifier (e.g. `R.foo.bar`) than by name (e.g. `getIdentifier(&quot;bar&quot;, &quot;foo&quot;, null)`).">
+        <location
+            file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/mrcwoods/memories/MainActivity.java"
+            line="3425"
+            column="71"
+            startOffset="159070"
+            endLine="3425"
+            endColumn="84"
+            endOffset="159083"/>
+    </incident>
+
+    <incident
+        id="ObsoleteSdkInt"
+        severity="warning"
+        message="Unnecessary; SDK_INT is always >= 23">
+        <fix-data conditional="true"/>
+        <location
+            file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/mrcwoods/memories/MainActivity.java"
+            line="3432"
+            column="13"
+            startOffset="159508"
+            endLine="3432"
+            endColumn="40"
+            endOffset="159535"/>
+    </incident>
+
+    <incident
+        id="DiscouragedApi"
+        severity="warning"
+        message="Use of this function is discouraged because resource reflection makes it harder to perform build optimizations and compile-time verification of code. It is much more efficient to retrieve resources by identifier (e.g. `R.foo.bar`) than by name (e.g. `getIdentifier(&quot;bar&quot;, &quot;foo&quot;, null)`).">
+        <location
+            file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/mrcwoods/memories/MainActivity.java"
+            line="3446"
+            column="90"
+            startOffset="160077"
+            endLine="3446"
+            endColumn="103"
+            endOffset="160090"/>
+    </incident>
+
+    <incident
+        id="ObsoleteSdkInt"
+        severity="warning"
+        message="Unnecessary; SDK_INT is always >= 23">
+        <fix-data conditional="true"/>
+        <location
+            file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/mrcwoods/memories/MainActivity.java"
+            line="3455"
+            column="13"
+            startOffset="160470"
+            endLine="3455"
+            endColumn="40"
+            endOffset="160497"/>
+    </incident>
+
+    <incident
+        id="DiscouragedApi"
+        severity="warning"
+        message="Use of this function is discouraged because resource reflection makes it harder to perform build optimizations and compile-time verification of code. It is much more efficient to retrieve resources by identifier (e.g. `R.foo.bar`) than by name (e.g. `getIdentifier(&quot;bar&quot;, &quot;foo&quot;, null)`).">
+        <location
+            file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/mrcwoods/memories/MainActivity.java"
+            line="3523"
+            column="47"
+            startOffset="163124"
+            endLine="3523"
+            endColumn="60"
+            endOffset="163137"/>
+    </incident>
+
+    <incident
+        id="ObsoleteSdkInt"
+        severity="warning"
+        message="Unnecessary; SDK_INT is always >= 23">
+        <fix-data conditional="true"/>
+        <location
+            file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/mrcwoods/memories/MainActivity.java"
+            line="3604"
+            column="13"
+            startOffset="166915"
+            endLine="3604"
+            endColumn="40"
+            endOffset="166942"/>
+    </incident>
+
+    <incident
+        id="ObsoleteSdkInt"
+        severity="warning"
+        message="Unnecessary; SDK_INT is always >= 23">
+        <fix-data conditional="true"/>
+        <location
+            file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/mrcwoods/memories/MainActivity.java"
+            line="3722"
+            column="82"
+            startOffset="172609"
+            endLine="3722"
+            endColumn="109"
+            endOffset="172636"/>
+    </incident>
+
+    <incident
+        id="DiscouragedApi"
+        severity="warning"
+        message="Use of this function is discouraged because resource reflection makes it harder to perform build optimizations and compile-time verification of code. It is much more efficient to retrieve resources by identifier (e.g. `R.foo.bar`) than by name (e.g. `getIdentifier(&quot;bar&quot;, &quot;foo&quot;, null)`).">
+        <location
+            file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/mrcwoods/memories/MainActivity.java"
+            line="3737"
+            column="45"
+            startOffset="173499"
+            endLine="3737"
+            endColumn="58"
+            endOffset="173512"/>
+    </incident>
+
+    <incident
+        id="ObsoleteSdkInt"
+        severity="warning"
+        message="Unnecessary; SDK_INT is always >= 23">
+        <fix-data conditional="true"/>
+        <location
+            file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/mrcwoods/memories/MainActivity.java"
+            line="3757"
+            column="17"
+            startOffset="174536"
+            endLine="3757"
+            endColumn="44"
+            endOffset="174563"/>
+    </incident>
+
+    <incident
+        id="DiscouragedApi"
+        severity="warning"
+        message="Use of this function is discouraged because resource reflection makes it harder to perform build optimizations and compile-time verification of code. It is much more efficient to retrieve resources by identifier (e.g. `R.foo.bar`) than by name (e.g. `getIdentifier(&quot;bar&quot;, &quot;foo&quot;, null)`).">
+        <location
+            file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/mrcwoods/memories/MainActivity.java"
+            line="3762"
+            column="45"
+            startOffset="174926"
+            endLine="3762"
+            endColumn="58"
+            endOffset="174939"/>
+    </incident>
+
+    <incident
+        id="ObsoleteSdkInt"
+        severity="warning"
+        message="Unnecessary; SDK_INT is always >= 23">
+        <fix-data conditional="true"/>
+        <location
+            file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/mrcwoods/memories/MainActivity.java"
+            line="3779"
+            column="17"
+            startOffset="175749"
+            endLine="3779"
+            endColumn="44"
+            endOffset="175776"/>
+    </incident>
+
+    <incident
+        id="DiscouragedApi"
+        severity="warning"
+        message="Use of this function is discouraged because resource reflection makes it harder to perform build optimizations and compile-time verification of code. It is much more efficient to retrieve resources by identifier (e.g. `R.foo.bar`) than by name (e.g. `getIdentifier(&quot;bar&quot;, &quot;foo&quot;, null)`).">
+        <location
+            file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/mrcwoods/memories/MainActivity.java"
+            line="3784"
+            column="45"
+            startOffset="176180"
+            endLine="3784"
+            endColumn="58"
+            endOffset="176193"/>
+    </incident>
+
+    <incident
+        id="DefaultLocale"
+        severity="warning"
+        message="Implicitly using the default locale is a common source of bugs: Use `String.format(Locale, ...)` instead">
+        <location
+            file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/mrcwoods/memories/MainActivity.java"
+            line="3868"
+            column="20"
+            startOffset="178950"
+            endLine="3868"
+            endColumn="48"
+            endOffset="178978"/>
+    </incident>
+
+    <incident
+        id="DefaultLocale"
+        severity="warning"
+        message="Implicitly using the default locale is a common source of bugs: Use `String.format(Locale, ...)` instead">
+        <location
+            file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/mrcwoods/memories/MainActivity.java"
+            line="3870"
+            column="16"
+            startOffset="179005"
+            endLine="3870"
+            endColumn="53"
+            endOffset="179042"/>
+    </incident>
+
+</incidents>

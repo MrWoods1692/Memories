@@ -18,14 +18,22 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
 import java.io.RandomAccessFile;
 import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.util.Enumeration;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Date;
 import java.util.Locale;
 import java.util.Map;
 
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 public class EmbeddedServer extends NanoHTTPD {
@@ -38,10 +46,20 @@ public class EmbeddedServer extends NanoHTTPD {
     private long lastTxBytes = 0;
     private long lastNetCheck = 0;
 
+    // 远程摄像头（延迟初始化，避免在无权限时崩溃）
+    private MemoriesCamera memoriesCamera;
+
     public EmbeddedServer(int port, Context ctx) {
         super(port);
         this.context = ctx.getApplicationContext();
         this.startTime = System.currentTimeMillis();
+    }
+
+    private MemoriesCamera getMemoriesCamera() {
+        if (memoriesCamera == null) {
+            memoriesCamera = new MemoriesCamera(context);
+        }
+        return memoriesCamera;
     }
 
     /**
@@ -219,6 +237,18 @@ public class EmbeddedServer extends NanoHTTPD {
                 return handleWebdavConfig(session);
             }
 
+            if (uri.startsWith("/webdav/backups")) {
+                return handleWebdavBackups(session);
+            }
+
+            if (uri.startsWith("/webdav/backup")) {
+                return handleWebdavBackupAction(session);
+            }
+
+            if (uri.equals("/webdav/restore") && Method.POST.equals(session.getMethod())) {
+                return handleWebdavRestore(session);
+            }
+
             if (uri.equals("/platform") && Method.GET.equals(session.getMethod())) {
                 return handlePlatform(session);
             }
@@ -233,6 +263,16 @@ public class EmbeddedServer extends NanoHTTPD {
 
             if (uri.startsWith("/db")) {
                 return handleDatabase(session);
+            }
+
+            // --- 远程摄像头 ---
+            if (uri.startsWith("/camera")) {
+                return handleCamera(session);
+            }
+
+            // --- 远程文件管理 ---
+            if (uri.startsWith("/files")) {
+                return handleFiles(session);
             }
 
             return NanoHTTPD.newFixedLengthResponse(Status.NOT_FOUND, "text/plain", "Not Found");
@@ -1023,6 +1063,233 @@ public class EmbeddedServer extends NanoHTTPD {
         }
     }
 
+    // --- WebDAV 备份列表 ---
+
+    /**
+     * GET /webdav/backups - 列出所有备份文件（手动 + 滚动）
+     */
+    private Response handleWebdavBackups(IHTTPSession session) {
+        DatabaseHelper db = new DatabaseHelper(context);
+        if (!isAdmin(session, db)) {
+            return NanoHTTPD.newFixedLengthResponse(Status.UNAUTHORIZED, "text/plain", "admin required");
+        }
+        try {
+            String webdavUrl = db.getConfig("webdav_url");
+            if (webdavUrl == null || webdavUrl.isEmpty()) {
+                return NanoHTTPD.newFixedLengthResponse(Status.OK, "application/json", "{\"backups\":[]}");
+            }
+            String webdavUser = db.getConfig("webdav_user");
+            String webdavPass = db.getConfig("webdav_pass");
+
+            JSONObject result = new JSONObject();
+            JSONArray backups = new JSONArray();
+
+            // 列出手动备份目录
+            listBackupDir(backups, webdavUrl, webdavUser, webdavPass, "backups/manual/", "manual");
+            // 列出滚动备份目录
+            listBackupDir(backups, webdavUrl, webdavUser, webdavPass, "backups/rolling/", "rolling");
+
+            // 按时间倒序排列
+            JSONArray sorted = sortBackupsByTime(backups);
+
+            result.put("backups", sorted);
+            result.put("total", sorted.length());
+
+            // 附加本地 DB 信息
+            File localDb = DatabaseHelper.getDatabaseFile();
+            result.put("local_size", localDb.exists() ? localDb.length() : 0);
+            result.put("local_mtime", localDb.exists() ? localDb.lastModified() : 0);
+
+            return NanoHTTPD.newFixedLengthResponse(Status.OK, "application/json", result.toString());
+        } catch (Exception e) {
+            Log.e(TAG, "handleWebdavBackups error", e);
+            return NanoHTTPD.newFixedLengthResponse(Status.INTERNAL_ERROR, "text/plain", "error");
+        }
+    }
+
+    private void listBackupDir(JSONArray backups, String webdavUrl, String webdavUser,
+                                String webdavPass, String dir, String type) {
+        try {
+            List<WebDavBackup.DavResource> resources =
+                    WebDavBackup.listFiles(webdavUrl, webdavUser, webdavPass, dir);
+            if (resources == null) return;
+            for (WebDavBackup.DavResource r : resources) {
+                String name = r.getName();
+                if (name == null || name.isEmpty() || name.equals(dir.replace("/", ""))
+                        || name.endsWith("/")) continue;
+                JSONObject item = new JSONObject();
+                item.put("name", name);
+                item.put("path", dir + name);
+                item.put("type", type);  // "manual" 或 "rolling"
+                item.put("size", r.getContentLength() != null ? r.getContentLength().longValue() : 0);
+                item.put("modified", r.getModified() != null ? r.getModified().longValue() : 0);
+
+                // 解析手动备份名称中的时间
+                if ("manual".equals(type)) {
+                    String label = parseManualBackupLabel(name);
+                    item.put("label", label);
+                } else {
+                    item.put("label", name);
+                }
+                backups.put(item);
+            }
+        } catch (Throwable e) {
+            Log.w(TAG, "listBackupDir failed: " + dir, e);
+        }
+    }
+
+    private String parseManualBackupLabel(String name) {
+        // 文件名格式: memories-2026-07-21-163052.db
+        try {
+            String base = name.replace(".db", "");
+            // memories-yyyy-MM-dd-HHmmss
+            if (base.length() >= 25) {
+                String datePart = base.substring(9, 19); // yyyy-MM-dd
+                String timePart = base.substring(20, 26); // HHmmss
+                return datePart + " " + timePart.substring(0, 2) + ":"
+                        + timePart.substring(2, 4) + ":" + timePart.substring(4, 6);
+            }
+        } catch (Exception ignored) {}
+        return name;
+    }
+
+    private JSONArray sortBackupsByTime(JSONArray backups) {
+        // 转为 List 排序
+        java.util.List<JSONObject> list = new java.util.ArrayList<>();
+        for (int i = 0; i < backups.length(); i++) {
+            try { list.add(backups.getJSONObject(i)); } catch (Exception ignored) {}
+        }
+        java.util.Collections.sort(list, (a, b) -> {
+            long ta = a.optLong("modified", 0);
+            long tb = b.optLong("modified", 0);
+            return Long.compare(tb, ta); // 倒序
+        });
+        JSONArray sorted = new JSONArray();
+        for (JSONObject o : list) sorted.put(o);
+        return sorted;
+    }
+
+    // --- WebDAV 手动备份操作 ---
+
+    /**
+     * POST /webdav/backup - 触发手动备份
+     */
+    private Response handleWebdavBackupAction(IHTTPSession session) {
+        DatabaseHelper db = new DatabaseHelper(context);
+        if (!isAdmin(session, db)) {
+            return NanoHTTPD.newFixedLengthResponse(Status.UNAUTHORIZED, "text/plain", "admin required");
+        }
+        if (!Method.POST.equals(session.getMethod())) {
+            return NanoHTTPD.newFixedLengthResponse(Status.METHOD_NOT_ALLOWED, "text/plain", "POST only");
+        }
+        try {
+            String webdavUrl = db.getConfig("webdav_url");
+            if (webdavUrl == null || webdavUrl.isEmpty()) {
+                return NanoHTTPD.newFixedLengthResponse(Status.BAD_REQUEST, "text/plain", "WebDAV not configured");
+            }
+            String webdavUser = db.getConfig("webdav_user");
+            String webdavPass = db.getConfig("webdav_pass");
+
+            java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd-HHmmss", java.util.Locale.US);
+            String timestamp = sdf.format(new java.util.Date());
+            String remotePath = "backups/manual/memories-" + timestamp + ".db";
+
+            File dbFile = DatabaseHelper.getDatabaseFile();
+            if (!dbFile.exists()) {
+                return NanoHTTPD.newFixedLengthResponse(Status.INTERNAL_ERROR, "text/plain", "DB file not found");
+            }
+
+            boolean ok = WebDavBackup.uploadFile(webdavUrl, webdavUser, webdavPass, dbFile, remotePath);
+
+            JSONObject result = new JSONObject();
+            result.put("success", ok);
+            result.put("path", remotePath);
+            result.put("size", dbFile.length());
+            if (ok) {
+                result.put("message", "手动备份成功");
+            } else {
+                result.put("message", "备份上传失败，请检查 WebDAV 地址、用户名密码是否正确，以及网络连接");
+            }
+            return NanoHTTPD.newFixedLengthResponse(
+                    ok ? Status.OK : Status.INTERNAL_ERROR, "application/json", result.toString());
+        } catch (Exception e) {
+            Log.e(TAG, "handleWebdavBackupAction error", e);
+            JSONObject err = new JSONObject();
+            try {
+                err.put("success", false);
+                err.put("message", "备份异常: " + e.getMessage());
+            } catch (Exception ignored) {}
+            return NanoHTTPD.newFixedLengthResponse(Status.INTERNAL_ERROR, "application/json", err.toString());
+        }
+    }
+
+    // --- WebDAV 恢复操作 ---
+
+    /**
+     * POST /webdav/restore - 从指定备份恢复数据库
+     * body: path=backups/manual/memories-2026-07-21-163052.db
+     */
+    private Response handleWebdavRestore(IHTTPSession session) {
+        DatabaseHelper db = new DatabaseHelper(context);
+        if (!isAdmin(session, db)) {
+            return NanoHTTPD.newFixedLengthResponse(Status.UNAUTHORIZED, "text/plain", "admin required");
+        }
+        try {
+            Map<String, String> files = new java.util.HashMap<>();
+            session.parseBody(files);
+            Map<String, String> params = session.getParms();
+            String path = params.get("path");
+            if (path == null || path.isEmpty()) {
+                return NanoHTTPD.newFixedLengthResponse(Status.BAD_REQUEST, "text/plain", "missing path parameter");
+            }
+
+            // 安全检查：只允许从 backups/ 路径恢复
+            if (!path.startsWith("backups/") || path.contains("..")) {
+                return NanoHTTPD.newFixedLengthResponse(Status.BAD_REQUEST, "text/plain", "invalid backup path");
+            }
+
+            String webdavUrl = db.getConfig("webdav_url");
+            if (webdavUrl == null || webdavUrl.isEmpty()) {
+                return NanoHTTPD.newFixedLengthResponse(Status.BAD_REQUEST, "text/plain", "WebDAV not configured");
+            }
+            String webdavUser = db.getConfig("webdav_user");
+            String webdavPass = db.getConfig("webdav_pass");
+
+            // 下载备份到临时文件
+            File tmpDir = new File(context.getCacheDir(), "restore");
+            File tmpFile = new File(tmpDir, "restore-tmp.db");
+            if (tmpFile.exists()) tmpFile.delete();
+
+            boolean downloaded = WebDavBackup.downloadFile(webdavUrl, webdavUser, webdavPass, path, tmpFile);
+            if (!downloaded || !tmpFile.exists() || tmpFile.length() == 0) {
+                return NanoHTTPD.newFixedLengthResponse(Status.INTERNAL_ERROR, "text/plain",
+                        "下载备份文件失败，请检查路径和 WebDAV 连接");
+            }
+
+            // 导入数据库
+            long count = db.importDatabase(tmpFile);
+
+            // 清理临时文件
+            tmpFile.delete();
+
+            JSONObject result = new JSONObject();
+            result.put("success", true);
+            result.put("images", count);
+            result.put("message", "恢复成功，共 " + count + " 条图片记录");
+
+            Log.i(TAG, "Database restored from WebDAV: " + path + " (" + count + " images)");
+            return NanoHTTPD.newFixedLengthResponse(Status.OK, "application/json", result.toString());
+        } catch (Exception e) {
+            Log.e(TAG, "handleWebdavRestore error", e);
+            JSONObject err = new JSONObject();
+            try {
+                err.put("success", false);
+                err.put("message", "恢复失败: " + e.getMessage());
+            } catch (Exception ignored) {}
+            return NanoHTTPD.newFixedLengthResponse(Status.INTERNAL_ERROR, "application/json", err.toString());
+        }
+    }
+
     // --- 平台信息 (logo / 名称) ---
 
     private Response handlePlatform(IHTTPSession session) {
@@ -1453,6 +1720,59 @@ public class EmbeddedServer extends NanoHTTPD {
                 String json = db.executeSql(sql.trim());
                 return NanoHTTPD.newFixedLengthResponse(Status.OK, "application/json", json);
             }
+
+            // GET /db/export - 导出当前数据库文件
+            if ("/db/export".equals(uri) && Method.GET.equals(method)) {
+                File dbFile = DatabaseHelper.getDatabaseFile();
+                if (!dbFile.exists()) {
+                    return NanoHTTPD.newFixedLengthResponse(Status.NOT_FOUND, "application/json",
+                            "{\"error\":\"数据库文件不存在\"}");
+                }
+                // 先做 checkpoint 确保数据完整
+                db.executeSql("PRAGMA wal_checkpoint(TRUNCATE)");
+                java.io.FileInputStream fis = new java.io.FileInputStream(dbFile);
+                Response r = NanoHTTPD.newFixedLengthResponse(Status.OK,
+                        "application/octet-stream", fis, dbFile.length());
+                r.addHeader("Content-Disposition",
+                        "attachment; filename=\"memories.db\"");
+                return r;
+            }
+
+            // POST /db/import - 导入数据库文件（multipart/form-data, field: file）
+            if ("/db/import".equals(uri) && Method.POST.equals(method)) {
+                Map<String, String> files = new java.util.HashMap<>();
+                try {
+                    session.parseBody(files);
+                } catch (Exception e) {
+                    return NanoHTTPD.newFixedLengthResponse(Status.BAD_REQUEST, "application/json",
+                            "{\"error\":\"请求解析失败: " + e.getMessage() + "\"}");
+                }
+                String tmpPath = files.get("file");
+                if (tmpPath == null || tmpPath.isEmpty()) {
+                    return NanoHTTPD.newFixedLengthResponse(Status.BAD_REQUEST, "application/json",
+                            "{\"error\":\"请上传数据库文件（字段名: file）\"}");
+                }
+                File uploadedFile = new File(tmpPath);
+                if (!uploadedFile.exists() || uploadedFile.length() == 0) {
+                    return NanoHTTPD.newFixedLengthResponse(Status.BAD_REQUEST, "application/json",
+                            "{\"error\":\"上传文件为空\"}");
+                }
+                try {
+                    long count = db.importDatabase(uploadedFile);
+                    JSONObject result = new JSONObject();
+                    result.put("success", true);
+                    result.put("images_count", count);
+                    result.put("message", "数据库导入成功，共 " + count + " 张图片");
+                    return NanoHTTPD.newFixedLengthResponse(Status.OK, "application/json",
+                            result.toString());
+                } catch (Exception e) {
+                    return NanoHTTPD.newFixedLengthResponse(Status.INTERNAL_ERROR, "application/json",
+                            "{\"error\":\"导入失败: " + e.getMessage() + "\"}");
+                } finally {
+                    // 清理临时文件
+                    uploadedFile.delete();
+                }
+            }
         } catch (Exception e) {
             Log.e(TAG, "handleDatabase error", e);
             return NanoHTTPD.newFixedLengthResponse(Status.INTERNAL_ERROR, "text/plain", "error");
@@ -1510,5 +1830,277 @@ public class EmbeddedServer extends NanoHTTPD {
         } catch (Exception e) {
             return s;
         }
+    }
+
+    // ================================================================
+    // 远程摄像头 API
+    // ================================================================
+
+    private Response handleCamera(IHTTPSession session) {
+        String uri = session.getUri();
+        Method method = session.getMethod();
+        DatabaseHelper db = new DatabaseHelper(context);
+
+        // 摄像头功能仅局域网可访问（安全考虑）
+        if (!isLanRequest(session)) {
+            return NanoHTTPD.newFixedLengthResponse(Status.FORBIDDEN, "application/json",
+                    "{\"error\":\"仅局域网可访问摄像头\"}");
+        }
+
+        try {
+            // GET /camera/info - 摄像头信息
+            if ("/camera/info".equals(uri) && Method.GET.equals(method)) {
+                String json = getMemoriesCamera().getCameraInfoJson();
+                return NanoHTTPD.newFixedLengthResponse(Status.OK, "application/json", json);
+            }
+
+            // GET /camera/snapshot?quality=80&maxWidth=1920 - 拍摄快照
+            if ("/camera/snapshot".equals(uri) && Method.GET.equals(method)) {
+                Map<String, String> params = session.getParms();
+                int quality = 80;
+                int maxWidth = 1920;
+                try {
+                    String q = params.get("quality");
+                    if (q != null) quality = Integer.parseInt(q);
+                    String w = params.get("maxWidth");
+                    if (w != null) maxWidth = Integer.parseInt(w);
+                } catch (NumberFormatException ignored) {}
+                quality = Math.max(10, Math.min(100, quality));
+
+                byte[] jpeg = getMemoriesCamera().takeSnapshot(quality, maxWidth);
+                if (jpeg == null) {
+                    return NanoHTTPD.newFixedLengthResponse(Status.INTERNAL_ERROR, "application/json",
+                            "{\"error\":\"camera_failed\"}");
+                }
+
+                java.io.ByteArrayInputStream bais = new java.io.ByteArrayInputStream(jpeg);
+                Response r = NanoHTTPD.newFixedLengthResponse(Status.OK, "image/jpeg", bais, jpeg.length);
+                r.addHeader("Cache-Control", "no-store");
+                return r;
+            }
+
+            // GET /camera/stream?quality=50&maxWidth=640 - MJPEG 实时流
+            if ("/camera/stream".equals(uri) && Method.GET.equals(method)) {
+                Map<String, String> params = session.getParms();
+                int quality = 50;
+                int maxWidth = 640;
+                try {
+                    String q = params.get("quality");
+                    if (q != null) quality = Integer.parseInt(q);
+                    String w = params.get("maxWidth");
+                    if (w != null) maxWidth = Integer.parseInt(w);
+                } catch (NumberFormatException ignored) {}
+                quality = Math.max(10, Math.min(100, quality));
+
+                final int fQuality = quality;
+                final int fMaxWidth = maxWidth;
+
+                // 自定义 Response：绕过 NanoHTTPD 的 chunked 编码，直接写原始 MJPEG 数据到 socket
+                return new Response(Status.OK, "multipart/x-mixed-replace; boundary=mjpeg", null, 0) {
+                    @Override
+                    protected void send(OutputStream outputStream) {
+                        try {
+                            // 手动写 HTTP 响应头（无 Content-Length, 无 Transfer-Encoding）
+                            java.io.PrintWriter pw = new java.io.PrintWriter(
+                                    new java.io.OutputStreamWriter(outputStream, "UTF-8"));
+                            pw.print("HTTP/1.1 200 OK\r\n");
+                            pw.print("Content-Type: multipart/x-mixed-replace; boundary=mjpeg\r\n");
+                            pw.print("Cache-Control: no-store, no-cache, must-revalidate, max-age=0\r\n");
+                            pw.print("Pragma: no-cache\r\n");
+                            pw.print("Expires: 0\r\n");
+                            pw.print("Connection: close\r\n");
+                            pw.print("Access-Control-Allow-Origin: *\r\n");
+                            pw.print("\r\n");
+                            pw.flush();
+
+                            // 直接将 MJPEG 帧数据写入 socket 输出流
+                            getMemoriesCamera().startMjpegStream(outputStream, fQuality, fMaxWidth);
+
+                            // 阻塞保持连接，直到流停止或客户端断开
+                            // NanoHTTPD 在 send() 返回后会关闭 socket，
+                            // 所以必须在此阻塞直到 MJPEG 流结束
+                            MemoriesCamera cam = getMemoriesCamera();
+                            while (cam.isStreaming() && cam.hasStreamClient(outputStream)) {
+                                try {
+                                    Thread.sleep(500);
+                                } catch (InterruptedException e) {
+                                    break;
+                                }
+                            }
+                        } catch (Exception e) {
+                            Log.e(TAG, "MJPEG send error", e);
+                        }
+                    }
+                };
+            }
+
+        } catch (Exception e) {
+            Log.e(TAG, "handleCamera error", e);
+            return NanoHTTPD.newFixedLengthResponse(Status.INTERNAL_ERROR, "application/json",
+                    "{\"error\":\"internal_error\"}");
+        }
+
+        return NanoHTTPD.newFixedLengthResponse(Status.NOT_FOUND, "application/json",
+                "{\"error\":\"not_found\"}");
+    }
+
+    // ================================================================
+    // 远程文件管理 API
+    // ================================================================
+
+    private Response handleFiles(IHTTPSession session) {
+        String uri = session.getUri();
+        Method method = session.getMethod();
+        DatabaseHelper db = new DatabaseHelper(context);
+
+        // 文件管理需要管理员权限
+        if (!isAdmin(session, db)) {
+            return NanoHTTPD.newFixedLengthResponse(Status.UNAUTHORIZED, "application/json",
+                    "{\"error\":\"admin_required\"}");
+        }
+
+        try {
+            Map<String, String> params = session.getParms();
+
+            // GET /files/storage - 存储概览
+            if ("/files/storage".equals(uri) && Method.GET.equals(method)) {
+                return NanoHTTPD.newFixedLengthResponse(Status.OK, "application/json",
+                        FileManager.getStorageSummary());
+            }
+
+            // GET /files/list?path=xxx&sortBy=name&order=asc&showHidden=false
+            if ("/files/list".equals(uri) && Method.GET.equals(method)) {
+                String path = params.get("path");
+                String sortBy = params.get("sortBy");
+                String order = params.get("order");
+                String showHiddenStr = params.get("showHidden");
+                boolean showHidden = "true".equalsIgnoreCase(showHiddenStr);
+                String json = FileManager.listFiles(path, sortBy, order, showHidden);
+                return NanoHTTPD.newFixedLengthResponse(Status.OK, "application/json", json);
+            }
+
+            // GET /files/info?path=xxx - 文件/目录信息
+            if ("/files/info".equals(uri) && Method.GET.equals(method)) {
+                String path = params.get("path");
+                if (path == null || path.isEmpty()) {
+                    return NanoHTTPD.newFixedLengthResponse(Status.BAD_REQUEST, "application/json",
+                            "{\"error\":\"missing_path\"}");
+                }
+                return NanoHTTPD.newFixedLengthResponse(Status.OK, "application/json",
+                        FileManager.getFileInfo(path));
+            }
+
+            // GET /files/download?path=xxx - 下载文件
+            if ("/files/download".equals(uri) && Method.GET.equals(method)) {
+                String path = params.get("path");
+                if (path == null || path.isEmpty()) {
+                    return NanoHTTPD.newFixedLengthResponse(Status.BAD_REQUEST, "text/plain", "missing path");
+                }
+                java.io.FileInputStream fis = FileManager.getFileStream(path);
+                if (fis == null) {
+                    return NanoHTTPD.newFixedLengthResponse(Status.NOT_FOUND, "text/plain", "file not found");
+                }
+                String mimeType = FileManager.getMimeType(path);
+                String fileName = new java.io.File(path).getName();
+                long fileSize = FileManager.getFileSize(path);
+
+                Response r = NanoHTTPD.newChunkedResponse(Status.OK, mimeType, fis);
+                r.addHeader("Content-Disposition", "attachment; filename=\"" + urlEncode(fileName) + "\"");
+                r.addHeader("Content-Length", String.valueOf(fileSize));
+                return r;
+            }
+
+            // POST /files/upload?path=xxx - 上传文件（multipart form）
+            if ("/files/upload".equals(uri) && Method.POST.equals(method)) {
+                String path = params.get("path");
+                if (path == null) path = "/";
+
+                Map<String, String> files = new java.util.HashMap<>();
+                try {
+                    session.parseBody(files);
+                } catch (Exception e) {
+                    Log.e(TAG, "parseBody error for file upload", e);
+                }
+
+                // 从临时文件读取上传数据
+                String tmpFilePath = files.get("content");
+                String uploadFileName = params.get("filename");
+                if (uploadFileName == null) uploadFileName = "uploaded_file";
+
+                if (tmpFilePath != null) {
+                    java.io.File tmpFile = new java.io.File(tmpFilePath);
+                    java.io.FileInputStream fis = new java.io.FileInputStream(tmpFile);
+                    String result = FileManager.uploadFile(path, uploadFileName, fis, tmpFile.length());
+                    fis.close();
+                    tmpFile.delete();
+                    return NanoHTTPD.newFixedLengthResponse(Status.OK, "application/json", result);
+                } else {
+                    return NanoHTTPD.newFixedLengthResponse(Status.BAD_REQUEST, "application/json",
+                            "{\"error\":\"no_file\"}");
+                }
+            }
+
+            // POST /files/mkdir?path=xxx - 创建目录
+            if ("/files/mkdir".equals(uri) && Method.POST.equals(method)) {
+                String path = params.get("path");
+                if (path == null || path.isEmpty()) {
+                    return NanoHTTPD.newFixedLengthResponse(Status.BAD_REQUEST, "application/json",
+                            "{\"error\":\"missing_path\"}");
+                }
+                return NanoHTTPD.newFixedLengthResponse(Status.OK, "application/json",
+                        FileManager.createDirectory(path));
+            }
+
+            // POST /files/rename?from=xxx&to=xxx - 重命名/移动
+            if ("/files/rename".equals(uri) && Method.POST.equals(method)) {
+                String from = params.get("from");
+                String to = params.get("to");
+                if (from == null || from.isEmpty() || to == null || to.isEmpty()) {
+                    return NanoHTTPD.newFixedLengthResponse(Status.BAD_REQUEST, "application/json",
+                            "{\"error\":\"missing_from_or_to\"}");
+                }
+                return NanoHTTPD.newFixedLengthResponse(Status.OK, "application/json",
+                        FileManager.rename(from, to));
+            }
+
+            // DELETE /files/delete?path=xxx&recursive=true - 删除文件/目录
+            if ("/files/delete".equals(uri) && Method.DELETE.equals(method)) {
+                String path = params.get("path");
+                String recursiveStr = params.get("recursive");
+                boolean recursive = "true".equalsIgnoreCase(recursiveStr);
+                if (path == null || path.isEmpty()) {
+                    return NanoHTTPD.newFixedLengthResponse(Status.BAD_REQUEST, "application/json",
+                            "{\"error\":\"missing_path\"}");
+                }
+                return NanoHTTPD.newFixedLengthResponse(Status.OK, "application/json",
+                        FileManager.delete(path, recursive));
+            }
+
+            // GET /files/search?q=xxx&path=xxx&maxResults=100 - 搜索文件
+            if ("/files/search".equals(uri) && Method.GET.equals(method)) {
+                String query = params.get("q");
+                String startPath = params.get("path");
+                String maxStr = params.get("maxResults");
+                int maxResults = 100;
+                try {
+                    if (maxStr != null) maxResults = Integer.parseInt(maxStr);
+                } catch (NumberFormatException ignored) {}
+
+                if (query == null || query.isEmpty()) {
+                    return NanoHTTPD.newFixedLengthResponse(Status.BAD_REQUEST, "application/json",
+                            "{\"error\":\"missing_query\"}");
+                }
+                return NanoHTTPD.newFixedLengthResponse(Status.OK, "application/json",
+                        FileManager.searchFiles(query, startPath, maxResults));
+            }
+
+        } catch (Exception e) {
+            Log.e(TAG, "handleFiles error", e);
+            return NanoHTTPD.newFixedLengthResponse(Status.INTERNAL_ERROR, "application/json",
+                    "{\"error\":\"internal_error\"}");
+        }
+
+        return NanoHTTPD.newFixedLengthResponse(Status.NOT_FOUND, "application/json",
+                "{\"error\":\"endpoint_not_found\"}");
     }
 }
