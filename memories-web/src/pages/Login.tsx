@@ -419,6 +419,34 @@ export default function LoginPage() {
           </div>
         </div>
       </Card>
+
+      {/* 备案信息 */}
+      <div style={{
+        position: "absolute",
+        bottom: 16,
+        left: 0,
+        right: 0,
+        textAlign: "center",
+        zIndex: 2,
+        pointerEvents: "none",
+      }}>
+        <a
+          href="https://beian.miit.gov.cn/"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            fontSize: 12,
+            color: isDark ? "rgba(255,255,255,0.45)" : "rgba(80,80,85,0.55)",
+            textDecoration: "none",
+            pointerEvents: "auto",
+            transition: "color 0.2s",
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.color = isDark ? "rgba(255,255,255,0.8)" : "rgba(80,80,85,0.9)")}
+          onMouseLeave={(e) => (e.currentTarget.style.color = isDark ? "rgba(255,255,255,0.45)" : "rgba(80,80,85,0.55)")}
+        >
+          桂ICP备2020008331号-1
+        </a>
+      </div>
     </div>
   );
 }

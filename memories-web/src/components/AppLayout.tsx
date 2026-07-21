@@ -173,6 +173,29 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                 }}
               />
             </Tooltip>
+
+            {/* 备案信息（侧边栏未收起时显示） */}
+            {!collapsed && (
+              <div style={{ textAlign: "center", padding: "4px 4px 0" }}>
+                <a
+                  href="https://beian.miit.gov.cn/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    fontSize: 11,
+                    color: "var(--ant-color-text-tertiary)",
+                    textDecoration: "none",
+                    opacity: 0.6,
+                    transition: "opacity 0.2s",
+                    lineHeight: 1.3,
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.6"; }}
+                >
+                  桂ICP备2020008331号-1
+                </a>
+              </div>
+            )}
           </div>
             </div>{/* end sidebar context-menu container */}
           </Dropdown>{/* end sidebar context-menu dropdown */}

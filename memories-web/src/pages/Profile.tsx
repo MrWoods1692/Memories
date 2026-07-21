@@ -784,6 +784,52 @@ export default function ProfilePage() {
           </Card>
         </a>
 
+        {/* === 备案信息 === */}
+        <a
+          href="https://beian.miit.gov.cn/"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ textDecoration: "none", display: "block" }}
+        >
+          <Card size="small" hoverable
+            style={{
+              borderRadius: 16, marginBottom: 16,
+              position: "relative", overflow: "hidden",
+              border: `1px solid ${accentColor}20`,
+              background: `linear-gradient(135deg, ${accentColor}06 0%, transparent 60%)`,
+              transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+              boxShadow: `0 1px 4px ${accentColor}08`,
+            }}
+            styles={{ body: { padding: "14px 20px" } }}>
+            {/* 顶部彩色装饰条 */}
+            <div style={{
+              position: "absolute",
+              top: 0, left: 0, right: 0,
+              height: 3,
+              background: `linear-gradient(90deg, ${accentColor} 0%, ${accentColor}80 60%, transparent 100%)`,
+              opacity: 0.6,
+            }} />
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div>
+                <Text type="secondary" style={{ fontSize: 11, display: "block", marginBottom: 2, letterSpacing: 0.5 }}>
+                  网站备案
+                </Text>
+                <Text style={{ fontSize: 13, fontWeight: 500, color: accentColor }}>
+                  桂ICP备2020008331号-1
+                </Text>
+              </div>
+              <div style={{
+                width: 28, height: 28, borderRadius: 8,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                background: `${accentColor}10`,
+                flexShrink: 0,
+              }}>
+                <ExportOutlined style={{ fontSize: 13, color: accentColor, opacity: 0.6 }} />
+              </div>
+            </div>
+          </Card>
+        </a>
+
         <Divider />
 
         {/* === 退出登录 === */}

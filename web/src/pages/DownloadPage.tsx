@@ -311,13 +311,13 @@ const DownloadPage: React.FC = () => {
                             </div>
                             <div className="rounded-xl bg-primary/5 border border-primary/20 p-4 mb-4 text-center">
                               <p className="text-sm text-muted-foreground mb-1">访问地址</p>
-                              <p className="font-bold text-lg tracking-tight">gz.mrcwoods.com</p>
+                              <p className="font-bold text-lg tracking-tight">gz.idoknow.top</p>
                             </div>
                             <div className="flex gap-2">
                               <Button
                                 className="flex-1"
                                 size="sm"
-                                onClick={() => window.open('https://gz.mrcwoods.com', '_blank', 'noopener,noreferrer')}
+                                onClick={() => window.open('https://gz.idoknow.top', '_blank', 'noopener,noreferrer')}
                               >
                                 <Globe className="mr-2 h-4 w-4" />
                                 立即访问
