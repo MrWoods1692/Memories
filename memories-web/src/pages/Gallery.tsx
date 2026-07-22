@@ -424,24 +424,28 @@ export default function GalleryPage() {
 
     try {
       const res = await fetchImages(pageNum, 20, forceRefresh);
-      if (pageNum === 1) setImages(res.items);
-      else setImages((prev) => [...prev, ...res.items]);
+      if (pageNum === 1) {
+        setImages(res.items);
+      } else {
+        setImages((prev) => {
+          const seen = new Set(prev.map((i) => i.created_at));
+          const deduped = res.items.filter((i) => !seen.has(i.created_at));
+          return [...prev, ...deduped];
+        });
+      }
       setTotalPages(res.totalPages); setPage(pageNum);
       retryCount.current.delete(pageNum); // 成功则清除重试记录
 
       // 自动加载下一页（不等待滚动到底部）
       if (pageNum < res.totalPages) {
-        pendingPage.current = pageNum + 1;
+        const nextPage = pageNum + 1;
+        pendingPage.current = nextPage;
         setTimeout(() => {
-          if (pendingPage.current === pageNum + 1) loadImages(pageNum + 1);
+          if (pendingPage.current === nextPage) {
+            pendingPage.current = null;
+            loadImages(nextPage);
+          }
         }, LOAD_INTERVAL);
-      }
-
-      // 处理排队中的请求
-      if (pendingPage.current !== null) {
-        const next = pendingPage.current;
-        pendingPage.current = null;
-        setTimeout(() => loadImages(next), LOAD_INTERVAL);
       }
     } catch (err) {
       const count = (retryCount.current.get(pageNum) || 0) + 1;
@@ -521,7 +525,7 @@ export default function GalleryPage() {
         if (newItems.length > 0 && cachedIdsRef.current.size > 0) {
           message.info(`📷 有 ${newItems.length} 张新照片`);
         }
-        setImages(fresh.items);
+        setImages(fresh.items.filter((item, idx, arr) => arr.findIndex((i) => i.created_at === item.created_at) === idx));
         setTotalPages(fresh.totalPages);
         setPage(1);
         // 预加载首屏图片
@@ -1244,10 +1248,13 @@ function TimelineView({ images, loading, page, totalPages, loadImages, getImgPro
     );
   }, [downloadOne, copyOne, handleQueryInfo, accentColor]);
 
-  // 按日期分组
+  // 按日期分组（去重）
   const dateGroups = useMemo(() => {
     const groups: Map<string, ImageItem[]> = new Map();
+    const seen = new Set<number>();
     images.forEach((img) => {
+      if (seen.has(img.created_at)) return; // 跳过重复
+      seen.add(img.created_at);
       const date = new Date(img.created_at).toLocaleDateString("zh-CN");
       const existing = groups.get(date) || [];
       existing.push(img);
@@ -1276,6 +1283,23 @@ function TimelineView({ images, loading, page, totalPages, loadImages, getImgPro
     observer.observe(observerRef.current);
     return () => observer.disconnect();
   }, [page, totalPages, loading, loadImages]);
+
+  // 顶部时间轴鼠标滚轮水平滚动
+  useEffect(() => {
+    const el = timelineRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      // 仅在水平滚动未到达边界时阻止垂直滚动
+      const canScrollLeft = e.deltaY < 0 && el.scrollLeft > 0;
+      const canScrollRight = e.deltaY > 0 && el.scrollLeft < el.scrollWidth - el.clientWidth;
+      if (canScrollLeft || canScrollRight) {
+        e.preventDefault();
+      }
+      el.scrollLeft += e.deltaY;
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, []);
 
   return (
     <div>
