@@ -305,32 +305,6 @@ export default function TimelineScrollBar({
           {/* 时间线模式：按小时分组 */}
           {isTimelineMode && hourGroupsForActiveDate.length > 0 ? (
             <>
-              {/* 日期切换 */}
-              <div style={{
-                display: "flex", flexWrap: "wrap", gap: 2,
-                justifyContent: "center", marginBottom: 6,
-              }}>
-                {dateGroups.slice(0, 6).map(([date, { count }]) => (
-                  <div
-                    key={date}
-                    onClick={() => onTimelineDateChange?.(date)}
-                    style={{
-                      cursor: "pointer",
-                      padding: "2px 5px",
-                      borderRadius: 6,
-                      fontSize: 10,
-                      fontWeight: date === timelineActiveDate ? 700 : 400,
-                      color: date === timelineActiveDate ? "#fff" : "var(--ant-color-text-secondary)",
-                      background: date === timelineActiveDate ? accentColor : "var(--ant-color-fill-quaternary)",
-                      whiteSpace: "nowrap",
-                      transition: "all 0.15s",
-                    }}
-                  >
-                    {date.split("/").slice(1).join("/")}
-                  </div>
-                ))}
-              </div>
-              <div style={{ width: "100%", height: 1, background: "var(--ant-color-border-secondary)", marginBottom: 4 }} />
               {/* 小时分组 */}
               {hourGroupsForActiveDate.map(([hour, { count, firstId }]) => (
                 <div
@@ -471,36 +445,6 @@ export default function TimelineScrollBar({
             ({imgCount})
           </span>
         </div>
-
-        {/* 日期切换按钮 */}
-        <div style={{ display: "flex", gap: 2, marginBottom: 2 }}>
-          {dateGroups.slice(0, Math.min(dateGroups.length, 5)).map(([date]) => {
-            const isActive = date === timelineActiveDate;
-            const parts = date.split("/");
-            const label = parts.length >= 3 ? `${parts[1]}/${parts[2]}` : date;
-            return (
-              <div
-                key={date}
-                onClick={() => onTimelineDateChange?.(date)}
-                style={{
-                  cursor: "pointer",
-                  padding: "1px 4px",
-                  borderRadius: 6,
-                  fontSize: 9,
-                  fontWeight: isActive ? 700 : 400,
-                  color: isActive ? "#fff" : "var(--ant-color-text-secondary)",
-                  background: isActive ? accentColor : "var(--ant-color-fill-quaternary)",
-                  whiteSpace: "nowrap",
-                  transition: "all 0.15s",
-                }}
-              >
-                {label}
-              </div>
-            );
-          })}
-        </div>
-
-        <div style={{ width: 20, height: 1, background: "var(--ant-color-border-secondary)", margin: "2px 0" }} />
 
         {/* 小时分组列表 — 显示时间和张数 */}
         {hourGroupsForActiveDate.map(([hour, { count, firstId }]) => (
