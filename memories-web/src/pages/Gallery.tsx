@@ -429,24 +429,28 @@ export default function GalleryPage() {
 
     try {
       const res = await fetchImages(pageNum, 20, forceRefresh);
-      if (pageNum === 1) setImages(res.items);
-      else setImages((prev) => [...prev, ...res.items]);
+      if (pageNum === 1) {
+        setImages(res.items);
+      } else {
+        setImages((prev) => {
+          const seen = new Set(prev.map((i) => i.url));
+          const deduped = res.items.filter((i) => !seen.has(i.url));
+          return [...prev, ...deduped];
+        });
+      }
       setTotalPages(res.totalPages); setPage(pageNum);
       retryCount.current.delete(pageNum); // 成功则清除重试记录
 
       // 自动加载下一页（不等待滚动到底部）
       if (pageNum < res.totalPages) {
-        pendingPage.current = pageNum + 1;
+        const nextPage = pageNum + 1;
+        pendingPage.current = nextPage;
         setTimeout(() => {
-          if (pendingPage.current === pageNum + 1) loadImages(pageNum + 1);
+          if (pendingPage.current === nextPage) {
+            pendingPage.current = null;
+            loadImages(nextPage);
+          }
         }, LOAD_INTERVAL);
-      }
-
-      // 处理排队中的请求
-      if (pendingPage.current !== null) {
-        const next = pendingPage.current;
-        pendingPage.current = null;
-        setTimeout(() => loadImages(next), LOAD_INTERVAL);
       }
     } catch (err) {
       const count = (retryCount.current.get(pageNum) || 0) + 1;
@@ -526,7 +530,7 @@ export default function GalleryPage() {
         if (newItems.length > 0 && cachedIdsRef.current.size > 0) {
           message.info(`📷 有 ${newItems.length} 张新照片`);
         }
-        setImages(fresh.items);
+        setImages(fresh.items.filter((item, idx, arr) => arr.findIndex((i) => i.url === item.url) === idx));
         setTotalPages(fresh.totalPages);
         setPage(1);
         // 预加载首屏图片
@@ -753,7 +757,7 @@ export default function GalleryPage() {
               const dateStr = new Date(img.created_at).toLocaleDateString("zh-CN");
               const isSel = selected.has(img.created_at);
               return (
-                <div key={img.created_at} data-gallery-date={dateStr} data-gallery-id={img.created_at} style={{
+                <div key={img.created_at + img.url} data-gallery-date={dateStr} data-gallery-id={img.created_at} style={{
                   height: 200,
                   flexShrink: 0,
                 }}
@@ -827,7 +831,7 @@ toolbarRender: (originalNode: React.ReactNode, info: { current: number; actions:
             {images.map((img) => {
               const isSel = selected.has(img.created_at);
               return (
-              <div key={img.created_at} data-gallery-date={new Date(img.created_at).toLocaleDateString("zh-CN")} data-gallery-id={img.created_at} style={{
+              <div key={img.created_at + img.url} data-gallery-date={new Date(img.created_at).toLocaleDateString("zh-CN")} data-gallery-id={img.created_at} style={{
                 breakInside: "avoid", marginBottom: 0,
                 lineHeight: 0, fontSize: 0,
                 position: "relative",
@@ -883,6 +887,7 @@ toolbarRender: (originalNode: React.ReactNode, info: { current: number; actions:
           accentColor={accentColor}
           activeDate={timelineActiveDate}
           onActiveDateChange={setTimelineActiveDate}
+          isDesktop={isDesktop}
         />
       ) : viewMode === "free" ? (
         <FreeView
@@ -946,7 +951,7 @@ toolbarRender: (originalNode: React.ReactNode, info: { current: number; actions:
                 if (isSimple) {
                   /* ===== 简洁列表：仅日期 + 文件名 ===== */
                   return (
-                    <div key={img.created_at} id={`list-row-${img.created_at}`} data-gallery-date={dateShort} data-gallery-id={img.created_at}
+                    <div key={img.created_at + img.url} id={`list-row-${img.created_at}`} data-gallery-date={dateShort} data-gallery-id={img.created_at}
                       onClick={batchMode ? () => toggleSelect(img.created_at) : undefined}
                       style={{
                         display: "flex", alignItems: "center", gap: 10,
@@ -977,7 +982,7 @@ toolbarRender: (originalNode: React.ReactNode, info: { current: number; actions:
                   );
                 }
                 return (
-                  <div key={img.created_at} id={`list-row-${img.created_at}`} className="gallery-list-row" data-gallery-date={dateShort} data-gallery-id={img.created_at}
+                  <div key={img.created_at + img.url} id={`list-row-${img.created_at}`} className="gallery-list-row" data-gallery-date={dateShort} data-gallery-id={img.created_at}
                     onClick={batchMode ? () => toggleSelect(img.created_at) : undefined}
                     style={{
                       display: "flex", alignItems: "center", gap: 12,
@@ -1034,7 +1039,7 @@ toolbarRender: (originalNode: React.ReactNode, info: { current: number; actions:
               }
 
               return (
-                <Dropdown key={img.created_at} menu={makeImgCtxMenu(img)} trigger={['contextMenu']}>
+                <Dropdown key={img.created_at + img.url} menu={makeImgCtxMenu(img)} trigger={['contextMenu']}>
                 <Card id={`card-${img.created_at}`} data-gallery-date={dateStr} data-gallery-id={img.created_at} size="small" hoverable
                   style={{
                     borderRadius: 12, overflow: "hidden",
@@ -1185,7 +1190,7 @@ toolbarRender: (originalNode: React.ReactNode, info: { current: number; actions:
 
 /* ===== 时间线视图组件 ===== */
 
-function TimelineView({ images, loading, page, totalPages, loadImages, getImgProps, downloadOne, copyOne, handleQueryInfo, batchMode, selected, toggleSelect, accentColor, activeDate, onActiveDateChange }: {
+function TimelineView({ images, loading, page, totalPages, loadImages, getImgProps, downloadOne, copyOne, handleQueryInfo, batchMode, selected, toggleSelect, accentColor, activeDate, onActiveDateChange, isDesktop }: {
   images: ImageItem[];
   loading: boolean;
   page: number;
@@ -1201,7 +1206,16 @@ function TimelineView({ images, loading, page, totalPages, loadImages, getImgPro
   accentColor: string;
   activeDate: string;
   onActiveDateChange: (date: string) => void;
+  isDesktop: boolean;
 }) {
+  /** 13位时间戳 → 精确时间字符串 "2026/07/22 14:30:45.123" */
+  const formatPreciseTime = useCallback((ts: number) => {
+    const d = new Date(ts);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const ms = String(ts % 1000).padStart(3, "0");
+    return `${d.getFullYear()}/${pad(d.getMonth() + 1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}.${ms}`;
+  }, []);
+
   const makeTools = useCallback((url: string) => {
     const btnStyle: React.CSSProperties = {
       color: "rgba(255,255,255,0.9)",
@@ -1246,10 +1260,13 @@ function TimelineView({ images, loading, page, totalPages, loadImages, getImgPro
     );
   }, [downloadOne, copyOne, handleQueryInfo, accentColor]);
 
-  // 按日期分组
+  // 按日期分组（按 url 去重）
   const dateGroups = useMemo(() => {
     const groups: Map<string, ImageItem[]> = new Map();
+    const seen = new Set<string>();
     images.forEach((img) => {
+      if (seen.has(img.url)) return; // 同一张图片不重复添加
+      seen.add(img.url);
       const date = new Date(img.created_at).toLocaleDateString("zh-CN");
       const existing = groups.get(date) || [];
       existing.push(img);
@@ -1258,14 +1275,32 @@ function TimelineView({ images, loading, page, totalPages, loadImages, getImgPro
     return Array.from(groups.entries()).sort(([a], [b]) => dateSortKey(b) - dateSortKey(a));
   }, [images]);
 
-  // 默认选中最新日期
+  // 初始无选中日期时显示全部
   useEffect(() => {
-    if (dateGroups.length > 0 && !activeDate) {
-      onActiveDateChange(dateGroups[0][0]);
+    if (dateGroups.length > 0 && activeDate === undefined) {
+      onActiveDateChange("");
     }
   }, [dateGroups, activeDate, onActiveDateChange]);
 
-  const activeImages = dateGroups.find(([d]) => d === activeDate)?.[1] || [];
+  // activeDate 为空=全部；单年="2026"；年月="2026/7"；日="2026/7/22"
+  const timelineGroups = useMemo(() => {
+    if (!activeDate) return dateGroups;
+    const parts = activeDate.split("/");
+    if (parts.length === 1) {
+      return dateGroups.filter(([d]) => d.startsWith(activeDate + "/"));
+    }
+    if (parts.length === 2) {
+      return dateGroups.filter(([d]) => d === activeDate || d.startsWith(activeDate + "/"));
+    }
+    const found = dateGroups.find(([d]) => d === activeDate);
+    return found ? [found] : [];
+  }, [dateGroups, activeDate]);
+
+  const activeImages = useMemo(
+    () => timelineGroups.flatMap(([, imgs]) => imgs),
+    [timelineGroups]
+  );
+
   const observerRef = useRef<HTMLDivElement>(null);
 
   const dateOptions = useMemo(() => {
@@ -1348,79 +1383,220 @@ function TimelineView({ images, loading, page, totalPages, loadImages, getImgPro
     return () => observer.disconnect();
   }, [page, totalPages, loading, loadImages]);
 
+  const allImagesFlat = useMemo(
+    () => timelineGroups.flatMap(([, imgs]) => imgs),
+    [timelineGroups]
+  );
+
   return (
     <div>
-      {/* 时间轴 */}
+      {/* 顶部：按钮 + 日期标签 */}
       <div style={{
         background: "var(--ant-color-bg-container)",
         borderBottom: "1px solid var(--ant-color-border-secondary)",
-        padding: "10px 0 4px",
+        padding: "10px 16px",
+        display: "flex", alignItems: "center", gap: 10,
+        flexWrap: "wrap",
       }}>
-        <div style={{
-          display: "flex", alignItems: "center", padding: "0 16px", marginBottom: 8,
-        }}>
-          <FieldTimeOutlined style={{ marginRight: 6, color: "var(--ant-color-primary)" }} />
-          <Text strong style={{ fontSize: 14 }}>时间轴</Text>
-          <Text type="secondary" style={{ fontSize: 12, marginLeft: 8 }}>共 {dateGroups.length} 个日期</Text>
-        </div>
-        <div style={{ padding: "0 16px 10px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-            {renderDateDropdown("year", `${activeParts.year}年`, activeParts.year, years)}
-            {renderDateDropdown("month", `${activeParts.month}月`, activeParts.month, months)}
-            {renderDateDropdown("day", `${activeParts.day}日`, activeParts.day, days)}
-            <Text type="secondary" style={{ fontSize: 12 }}>
-              {activeImages.length}张
-            </Text>
-          </div>
+        <FieldTimeOutlined style={{ color: "var(--ant-color-primary)", fontSize: 16 }} />
+        <Text strong style={{ fontSize: 14 }}>时间轴</Text>
+        <Text type="secondary" style={{ fontSize: 12 }}>共 {dateGroups.length} 个日期</Text>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          {renderDateDropdown("year", `${activeParts.year}年`, activeParts.year, years)}
+          {renderDateDropdown("month", `${activeParts.month}月`, activeParts.month, months)}
+          {renderDateDropdown("day", `${activeParts.day}日`, activeParts.day, days)}
+          <Text type="secondary" style={{ fontSize: 12 }}>
+            {activeImages.length}张
+          </Text>
         </div>
       </div>
 
-      {/* 图片区 */}
+      {/* 纵向时间轴内容区 */}
       <Image.PreviewGroup
         preview={{
-            mask: (              <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.12)", backdropFilter: "blur(2px)" }}>                <EyeOutlined style={{ color: "#fff", fontSize: 20, marginRight: 6 }} />                <Text style={{ color: "#fff", fontSize: 12, opacity: 0.85 }}>点击预览</Text>              </div>            ),
-countRender: () => null,
-toolbarRender: (originalNode: React.ReactNode, info: { current: number }) => {
-            const url = activeImages[(info as any).current ?? 0]?.url || "";
+          mask: (
+            <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.12)", backdropFilter: "blur(2px)" }}>
+              <EyeOutlined style={{ color: "#fff", fontSize: 20, marginRight: 6 }} />
+              <Text style={{ color: "#fff", fontSize: 12, opacity: 0.85 }}>点击预览</Text>
+            </div>
+          ),
+          countRender: () => null,
+          toolbarRender: (originalNode: React.ReactNode, info: { current: number }) => {
+            const url = allImagesFlat[(info as any).current ?? 0]?.url || "";
             return <>{makeTools(url)}{originalNode}</>;
           },
         } as any}
       >
-        <div className="gallery-view" style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
-          gap: 8, padding: "12px 16px",
-        }}>
-          {activeImages.map((img) => {
-            const isSel = selected.has(img.created_at);
-            const imgDateStr = new Date(img.created_at).toLocaleDateString("zh-CN");
+        <div className="gallery-view">
+          {timelineGroups.map(([date, imgs], gi) => {
+            const parts = date.split("/");
+            const dateLabel = parts.length >= 3 ? `${parts[1]}/${parts[2]}` : date;
+            const isLast = gi === timelineGroups.length - 1;
+            const isEven = gi % 2 === 0;
+
+            if (isDesktop) {
+              // ── 桌面端：每张照片交替居中 ──
+              let globalIdx = 0;
+              return (
+                <>
+                  {timelineGroups.map(([date, imgs], gi) => {
+                    const parts = date.split("/");
+                    const dateLabel = parts.length >= 3 ? `${parts[1]}/${parts[2]}` : date;
+                    const isLastGroup = gi === timelineGroups.length - 1;
+                    return imgs.map((img, ii) => {
+                      const key = `${gi}-${ii}`;
+                      const even = (globalIdx % 2 === 0); globalIdx++;
+                      const isFirstInGroup = ii === 0;
+                      const isLastItem = isLastGroup && ii === imgs.length - 1;
+                      return (
+                        <div key={key} style={{ position: "relative" }}>
+                        {/* 中心竖线 */}
+                        {!isLastItem && (
+                          <div style={{
+                            position: "absolute", left: "50%", top: 0, bottom: 0,
+                            width: 3, transform: "translateX(-50%)",
+                            background: accentColor, opacity: 0.25,
+                            pointerEvents: "none",
+                          }} />
+                        )}
+                        <div style={{
+                          display: "flex", alignItems: "center",
+                          maxWidth: 860, margin: "0 auto", padding: "12px 0",
+                        }}>
+                          {/* 左侧 */}
+                          <div style={{
+                            width: "50%", paddingRight: 26,
+                            display: "flex", justifyContent: "flex-end",
+                            alignItems: "center",
+                          }}>
+                            {even ? (
+                              <div style={{ textAlign: "right" }}>
+                                {isFirstInGroup && (
+                                  <div style={{
+                                    display: "inline-flex", alignItems: "center", gap: 4,
+                                    background: `${accentColor}0A`, padding: "3px 8px",
+                                    borderRadius: 6, marginBottom: 2,
+                                  }}>
+                                    <div style={{ width: 6, height: 6, borderRadius: "50%", background: accentColor }} />
+                                    <span style={{ fontSize: 15, fontWeight: 700, color: accentColor }}>{dateLabel}</span>
+                                  </div>
+                                )}
+                                <div style={{ fontSize: 11, color: "#666", lineHeight: 1.4 }}>
+                                  {formatPreciseTime(img.created_at)}
+                                </div>
+                              </div>
+                            ) : (
+                              <TimelineImageCard
+                                img={img} date={date} groupIdx={gi}
+                                batchMode={batchMode} selected={selected}
+                                toggleSelect={toggleSelect} getImgProps={getImgProps}
+                                activeDate={activeDate} formatPreciseTime={formatPreciseTime}
+                                accentColor={accentColor}
+                                isDesktop={isDesktop}
+                              />
+                            )}
+                          </div>
+                          {/* 右侧 */}
+                          <div style={{
+                            width: "50%", paddingLeft: 26,
+                            display: "flex", justifyContent: "flex-start",
+                            alignItems: "center",
+                          }}>
+                            {even ? (
+                              <TimelineImageCard
+                                img={img} date={date} groupIdx={gi}
+                                batchMode={batchMode} selected={selected}
+                                toggleSelect={toggleSelect} getImgProps={getImgProps}
+                                activeDate={activeDate} formatPreciseTime={formatPreciseTime}
+                                accentColor={accentColor}
+                                isDesktop={isDesktop}
+                              />
+                            ) : (
+                              <div style={{ textAlign: "left" }}>
+                                {isFirstInGroup && (
+                                  <div style={{
+                                    display: "inline-flex", alignItems: "center", gap: 4,
+                                    background: `${accentColor}0A`, padding: "3px 8px",
+                                    borderRadius: 6, marginBottom: 2,
+                                  }}>
+                                    <div style={{ width: 6, height: 6, borderRadius: "50%", background: accentColor }} />
+                                    <span style={{ fontSize: 15, fontWeight: 700, color: accentColor }}>{dateLabel}</span>
+                                  </div>
+                                )}
+                                <div style={{ fontSize: 11, color: "#666", lineHeight: 1.4 }}>
+                                  {formatPreciseTime(img.created_at)}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  });
+                })}
+                </>
+              );
+            }
+
+            // ── 移动端：左侧时间线 ──
             return (
-            <div key={img.created_at} data-gallery-date={imgDateStr} data-gallery-id={img.created_at} style={{
-              borderRadius: 8, overflow: "hidden",
-              background: "var(--ant-color-fill-quaternary)",
-              position: "relative",
-              outline: batchMode && isSel ? `2px solid ${accentColor}` : undefined,
-              outlineOffset: -2,
-              cursor: batchMode ? "pointer" : undefined,
-            }}
-              onClick={batchMode ? () => toggleSelect(img.created_at) : undefined}
-            >
-              {batchMode && (
+              <div key={date} style={{ display: "flex", position: "relative" }}>
+                {/* 左侧时间线 */}
                 <div style={{
-                  position: "absolute", top: 6, right: 6, zIndex: 5,
-                  width: 22, height: 22, borderRadius: 4,
-                  background: isSel ? accentColor : "rgba(255,255,255,0.9)",
-                  border: `2px solid ${isSel ? accentColor : "var(--border-muted)"}`,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  color: "#fff", fontSize: 12, fontWeight: 700,
-                }}>{isSel ? "✓" : ""}</div>
-              )}
-              <Image src={img.url}
-                style={{ width: "100%", height: "auto", display: "block", maxHeight: 300, objectFit: "cover" }}
-                preview={batchMode ? false : undefined}
-                {...getImgProps(img)} />
-            </div>
-          )})}
+                  width: 50, flexShrink: 0,
+                  display: "flex", flexDirection: "column", alignItems: "center",
+                  paddingTop: 12, position: "relative",
+                }}>
+                  {/* 时间点 */}
+                  <div style={{
+                    width: 12, height: 12, borderRadius: "50%",
+                    background: accentColor,
+                    border: `3px solid color-mix(in srgb, ${accentColor} 30%, transparent)`,
+                    zIndex: 2, flexShrink: 0,
+                  }} />
+                  {/* 竖线 - 统一颜色 */}
+                  {!isLast && (
+                    <div style={{
+                      width: 3, flex: 1, minHeight: 20,
+                      background: accentColor, opacity: 0.35,
+                    }} />
+                  )}
+                  {/* 日期文字 */}
+                  <div style={{
+                    fontSize: 12, fontWeight: 700, color: accentColor,
+                    whiteSpace: "nowrap", marginTop: 4,
+                    writingMode: "vertical-rl", textOrientation: "mixed",
+                    letterSpacing: 2,
+                  }}>
+                    {dateLabel}
+                  </div>
+                </div>
+
+                {/* 右侧照片 — 一行一张 */}
+                <div style={{
+                  flex: 1, display: "flex", flexDirection: "column", gap: 6,
+                  padding: "6px 8px 6px 0",
+                }}>
+                  {imgs.map((img, ii) => (
+                    <TimelineImageCard
+                      key={`${gi}-${ii}`}
+                      img={img}
+                      date={date}
+                      groupIdx={gi}
+                      batchMode={batchMode}
+                      selected={selected}
+                      toggleSelect={toggleSelect}
+                      getImgProps={getImgProps}
+                      activeDate={activeDate}
+                      formatPreciseTime={formatPreciseTime}
+                      accentColor={accentColor}
+                      isDesktop={isDesktop}
+                    />
+                  ))}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </Image.PreviewGroup>
 
@@ -1435,6 +1611,92 @@ toolbarRender: (originalNode: React.ReactNode, info: { current: number }) => {
             <Text type="secondary">已加载全部照片 🎉</Text>
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+/* ===== 时间线单张图片卡片 ===== */
+
+function TimelineImageCard({ img, date, groupIdx, batchMode, selected, toggleSelect, getImgProps, activeDate, formatPreciseTime, accentColor, isDesktop }: {
+  img: ImageItem;
+  date: string;
+  groupIdx: number;
+  batchMode: boolean;
+  selected: Set<number>;
+  toggleSelect: (id: number) => void;
+  getImgProps: (img: ImageItem) => any;
+  activeDate: string;
+  formatPreciseTime: (ts: number) => string;
+  accentColor: string;
+  isDesktop: boolean;
+}) {
+  const isSel = selected.has(img.created_at);
+  return (
+    <div
+      data-gallery-date={date}
+      data-gallery-id={img.created_at}
+      onClick={batchMode ? () => toggleSelect(img.created_at) : undefined}
+      style={{
+        position: "relative",
+        cursor: batchMode ? "pointer" : undefined,
+        outline: batchMode && isSel ? `2px solid ${accentColor}` : undefined,
+        outlineOffset: -2,
+      }}
+    >
+      {batchMode && (
+        <div style={{
+          position: "absolute", top: 6, right: 6, zIndex: 5,
+          width: 22, height: 22, borderRadius: 4,
+          background: isSel ? accentColor : "rgba(255,255,255,0.9)",
+          border: `2px solid ${isSel ? accentColor : "var(--border-muted)"}`,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          color: "#fff", fontSize: 12, fontWeight: 700,
+        }}>{isSel ? "✓" : ""}</div>
+      )}
+      <div style={{
+        position: "relative", overflow: "hidden",
+        width: isDesktop ? "100%" : "80%",
+      }}>
+        {/* 手机上显示精确时间 */}
+        {!isDesktop && (
+          <div style={{
+            fontSize: 9, color: "#999", lineHeight: "16px",
+            padding: "0 2px", marginBottom: 1,
+            whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+          }}>
+            {formatPreciseTime(img.created_at)}
+          </div>
+        )}
+        <Image
+          src={img.url}
+          style={{
+            width: "100%", height: "auto", display: "block",
+            objectFit: "cover", borderRadius: 0,
+          }}
+          preview={batchMode ? false : undefined}
+          {...getImgProps(img)}
+        />
+        {/* 底部波浪虚化边框 */}
+        <svg
+          style={{
+            position: "absolute", bottom: 0, left: 0, right: 0,
+            height: 22, pointerEvents: "none",
+          }}
+          viewBox="0 0 200 22"
+          preserveAspectRatio="none"
+        >
+          <defs>
+            <filter id={`wave-blur-${groupIdx}-${img.created_at}`}>
+              <feGaussianBlur stdDeviation="2.5" />
+            </filter>
+          </defs>
+          <path
+            d={`M0,8 Q25,0 50,8 T100,8 T150,8 T200,8 L200,22 L0,22 Z`}
+            fill="rgba(255,255,255,0.2)"
+            filter={`url(#wave-blur-${groupIdx}-${img.created_at})`}
+          />
+        </svg>
       </div>
     </div>
   );
@@ -1774,7 +2036,7 @@ function FreeView({ images, loading, page, totalPages, loadImages, getImgProps, 
           const pos = positions.get(img.created_at);
           if (!pos) return null;
           return (
-            <div key={img.created_at}
+            <div key={img.created_at + img.url}
               onMouseDown={(e) => onMouseDown(img.created_at, e)}
               onTouchStart={(e) => onTouchStart(img.created_at, e)}
               style={{

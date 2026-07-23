@@ -44,6 +44,7 @@ import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
 import android.view.View;
+import android.view.ViewConfiguration;
 import android.view.ViewGroup;
 import android.view.Window;
 import android.view.WindowManager;
@@ -113,6 +114,8 @@ public class MainActivity extends Activity {
     private long nextAfterId = 0;
     private boolean galleryLoading;
     private Button loadMoreButton;
+    private boolean galleryEndReached;
+    private String selectedTimelineDate;
     private final java.util.Set<String> syncedUrls = new java.util.HashSet<>();
     private String selectedOutputFormat = AppConfig.DEFAULT_OUTPUT_FORMAT;
     private ServerSocket oauthServer;
@@ -138,9 +141,9 @@ public class MainActivity extends Activity {
     private final java.util.Set<Integer> batchSelectedIndices = new java.util.HashSet<>();
     private ViewGroup galleryContainer;
     private String currentViewMode = "grid";
-    private final String[] viewModes = {"grid", "compact", "list", "simple", "river", "masonry", "timeline", "free"};
-    private final String[] viewModeLabels = {"网格", "紧凑", "列表", "简洁", "河", "瀑布", "时间线", "自由"};
-    private final String[] viewModeIcons = {"ic_view_grid", "ic_view_compact", "ic_view_list", "ic_view_simple", "ic_view_river", "ic_view_masonry", "ic_view_timeline", "ic_view_free"};
+    private final String[] viewModes = {"grid", "compact", "list", "simple", "masonry", "timeline", "free"};
+    private final String[] viewModeLabels = {"网格", "紧凑", "列表", "简洁", "瀑布", "时间线", "自由"};
+    private final String[] viewModeIcons = {"ic_view_grid", "ic_view_compact", "ic_view_list", "ic_view_simple", "ic_view_masonry", "ic_view_timeline", "ic_view_free"};
     private LinearLayout shellHeader;
     private ScrollView galleryScrollView;
     private ValueAnimator navBorderAnim;
@@ -703,9 +706,14 @@ public class MainActivity extends Activity {
         header.setPadding(dp(18), statusBarH + dp(4), dp(18), dp(4));
         title = text(tabTitle(selectedTab), 22, true);
         header.addView(title, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+        if (selectedTab == 0) {
+            header.addView(buildViewSwitcher(), compactWrap());
+        }
         shellHeader = header;
         root.addView(header, matchWrap());
         content = new FrameLayout(this);
+        content.setClipChildren(false);
+        content.setClipToPadding(false);
         addPageSwipe(content);
         root.addView(content, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
         FrameLayout navWrapper = new FrameLayout(this);
@@ -729,7 +737,7 @@ public class MainActivity extends Activity {
 
         // 导航栏随主题颜色，玻璃质感
         navWrapper.setTag("nav_wrapper");
-        navWrapper.setBackground(glassDrawable());
+        navWrapper.setBackground(navGlassDrawable());
 
         FrameLayout.LayoutParams navWrapperParams = new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
@@ -782,11 +790,13 @@ public class MainActivity extends Activity {
         title.setText("广场");
         content.removeAllViews();
         galleryScrollView = new ScrollView(this);
+        galleryScrollView.setClipChildren(false);
+        galleryScrollView.setClipToPadding(false);
         LinearLayout page = vertical();
-        page.setPadding(dp(14), dp(4), dp(14), dp(16));
-
-        // 视图模式切换器
-        page.addView(buildViewSwitcher(), matchWrap());
+        page.setClipChildren(false);
+        page.setClipToPadding(false);
+        boolean edgeToEdgeGallery = "compact".equals(currentViewMode) || "masonry".equals(currentViewMode);
+        page.setPadding(edgeToEdgeGallery ? 0 : dp(14), dp(4), edgeToEdgeGallery ? 0 : dp(14), dp(16));
 
         page.addView(sectionTitle("流动广场"), matchWrap());
         galleryContainer = createGalleryContainer(currentViewMode);
@@ -801,20 +811,30 @@ public class MainActivity extends Activity {
         LinearLayout moreRow = horizontal();
         moreRow.setGravity(Gravity.CENTER);
         moreRow.addView(loadMoreButton, new LinearLayout.LayoutParams(dp(160), dp(44)));
+        loadMoreButton.setVisibility(galleryEndReached ? View.GONE : View.VISIBLE);
         page.addView(moreRow, matchWrap());
         galleryScrollView.addView(page);
         content.addView(galleryScrollView);
+        refreshGalleryTimelineSideControl();
+        if ("free".equals(currentViewMode)) {
+            if (Build.VERSION.SDK_INT >= 21) content.setElevation(dp(30));
+        } else if (Build.VERSION.SDK_INT >= 21) {
+            content.setElevation(0);
+        }
         // 重置瀑布流列计数
         masonryColCounts[0] = 0;
         masonryColCounts[1] = 0;
         if (galleryItems.isEmpty()) {
             syncedUrls.clear();
             nextAfterId = 0;
+            galleryEndReached = false;
             mergeGalleryItems(store.loadImageUrlCache());
             renderExistingItems();
+            refreshGalleryTimelineSideControl();
             loadGalleryForCurrentView();
         } else {
             renderExistingItems();
+            refreshGalleryTimelineSideControl();
         }
         // 如果处于批量选择模式，重建选择UI
         if (batchSelectMode) {
@@ -825,39 +845,428 @@ public class MainActivity extends Activity {
 
     private LinearLayout buildViewSwitcher() {
         LinearLayout switcher = horizontal();
-        switcher.setGravity(Gravity.CENTER);
+        switcher.setGravity(Gravity.END | Gravity.CENTER_VERTICAL);
         switcher.setPadding(0, dp(4), 0, dp(6));
-        switcher.setBackground(roundedDrawable(blend(theme.secondaryButton, theme.background, 0.2f), dp(12)));
+
+        int currentIndex = 0;
+        for (int i = 0; i < viewModes.length; i++) {
+            if (currentViewMode.equals(viewModes[i])) {
+                currentIndex = i;
+                break;
+            }
+        }
+
+        final int selectedIndex = currentIndex;
+        LinearLayout dropdown = horizontal();
+        dropdown.setGravity(Gravity.CENTER);
+        dropdown.setPadding(dp(12), 0, dp(10), 0);
+        dropdown.setBackground(rippleDrawable(theme.secondaryButton, dp(6)));
+
+        ImageView icon = new ImageView(this);
+        icon.setImageResource(getResources().getIdentifier(viewModeIcons[selectedIndex], "drawable", getPackageName()));
+        icon.setColorFilter(theme.primaryButton, android.graphics.PorterDuff.Mode.SRC_IN);
+        dropdown.addView(icon, new LinearLayout.LayoutParams(dp(16), dp(16)));
+
+        TextView label = text(viewModeLabels[selectedIndex], 13, true);
+        label.setTextColor(theme.primaryText);
+        label.setPadding(dp(6), 0, dp(4), 0);
+        dropdown.addView(label, compactWrap());
+
+        TextView arrow = text("▼", 10, false);
+        arrow.setTextColor(theme.secondaryText);
+        dropdown.addView(arrow, compactWrap());
+
+        dropdown.setOnClickListener(v -> showViewModeDropdown(dropdown));
+        addPressEffect(dropdown);
+
+        switcher.addView(dropdown, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(36)));
+        return switcher;
+    }
+
+    private void showViewModeDropdown(View anchor) {
+        int dropdownBg = Color.WHITE;
+        int dropdownText = Color.rgb(28, 31, 35);
+        int dropdownSubText = Color.rgb(100, 108, 116);
+        int selectedBg = blend(theme.primaryButton, Color.WHITE, 0.84f);
+
+        LinearLayout panel = vertical();
+        panel.setPadding(dp(6), dp(6), dp(6), dp(6));
+        panel.setBackground(roundedDrawable(dropdownBg, dp(10)));
+        if (Build.VERSION.SDK_INT >= 21) panel.setElevation(dp(10));
+
+        android.widget.PopupWindow popup = new android.widget.PopupWindow(panel, dp(180), ViewGroup.LayoutParams.WRAP_CONTENT, true);
+        popup.setOutsideTouchable(true);
+        popup.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));
+        if (Build.VERSION.SDK_INT >= 21) popup.setElevation(dp(8));
+
         for (int i = 0; i < viewModes.length; i++) {
             final String mode = viewModes[i];
             boolean selected = currentViewMode.equals(mode);
-            LinearLayout tab = vertical();
-            tab.setGravity(Gravity.CENTER);
-            tab.setPadding(dp(6), dp(4), dp(6), dp(4));
-            ImageView icon = new ImageView(this);
-            icon.setImageResource(getResources().getIdentifier(viewModeIcons[i], "drawable", getPackageName()));
-            int iconColor = selected ? theme.primaryButton : blend(theme.secondaryText, theme.background, 0.35f);
-            icon.setColorFilter(iconColor, android.graphics.PorterDuff.Mode.SRC_IN);
-            tab.addView(icon, new LinearLayout.LayoutParams(dp(18), dp(18)));
-            TextView label = new TextView(this);
-            label.setText(viewModeLabels[i]);
-            label.setTextColor(iconColor);
-            label.setTextSize(8 * theme.fontScale);
-            label.setGravity(Gravity.CENTER);
-            label.setPadding(0, dp(1), 0, 0);
-            tab.addView(label, matchWrap());
-            tab.setOnClickListener(v -> switchViewMode(mode));
-            addPressEffect(tab);
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, dp(44), 1);
-            switcher.addView(tab, lp);
+            LinearLayout item = horizontal();
+            item.setGravity(Gravity.CENTER_VERTICAL);
+            item.setPadding(dp(10), 0, dp(10), 0);
+            GradientDrawable itemBg = new GradientDrawable();
+            itemBg.setColor(selected ? selectedBg : dropdownBg);
+            itemBg.setCornerRadius(dp(6));
+            item.setBackground(itemBg);
+
+            ImageView itemIcon = new ImageView(this);
+            itemIcon.setImageResource(getResources().getIdentifier(viewModeIcons[i], "drawable", getPackageName()));
+            itemIcon.setColorFilter(selected ? theme.primaryButton : dropdownSubText, android.graphics.PorterDuff.Mode.SRC_IN);
+            item.addView(itemIcon, new LinearLayout.LayoutParams(dp(16), dp(16)));
+
+            TextView itemLabel = text(viewModeLabels[i], 13, selected);
+            itemLabel.setTextColor(selected ? theme.primaryButton : dropdownText);
+            itemLabel.setPadding(dp(10), 0, 0, 0);
+            item.addView(itemLabel, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+
+            if (selected) {
+                TextView check = text("✓", 14, true);
+                check.setTextColor(theme.primaryButton);
+                item.addView(check, compactWrap());
+            }
+
+            item.setOnClickListener(v -> {
+                popup.dismiss();
+                switchViewMode(mode);
+            });
+            LinearLayout.LayoutParams itemParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(38));
+            itemParams.setMargins(0, dp(1), 0, dp(1));
+            panel.addView(item, itemParams);
         }
-        return switcher;
+        popup.showAsDropDown(anchor, 0, dp(4));
     }
 
     private void switchViewMode(String mode) {
         if (currentViewMode.equals(mode)) return;
         currentViewMode = mode;
-        showGallery();
+        if ("timeline".equals(mode)) selectedTimelineDate = null;
+        showShell(0, false, false);
+    }
+
+    private void refreshGalleryTimelineSideControl() {
+        if (content == null) return;
+        View oldButton = content.findViewWithTag("gallery_timeline_button");
+        if (oldButton != null) content.removeView(oldButton);
+        View oldPanel = content.findViewWithTag("gallery_timeline_panel");
+        if (oldPanel != null) content.removeView(oldPanel);
+        if (galleryItems.isEmpty() || "free".equals(currentViewMode)) return;
+
+        LinearLayout panel = buildGalleryTimelinePanel();
+        panel.setTag("gallery_timeline_panel");
+
+        LinearLayout button = vertical();
+        button.setTag("gallery_timeline_button");
+        button.setGravity(Gravity.CENTER);
+        button.setPadding(0, dp(6), 0, dp(6));
+        button.setBackground(sideTimelineButtonBg());
+        if (Build.VERSION.SDK_INT >= 21) button.setElevation(dp(12));
+
+        ImageView icon = new ImageView(this);
+        icon.setImageResource(getResources().getIdentifier("ic_view_timeline", "drawable", getPackageName()));
+        icon.setColorFilter(Color.WHITE, android.graphics.PorterDuff.Mode.SRC_IN);
+        LinearLayout.LayoutParams iconParams = new LinearLayout.LayoutParams(dp(20), dp(20));
+        iconParams.setMargins(0, 0, 0, dp(8));
+        button.addView(icon, iconParams);
+        TextView day = sideButtonText("日");
+        button.addView(day, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        TextView date = sideButtonText("期");
+        LinearLayout.LayoutParams dateParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        dateParams.setMargins(0, dp(2), 0, 0);
+        button.addView(date, dateParams);
+
+        button.setOnClickListener(v -> {
+            if (panel.getParent() == null) {
+                content.addView(panel, sideTimelinePanelParams());
+                panel.bringToFront();
+                button.bringToFront();
+            } else {
+                content.removeView(panel);
+            }
+        });
+        addPressEffect(button);
+        content.addView(button, sideTimelineButtonParams());
+    }
+
+    private TextView sideButtonText(String value) {
+        TextView text = new TextView(this);
+        text.setText(value);
+        text.setTextColor(Color.WHITE);
+        text.setTextSize(10);
+        text.setTypeface(Typeface.create(theme.fontFamily, Typeface.BOLD));
+        text.setGravity(Gravity.CENTER);
+        text.setIncludeFontPadding(true);
+        text.setSingleLine(true);
+        return text;
+    }
+
+    private GradientDrawable sideTimelineButtonBg() {
+        GradientDrawable bg = new GradientDrawable();
+        bg.setColor(theme.primaryButton);
+        bg.setCornerRadius(dp(16));
+        bg.setStroke(dp(2), blend(theme.primaryButton, Color.WHITE, 0.28f));
+        return bg;
+    }
+
+    private FrameLayout.LayoutParams sideTimelineButtonParams() {
+        FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(dp(32), dp(120));
+        params.gravity = Gravity.RIGHT | Gravity.CENTER_VERTICAL;
+        params.setMargins(0, 0, dp(4), 0);
+        return params;
+    }
+
+    private FrameLayout.LayoutParams sideTimelinePanelParams() {
+        FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(dp(120), ViewGroup.LayoutParams.WRAP_CONTENT);
+        params.gravity = Gravity.RIGHT | Gravity.CENTER_VERTICAL;
+        params.setMargins(0, 0, dp(38), 0);
+        return params;
+    }
+
+    private LinearLayout buildGalleryTimelinePanel() {
+        LinearLayout panel = vertical();
+        panel.setPadding(dp(6), dp(6), dp(6), dp(6));
+        GradientDrawable bg = new GradientDrawable();
+        bg.setColor(Color.WHITE);
+        bg.setCornerRadii(new float[]{dp(14), dp(14), 0, 0, 0, 0, dp(14), dp(14)});
+        bg.setStroke(dp(1), Color.rgb(218, 226, 224));
+        panel.setBackground(bg);
+        if (Build.VERSION.SDK_INT >= 21) panel.setElevation(dp(10));
+
+        LinearLayout quickRow = horizontal();
+        quickRow.setGravity(Gravity.CENTER);
+        quickRow.addView(sideQuickButton("⌃ 顶部", () -> galleryScrollView.smoothScrollTo(0, 0)), sideQuickParams());
+        quickRow.addView(sideQuickButton("⌄ 底部", () -> {
+            View child = galleryScrollView.getChildAt(0);
+            if (child != null) galleryScrollView.smoothScrollTo(0, child.getBottom());
+        }), sideQuickParams());
+        panel.addView(quickRow, matchWrap());
+
+        boolean timelineMode = "timeline".equals(currentViewMode) && selectedTimelineDate != null;
+        TextView titleView = text("◷ " + (timelineMode ? selectedTimelineDate : "日期"), 10, true);
+        titleView.setGravity(Gravity.CENTER);
+        titleView.setTextColor(theme.primaryButton);
+        LinearLayout.LayoutParams titleParams = matchWrap();
+        titleParams.setMargins(0, dp(4), 0, dp(4));
+        panel.addView(titleView, titleParams);
+
+        if (timelineMode) {
+            ScrollView hourScroll = new ScrollView(this);
+            LinearLayout hourList = vertical();
+            Map<String, List<Integer>> hourGroups = timelineHourGroupsForActiveDate();
+            for (Map.Entry<String, List<Integer>> entry : hourGroups.entrySet()) {
+                hourList.addView(sideHourButton(entry.getKey(), entry.getValue().size(), entry.getValue().get(0)), matchWrap());
+            }
+            hourScroll.addView(hourList);
+            int hourHeight = Math.min(dp(70), Math.max(dp(26), hourGroups.size() * dp(26)));
+            panel.addView(hourScroll, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, hourHeight));
+        } else {
+            ScrollView listScroll = new ScrollView(this);
+            LinearLayout list = vertical();
+            Map<String, Integer> groups = galleryDateCounts();
+            for (Map.Entry<String, Integer> entry : groups.entrySet()) {
+                list.addView(sideDateButton(entry.getKey(), entry.getValue()), matchWrap());
+            }
+            listScroll.addView(list);
+            int listHeight = Math.min(dp(52), Math.max(dp(26), groups.size() * dp(24)));
+            panel.addView(listScroll, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, listHeight));
+        }
+        return panel;
+    }
+
+    private LinearLayout.LayoutParams sideQuickParams() {
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, dp(26), 1);
+        params.setMargins(dp(4), dp(3), dp(4), dp(5));
+        return params;
+    }
+
+    private TextView sideQuickButton(String label, Runnable action) {
+        TextView btn = new TextView(this);
+        btn.setText(label);
+        btn.setTextSize(10);
+        btn.setTypeface(Typeface.create(theme.fontFamily, Typeface.BOLD));
+        btn.setGravity(Gravity.CENTER);
+        btn.setIncludeFontPadding(true);
+        btn.setPadding(0, 0, 0, dp(1));
+        btn.setTextColor(theme.primaryButton);
+        GradientDrawable bg = new GradientDrawable();
+        bg.setColor(blend(theme.primaryButton, Color.WHITE, 0.88f));
+        bg.setCornerRadius(dp(8));
+        bg.setStroke(dp(1), blend(theme.primaryButton, Color.WHITE, 0.58f));
+        btn.setBackground(bg);
+        btn.setOnClickListener(v -> {
+            action.run();
+            View panel = content.findViewWithTag("gallery_timeline_panel");
+            if (panel != null) content.removeView(panel);
+        });
+        addPressEffect(btn);
+        return btn;
+    }
+
+    private TextView sideDateButton(String date, int count) {
+        boolean active = date.equals("timeline".equals(currentViewMode) ? selectedTimelineDate : topVisibleGalleryDate());
+        TextView btn = text(shortDateLabel(date) + "   " + count + "张", 12, active);
+        btn.setGravity(Gravity.CENTER_VERTICAL);
+        btn.setPadding(dp(10), 0, dp(10), 0);
+        btn.setTextColor(active ? theme.primaryButton : Color.rgb(31, 35, 38));
+        btn.setBackground(roundedDrawable(active ? blend(theme.primaryButton, Color.WHITE, 0.9f) : Color.WHITE, dp(8)));
+        btn.setOnClickListener(v -> {
+            scrollGalleryToDate(date);
+            View panel = content.findViewWithTag("gallery_timeline_panel");
+            if (panel != null) content.removeView(panel);
+        });
+        addPressEffect(btn);
+        return btn;
+    }
+
+    private TextView sideTimelineDateButton(String date, int count) {
+        boolean active = date.equals(selectedTimelineDate);
+        TextView btn = text(shortDateLabel(date), 10, active);
+        btn.setGravity(Gravity.CENTER);
+        btn.setSingleLine(true);
+        btn.setIncludeFontPadding(true);
+        btn.setTextColor(active ? Color.WHITE : Color.rgb(92, 102, 105));
+        btn.setBackground(roundedDrawable(active ? theme.primaryButton : Color.rgb(241, 245, 244), dp(6)));
+        btn.setOnClickListener(v -> {
+            selectedTimelineDate = date;
+            renderTimelineView();
+            View panel = content.findViewWithTag("gallery_timeline_panel");
+            if (panel != null) {
+                content.removeView(panel);
+                LinearLayout newPanel = buildGalleryTimelinePanel();
+                newPanel.setTag("gallery_timeline_panel");
+                content.addView(newPanel, sideTimelinePanelParams());
+                newPanel.bringToFront();
+                View button = content.findViewWithTag("gallery_timeline_button");
+                if (button != null) button.bringToFront();
+            }
+        });
+        addPressEffect(btn);
+        return btn;
+    }
+
+    private TextView sideHourButton(String hour, int count, int index) {
+        TextView btn = text(hour + "   " + count + "张", 12, false);
+        btn.setGravity(Gravity.CENTER_VERTICAL);
+        btn.setPadding(dp(8), 0, dp(8), 0);
+        btn.setTextColor(Color.rgb(31, 35, 38));
+        btn.setBackground(roundedDrawable(Color.WHITE, dp(8)));
+        btn.setOnClickListener(v -> {
+            scrollGalleryToIndex(index);
+            View panel = content.findViewWithTag("gallery_timeline_panel");
+            if (panel != null) content.removeView(panel);
+        });
+        addPressEffect(btn);
+        return btn;
+    }
+
+    private Map<String, List<Integer>> timelineHourGroupsForActiveDate() {
+        List<Integer> indices = new ArrayList<>();
+        for (int i = 0; i < galleryItems.size(); i++) {
+            if (selectedTimelineDate != null && selectedTimelineDate.equals(formatDateLabel(galleryItems.get(i).uploadedAt))) {
+                indices.add(i);
+            }
+        }
+        indices.sort((a, b) -> Long.compare(galleryItems.get(a).uploadedAt, galleryItems.get(b).uploadedAt));
+        Map<String, List<Integer>> groups = new LinkedHashMap<>();
+        for (int idx : indices) {
+            String hour = formatHourLabel(galleryItems.get(idx).uploadedAt);
+            List<Integer> list = groups.get(hour);
+            if (list == null) {
+                list = new ArrayList<>();
+                groups.put(hour, list);
+            }
+            list.add(idx);
+        }
+        return groups;
+    }
+
+    private String formatHourLabel(long timestamp) {
+        long millis = timestamp < 100000000000L ? timestamp * 1000L : timestamp;
+        return new SimpleDateFormat("H时", Locale.CHINA).format(new Date(millis));
+    }
+
+    private void scrollGalleryToIndex(int index) {
+        if (index < 0 || index >= galleryItems.size()) return;
+        View target = findFirstViewForItem(galleryContainer, galleryItems.get(index));
+        if (target != null) {
+            int y = getRelativeTop(target, galleryScrollView.getChildAt(0));
+            galleryScrollView.smoothScrollTo(0, Math.max(0, y - dp(8)));
+        }
+    }
+
+    private View findFirstViewForItem(View view, ImageItem item) {
+        if (view == null || item == null) return null;
+        Object tag = view.getTag();
+        if (tag == item) return view;
+        if (view instanceof ViewGroup) {
+            ViewGroup group = (ViewGroup) view;
+            for (int i = 0; i < group.getChildCount(); i++) {
+                View found = findFirstViewForItem(group.getChildAt(i), item);
+                if (found != null) return found;
+            }
+        }
+        return null;
+    }
+
+    private Map<String, Integer> galleryDateCounts() {
+        List<ImageItem> sorted = new ArrayList<>(galleryItems);
+        sorted.sort((a, b) -> Long.compare(b.uploadedAt, a.uploadedAt));
+        Map<String, Integer> groups = new LinkedHashMap<>();
+        for (ImageItem item : sorted) {
+            String date = formatDateLabel(item.uploadedAt);
+            Integer count = groups.get(date);
+            groups.put(date, count == null ? 1 : count + 1);
+        }
+        return groups;
+    }
+
+    private String shortDateLabel(String date) {
+        return date.replaceFirst("^\\d+年", "").replace("月", "/").replace("日", "");
+    }
+
+    private String topVisibleGalleryDate() {
+        if (galleryItems.isEmpty()) return "";
+        return formatDateLabel(galleryItems.get(0).uploadedAt);
+    }
+
+    private void scrollGalleryToDate(String date) {
+        if ("timeline".equals(currentViewMode)) {
+            selectedTimelineDate = date;
+            renderTimelineView();
+            galleryScrollView.post(() -> galleryScrollView.smoothScrollTo(0, 0));
+            refreshGalleryTimelineSideControl();
+            return;
+        }
+        View target = findFirstViewForDate(galleryContainer, date);
+        if (target != null) {
+            int y = getRelativeTop(target, galleryScrollView.getChildAt(0));
+            galleryScrollView.smoothScrollTo(0, Math.max(0, y - dp(8)));
+        }
+    }
+
+    private View findFirstViewForDate(View view, String date) {
+        if (view == null) return null;
+        Object tag = view.getTag();
+        if (tag instanceof ImageItem && date.equals(formatDateLabel(((ImageItem) tag).uploadedAt))) return view;
+        if (view instanceof ViewGroup) {
+            ViewGroup group = (ViewGroup) view;
+            for (int i = 0; i < group.getChildCount(); i++) {
+                View found = findFirstViewForDate(group.getChildAt(i), date);
+                if (found != null) return found;
+            }
+        }
+        return null;
+    }
+
+    private int getRelativeTop(View child, View parent) {
+        int top = 0;
+        View current = child;
+        while (current != null && current != parent) {
+            top += current.getTop();
+            if (!(current.getParent() instanceof View)) break;
+            current = (View) current.getParent();
+        }
+        return top;
     }
 
     private ViewGroup createGalleryContainer(String mode) {
@@ -870,8 +1279,6 @@ public class MainActivity extends Activity {
             case "simple":
             case "timeline":
                 return vertical();
-            case "river":
-                return vertical();
             case "masonry": {
                 LinearLayout masonryRow = horizontal();
                 masonryRow.setGravity(Gravity.TOP);
@@ -883,8 +1290,13 @@ public class MainActivity extends Activity {
                 masonryRow.addView(col2, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
                 return masonryRow;
             }
-            case "free":
-                return new FrameLayout(this);
+            case "free": {
+                FrameLayout free = new FrameLayout(this);
+                free.setClipChildren(false);
+                free.setClipToPadding(false);
+                if (Build.VERSION.SDK_INT >= 21) free.setElevation(dp(20));
+                return free;
+            }
             default: // grid
                 GridLayout grid = new GridLayout(this);
                 grid.setColumnCount(2);
@@ -895,6 +1307,20 @@ public class MainActivity extends Activity {
     private void renderExistingItems() {
         if (galleryContainer == null) return;
         galleryContainer.removeAllViews();
+        if ("timeline".equals(currentViewMode)) {
+            renderTimelineView();
+            return;
+        }
+        if ("masonry".equals(currentViewMode)) {
+            masonryColCounts[0] = 0;
+            masonryColCounts[1] = 0;
+            LinearLayout col1 = vertical();
+            col1.setTag("masonry_col_0");
+            LinearLayout col2 = vertical();
+            col2.setTag("masonry_col_1");
+            galleryContainer.addView(col1, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+            galleryContainer.addView(col2, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+        }
         for (int i = 0; i < galleryItems.size(); i++) {
             ImageItem item = galleryItems.get(i);
             int idx = i;
@@ -910,7 +1336,8 @@ public class MainActivity extends Activity {
         final long requestAfterId = nextAfterId;
         api.images(requestAfterId, uiCallback(page -> {
             nextAfterId = page.nextAfterId == null ? nextAfterId : page.nextAfterId;
-            if (page.nextAfterId == null && loadMoreButton != null) {
+            galleryEndReached = page.nextAfterId == null;
+            if (galleryEndReached && loadMoreButton != null) {
                 loadMoreButton.setVisibility(View.GONE);
             }
             for (ImageItem item : page.items) {
@@ -925,9 +1352,14 @@ public class MainActivity extends Activity {
                 }
             }
             store.saveImageUrlCache(galleryItems);
-            for (ImageItem item : added) {
-                queueCardForContainer(item, galleryItems.indexOf(item));
+            if ("timeline".equals(currentViewMode)) {
+                renderExistingItems();
+            } else {
+                for (ImageItem item : added) {
+                    queueCardForContainer(item, galleryItems.indexOf(item));
+                }
             }
+            refreshGalleryTimelineSideControl();
             galleryLoading = false;
         }, message -> {
             galleryLoading = false;
@@ -951,9 +1383,6 @@ public class MainActivity extends Activity {
                 break;
             case "simple":
                 addSimpleCard(container, item, index);
-                break;
-            case "river":
-                addRiverCard(container, item, index, bitmap);
                 break;
             case "masonry":
                 addMasonryCard(container, item, index, bitmap);
@@ -1318,13 +1747,13 @@ public class MainActivity extends Activity {
 
     private void addCompactCard(ViewGroup container, ImageItem item, int index, Bitmap bitmap) {
         GridLayout grid = (GridLayout) container;
-        FrameLayout card = buildImageCard(item, index, bitmap, dp(10));
+        FrameLayout card = buildImageCard(item, index, bitmap, 0);
         int screenW = getResources().getDisplayMetrics().widthPixels;
-        int cardSize = (screenW - dp(48)) / 3;
+        int cardSize = screenW / 3;
         GridLayout.LayoutParams params = new GridLayout.LayoutParams();
         params.width = cardSize;
         params.height = cardSize;
-        params.setMargins(dp(3), dp(3), dp(3), dp(3));
+        params.setMargins(0, 0, 0, 0);
         grid.addView(card, params);
     }
 
@@ -1337,13 +1766,6 @@ public class MainActivity extends Activity {
         LinearLayout row = horizontal();
         row.setPadding(dp(4), dp(4), dp(4), dp(4));
         row.setBackground(glassDrawable());
-
-        // 缩略图
-        ImageView thumb = new ImageView(this);
-        int thumbSize = dp(72);
-        thumb.setImageBitmap(roundedBitmap(bitmap, dp(10)));
-        thumb.setScaleType(ImageView.ScaleType.CENTER_CROP);
-        row.addView(thumb, new LinearLayout.LayoutParams(thumbSize, thumbSize));
 
         // 文本信息
         LinearLayout info = vertical();
@@ -1460,7 +1882,7 @@ public class MainActivity extends Activity {
         FrameLayout card = new FrameLayout(this);
         card.setTag(item);
         int screenW = getResources().getDisplayMetrics().widthPixels;
-        int colW = (screenW - dp(48)) / 2;
+        int colW = screenW / 2;
 
         // 根据图片比例计算高度
         float aspect = (float) bitmap.getWidth() / bitmap.getHeight();
@@ -1468,7 +1890,7 @@ public class MainActivity extends Activity {
         imgH = Math.max(dp(80), Math.min(imgH, dp(400)));
 
         ImageView image = new ImageView(this);
-        image.setImageBitmap(roundedBitmap(bitmap, dp(10)));
+        image.setImageBitmap(bitmap);
         image.setScaleType(ImageView.ScaleType.FIT_XY);
         card.addView(image, new FrameLayout.LayoutParams(colW, imgH));
 
@@ -1477,11 +1899,190 @@ public class MainActivity extends Activity {
         setupCardListeners(card, item);
 
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(colW, imgH);
-        params.setMargins(dp(3), dp(3), dp(3), dp(3));
+        params.setMargins(0, 0, 0, 0);
         colLayout.addView(card, params);
 
         // 更新列计数（根据总高度）
-        masonryColCounts[col] += imgH + dp(6);
+        masonryColCounts[col] += imgH;
+    }
+
+    private LinearLayout timelineDateSelector(Map<String, List<Integer>> groups) {
+        String[] parts = timelineDateParts(selectedTimelineDate);
+        LinearLayout box = vertical();
+
+        LinearLayout row = horizontal();
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.addView(timelineDatePartButton(parts[0], "选择年份", () -> timelineYears(groups), value -> applyTimelineDatePart(groups, value, parts[1], parts[2])), timelinePartParams());
+        row.addView(timelineDatePartButton(parts[1], "选择月份", () -> timelineMonths(groups, parts[0]), value -> applyTimelineDatePart(groups, parts[0], value, parts[2])), timelinePartParams());
+        row.addView(timelineDatePartButton(parts[2], "选择日期", () -> timelineDays(groups, parts[0], parts[1]), value -> applyTimelineDatePart(groups, parts[0], parts[1], value)), timelinePartParams());
+        box.addView(row, matchWrap());
+
+        int count = groups.containsKey(selectedTimelineDate) ? groups.get(selectedTimelineDate).size() : 0;
+        TextView countText = text(count + "张照片", 11, false);
+        countText.setTextColor(theme.secondaryText);
+        countText.setGravity(Gravity.CENTER_VERTICAL);
+        LinearLayout.LayoutParams countParams = matchWrap();
+        countParams.setMargins(dp(4), dp(4), 0, 0);
+        box.addView(countText, countParams);
+        return box;
+    }
+
+    private interface TimelineOptionsProvider { List<String> options(); }
+
+    private TextView timelineDatePartButton(String label, String title, TimelineOptionsProvider provider, TimelinePartCallback callback) {
+        TextView btn = timelinePartButton(label + " ▼");
+        btn.setOnClickListener(v -> showTimelinePartDropdown(btn, provider.options(), callback));
+        return btn;
+    }
+
+    private void applyTimelineDatePart(Map<String, List<Integer>> groups, String year, String month, String day) {
+        selectedTimelineDate = bestTimelineDate(groups, year, month, day);
+        renderTimelineView();
+        galleryScrollView.post(() -> galleryScrollView.smoothScrollTo(0, 0));
+        refreshGalleryTimelineSideControl();
+    }
+
+    private TextView timelinePartButton(String label) {
+        TextView btn = text(label, 12, true);
+        btn.setGravity(Gravity.CENTER);
+        btn.setTextColor(theme.primaryButton);
+        btn.setBackground(roundedDrawable(blend(theme.primaryButton, Color.WHITE, 0.9f), dp(8)));
+        addPressEffect(btn);
+        return btn;
+    }
+
+    private LinearLayout.LayoutParams timelinePartParams() {
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, dp(34), 1);
+        params.setMargins(dp(3), 0, dp(3), 0);
+        return params;
+    }
+
+    private interface TimelinePartCallback { void onSelect(String value); }
+
+    private void showTimelinePartDropdown(View anchor, List<String> options, TimelinePartCallback callback) {
+        LinearLayout panel = vertical();
+        panel.setPadding(dp(4), dp(4), dp(4), dp(4));
+        String current = anchor instanceof TextView ? ((TextView) anchor).getText().toString().replace(" ▼", "") : "";
+
+        ScrollView scroll = new ScrollView(this);
+        scroll.setBackground(roundedDrawable(Color.WHITE, dp(8)));
+        if (Build.VERSION.SDK_INT >= 21) scroll.setElevation(dp(8));
+        scroll.addView(panel);
+
+        int maxItems = Math.min(options.size(), 6);
+        android.widget.PopupWindow popup = new android.widget.PopupWindow(scroll, Math.max(anchor.getWidth(), dp(76)), maxItems * dp(30) + dp(8), true);
+        popup.setOutsideTouchable(true);
+        popup.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));
+        for (int i = 0; i < options.size(); i++) {
+            String option = options.get(i);
+            boolean selected = option.equals(current);
+            TextView item = text(option, 12, selected);
+            item.setGravity(Gravity.CENTER);
+            item.setTextColor(selected ? theme.primaryButton : theme.primaryText);
+            item.setBackground(roundedDrawable(selected ? blend(theme.primaryButton, Color.WHITE, 0.84f) : Color.WHITE, dp(6)));
+            item.setOnClickListener(v -> {
+                popup.dismiss();
+                callback.onSelect(option);
+            });
+            panel.addView(item, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(30)));
+        }
+        popup.showAsDropDown(anchor, 0, dp(4));
+    }
+
+    private String[] timelineDateParts(String date) {
+        int y = date.indexOf('年');
+        int m = date.indexOf('月');
+        return new String[]{date.substring(0, y + 1), date.substring(y + 1, m + 1), date.substring(m + 1)};
+    }
+
+    private List<String> timelineYears(Map<String, List<Integer>> groups) {
+        List<String> list = new ArrayList<>();
+        for (String date : groups.keySet()) {
+            String value = timelineDateParts(date)[0];
+            if (!list.contains(value)) list.add(value);
+        }
+        return list;
+    }
+
+    private List<String> timelineMonths(Map<String, List<Integer>> groups, String year) {
+        List<String> list = new ArrayList<>();
+        for (String date : groups.keySet()) {
+            String[] parts = timelineDateParts(date);
+            if (parts[0].equals(year) && !list.contains(parts[1])) list.add(parts[1]);
+        }
+        return list;
+    }
+
+    private List<String> timelineDays(Map<String, List<Integer>> groups, String year, String month) {
+        List<String> list = new ArrayList<>();
+        for (String date : groups.keySet()) {
+            String[] parts = timelineDateParts(date);
+            if (parts[0].equals(year) && parts[1].equals(month) && !list.contains(parts[2])) list.add(parts[2]);
+        }
+        return list;
+    }
+
+    private String bestTimelineDate(Map<String, List<Integer>> groups, String year, String month, String day) {
+        String exact = year + month + day;
+        if (groups.containsKey(exact)) return exact;
+        for (String date : groups.keySet()) if (date.startsWith(year + month)) return date;
+        for (String date : groups.keySet()) if (date.startsWith(year)) return date;
+        return groups.keySet().iterator().next();
+    }
+
+    private void renderTimelineView() {
+        LinearLayout timeline = (LinearLayout) galleryContainer;
+        timeline.removeAllViews();
+        List<Integer> indices = new ArrayList<>();
+        for (int i = 0; i < galleryItems.size(); i++) indices.add(i);
+        indices.sort((a, b) -> Long.compare(galleryItems.get(b).uploadedAt, galleryItems.get(a).uploadedAt));
+
+        Map<String, List<Integer>> groups = new LinkedHashMap<>();
+        for (int idx : indices) {
+            ImageItem item = galleryItems.get(idx);
+            String key = formatDateLabel(item.uploadedAt);
+            List<Integer> list = groups.get(key);
+            if (list == null) {
+                list = new ArrayList<>();
+                groups.put(key, list);
+            }
+            list.add(idx);
+        }
+        if (groups.isEmpty()) {
+            timeline.addView(text("暂无照片", 14, false), matchWrap());
+            return;
+        }
+        if (selectedTimelineDate == null || !groups.containsKey(selectedTimelineDate)) {
+            selectedTimelineDate = groups.keySet().iterator().next();
+        }
+
+        LinearLayout dateSelector = timelineDateSelector(groups);
+        LinearLayout.LayoutParams dateParams = matchWrap();
+        dateParams.setMargins(0, dp(4), 0, dp(8));
+        timeline.addView(dateSelector, dateParams);
+
+        GridLayout dayGrid = new GridLayout(this);
+        dayGrid.setColumnCount(2);
+        timeline.addView(dayGrid, matchWrap());
+        List<Integer> dayItems = groups.get(selectedTimelineDate);
+        for (int idx : dayItems) {
+            ImageItem item = galleryItems.get(idx);
+            imageCache.load(item.url, bitmapCallback(bitmap -> mainHandler.post(() -> {
+                if (galleryContainer == timeline && "timeline".equals(currentViewMode) && selectedTimelineDate.equals(formatDateLabel(item.uploadedAt))) {
+                    addTimelineGridCard(dayGrid, item, idx, bitmap);
+                }
+            }), msg -> {}));
+        }
+    }
+
+    private void addTimelineGridCard(GridLayout grid, ImageItem item, int index, Bitmap bitmap) {
+        FrameLayout card = buildImageCard(item, index, bitmap, dp(10));
+        int cardSize = (getResources().getDisplayMetrics().widthPixels - dp(44)) / 2;
+        GridLayout.LayoutParams params = new GridLayout.LayoutParams();
+        params.width = cardSize;
+        params.height = cardSize;
+        params.setMargins(dp(4), dp(4), dp(4), dp(4));
+        grid.addView(card, params);
     }
 
     private void addTimelineCard(ViewGroup container, ImageItem item, int index, Bitmap bitmap) {
@@ -1555,26 +2156,38 @@ public class MainActivity extends Activity {
 
         FrameLayout card = new FrameLayout(this);
         card.setTag(item);
-        int size = dp(80 + freeRandom.nextInt(60));
+        int cardW = dp(132);
+        int cardH = dp(108);
+        int photoPad = dp(6);
+        int bottomPad = dp(24);
+
+        GradientDrawable polaroidBg = new GradientDrawable();
+        polaroidBg.setColor(Color.WHITE);
+        polaroidBg.setCornerRadius(dp(2));
+        card.setBackground(polaroidBg);
 
         ImageView image = new ImageView(this);
-        image.setImageBitmap(roundedBitmap(bitmap, dp(8)));
+        image.setImageBitmap(bitmap);
         image.setScaleType(ImageView.ScaleType.CENTER_CROP);
-        card.addView(image, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        FrameLayout.LayoutParams imageParams = new FrameLayout.LayoutParams(cardW - photoPad * 2, cardH - photoPad - bottomPad);
+        imageParams.setMargins(photoPad, photoPad, photoPad, bottomPad);
+        card.addView(image, imageParams);
 
         // 随机旋转
-        float rotation = (freeRandom.nextFloat() - 0.5f) * 16f;
+        float rotation = (freeRandom.nextFloat() - 0.5f) * 12f;
 
-        int maxX = Math.max(screenW - size, dp(20));
-        int maxY = Math.max(screenH - size - dp(80), dp(20));
-        int x = freeRandom.nextInt(maxX);
-        int y = freeRandom.nextInt(maxY);
+        int margin = dp(18);
+        int maxX = Math.max(screenW - cardW - margin * 2, dp(60));
+        int maxY = Math.max(screenH - cardH - margin * 2, dp(120));
+        int x = margin + freeRandom.nextInt(maxX);
+        int y = margin + freeRandom.nextInt(maxY);
 
         FrameLayout checkOverlay = buildCheckOverlay(item, index);
         card.addView(checkOverlay, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         setupCardListeners(card, item);
+        setupFreeCardDrag(card);
 
-        FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(size, size);
+        FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(cardW, cardH);
         params.setMargins(x, y, 0, 0);
         card.setRotation(rotation);
         card.setElevation(dp(2));
@@ -1598,7 +2211,9 @@ public class MainActivity extends Activity {
         }
 
         ImageView image = new ImageView(this);
-        if (radius >= dp(14)) {
+        if (radius <= 0) {
+            image.setImageBitmap(bitmap);
+        } else if (radius >= dp(14)) {
             image.setImageBitmap(squareRoundedBitmap(bitmap, radius));
         } else {
             image.setImageBitmap(roundedBitmap(bitmap, radius));
@@ -1664,6 +2279,73 @@ public class MainActivity extends Activity {
         });
     }
 
+    private void setupFreeCardDrag(FrameLayout card) {
+        final float[] downRawX = new float[1];
+        final float[] downRawY = new float[1];
+        final int[] startLeft = new int[1];
+        final int[] startTop = new int[1];
+        final boolean[] dragging = new boolean[1];
+        final boolean[] longPressed = new boolean[1];
+        final Runnable[] longPressRunnable = new Runnable[1];
+
+        card.setOnTouchListener((view, event) -> {
+            switch (event.getActionMasked()) {
+                case MotionEvent.ACTION_DOWN:
+                    downRawX[0] = event.getRawX();
+                    downRawY[0] = event.getRawY();
+                    FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) view.getLayoutParams();
+                    startLeft[0] = lp.leftMargin;
+                    startTop[0] = lp.topMargin;
+                    dragging[0] = false;
+                    longPressed[0] = false;
+                    longPressRunnable[0] = () -> {
+                        longPressed[0] = true;
+                        view.performLongClick();
+                    };
+                    mainHandler.postDelayed(longPressRunnable[0], ViewConfiguration.getLongPressTimeout());
+                    view.getParent().requestDisallowInterceptTouchEvent(true);
+                    view.bringToFront();
+                    if (Build.VERSION.SDK_INT >= 21) view.setElevation(dp(8));
+                    return true;
+                case MotionEvent.ACTION_MOVE:
+                    float dx = event.getRawX() - downRawX[0];
+                    float dy = event.getRawY() - downRawY[0];
+                    if (!dragging[0] && Math.hypot(dx, dy) > dp(4)) {
+                        dragging[0] = true;
+                        mainHandler.removeCallbacks(longPressRunnable[0]);
+                    }
+                    if (dragging[0]) {
+                        FrameLayout.LayoutParams moveLp = (FrameLayout.LayoutParams) view.getLayoutParams();
+                        int minVisible = dp(36);
+                        int minLeft = minVisible - view.getWidth();
+                        int minTop = minVisible - view.getHeight();
+                        int maxLeft = Math.max(minVisible, ((View) view.getParent()).getWidth() - minVisible);
+                        int maxTop = Math.max(minVisible, ((View) view.getParent()).getHeight() - minVisible);
+                        moveLp.leftMargin = Math.max(minLeft, Math.min(startLeft[0] + Math.round(dx), maxLeft));
+                        moveLp.topMargin = Math.max(minTop, Math.min(startTop[0] + Math.round(dy), maxTop));
+                        view.setLayoutParams(moveLp);
+                    }
+                    return true;
+                case MotionEvent.ACTION_UP:
+                    mainHandler.removeCallbacks(longPressRunnable[0]);
+                    view.getParent().requestDisallowInterceptTouchEvent(false);
+                    if (Build.VERSION.SDK_INT >= 21) view.setElevation(dp(3));
+                    if (!dragging[0] && !longPressed[0]) {
+                        view.performClick();
+                    }
+                    dragging[0] = false;
+                    return true;
+                case MotionEvent.ACTION_CANCEL:
+                    mainHandler.removeCallbacks(longPressRunnable[0]);
+                    view.getParent().requestDisallowInterceptTouchEvent(false);
+                    dragging[0] = false;
+                    return true;
+                default:
+                    return true;
+            }
+        });
+    }
+
     private String formatDateLabel(long timestamp) {
         if (timestamp <= 0) return "未知日期";
         long millis = timestamp < 100000000000L ? timestamp * 1000L : timestamp;
@@ -1705,7 +2387,7 @@ public class MainActivity extends Activity {
         LinearLayout page = vertical();
         LinearLayout topBar = horizontal();
         topBar.setGravity(Gravity.CENTER_VERTICAL);
-        topBar.setPadding(dp(12), dp(8), dp(4), dp(8));
+        topBar.setPadding(dp(12), statusBarHeight() + dp(8), dp(4), dp(8));
         TextView timeView = text(formatTime(item.uploadedAt), 14, false);
         timeView.setGravity(Gravity.CENTER_VERTICAL);
         topBar.addView(timeView, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
@@ -2695,6 +3377,15 @@ public class MainActivity extends Activity {
     }
 
     private void logout() {
+        new AlertDialog.Builder(this)
+                .setTitle("确认退出登录")
+                .setMessage("退出后需要重新登录，确定要退出吗？")
+                .setNegativeButton("取消", null)
+                .setPositiveButton("退出", (dialog, which) -> doLogout())
+                .show();
+    }
+
+    private void doLogout() {
         store.clearSession();
         // 重置为默认主题
         theme = ThemeConfig.load(store.prefs(), "");
@@ -3463,7 +4154,7 @@ public class MainActivity extends Activity {
     private GradientDrawable navBarDrawable() {
         GradientDrawable drawable = new GradientDrawable();
         drawable.setColor(Color.TRANSPARENT);
-        drawable.setCornerRadius(dp(22));
+        drawable.setCornerRadius(0);
         // 描边上半部分实色，下半部分透明渐变
         drawable.setStroke(dp(1), Color.TRANSPARENT);
         return drawable;
@@ -3567,6 +4258,24 @@ public class MainActivity extends Activity {
     private GradientDrawable glassDrawable() {
         int base = blend(theme.secondaryButton, theme.background, 0.34f);
         GradientDrawable drawable = gradientDrawable(Color.argb(210, Color.red(base), Color.green(base), Color.blue(base)), blend(base, theme.primaryButton, 0.12f), dp(24));
+        drawable.setStroke(dp(1), Color.argb(90, Color.red(theme.primaryText), Color.green(theme.primaryText), Color.blue(theme.primaryText)));
+        return drawable;
+    }
+
+    private GradientDrawable navGlassDrawable() {
+        int base = blend(theme.secondaryButton, theme.background, 0.34f);
+        GradientDrawable drawable = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                new int[]{
+                        adjust(Color.argb(210, Color.red(base), Color.green(base), Color.blue(base))),
+                        adjust(blend(base, theme.primaryButton, 0.12f))
+                });
+        float topRadius = dp(12);
+        drawable.setCornerRadii(new float[]{
+                topRadius, topRadius,
+                topRadius, topRadius,
+                0, 0,
+                0, 0
+        });
         drawable.setStroke(dp(1), Color.argb(90, Color.red(theme.primaryText), Color.green(theme.primaryText), Color.blue(theme.primaryText)));
         return drawable;
     }
@@ -3868,6 +4577,14 @@ public class MainActivity extends Activity {
             return String.format("%.1f KB", kb);
         }
         return String.format("%.1f MB", kb / 1024.0);
+    }
+
+    private int statusBarHeight() {
+        int resourceId = getResources().getIdentifier("status_bar_height", "dimen", "android");
+        if (resourceId > 0) {
+            return getResources().getDimensionPixelSize(resourceId);
+        }
+        return dp(24);
     }
 
     private int dp(int value) {
