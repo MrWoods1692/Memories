@@ -17,6 +17,11 @@ import type { ImageBedInfo, ImageItem } from "@/types";
 
 const { Title, Text } = Typography;
 
+function dateSortKey(dateStr: string): number {
+  const parts = dateStr.split("/").map(Number);
+  return parts.length === 3 ? parts[0] * 10000 + parts[1] * 100 + parts[2] : 0;
+}
+
 export default function GalleryPage() {
   const [images, setImages] = useState<ImageItem[]>([]);
   const [page, setPage] = useState(1);
@@ -1132,7 +1137,6 @@ toolbarRender: (originalNode: React.ReactNode, info: { current: number; actions:
         isDesktop={isDesktop}
         viewMode={viewMode}
         timelineActiveDate={timelineActiveDate}
-        onTimelineDateChange={setTimelineActiveDate}
       />
 
       {/* 幻灯播放进度条 */}
@@ -1198,8 +1202,6 @@ function TimelineView({ images, loading, page, totalPages, loadImages, getImgPro
   activeDate: string;
   onActiveDateChange: (date: string) => void;
 }) {
-  const timelineRef = useRef<HTMLDivElement>(null);
-
   const makeTools = useCallback((url: string) => {
     const btnStyle: React.CSSProperties = {
       color: "rgba(255,255,255,0.9)",
@@ -1253,7 +1255,7 @@ function TimelineView({ images, loading, page, totalPages, loadImages, getImgPro
       existing.push(img);
       groups.set(date, existing);
     });
-    return Array.from(groups.entries());
+    return Array.from(groups.entries()).sort(([a], [b]) => dateSortKey(b) - dateSortKey(a));
   }, [images]);
 
   // 默认选中最新日期
@@ -1261,10 +1263,79 @@ function TimelineView({ images, loading, page, totalPages, loadImages, getImgPro
     if (dateGroups.length > 0 && !activeDate) {
       onActiveDateChange(dateGroups[0][0]);
     }
-  }, [dateGroups, activeDate]);
+  }, [dateGroups, activeDate, onActiveDateChange]);
 
   const activeImages = dateGroups.find(([d]) => d === activeDate)?.[1] || [];
   const observerRef = useRef<HTMLDivElement>(null);
+
+  const dateOptions = useMemo(() => {
+    return dateGroups.map(([date, imgs]) => {
+      const [year, month, day] = date.split("/").map(Number);
+      return { date, year, month, day, count: imgs.length };
+    });
+  }, [dateGroups]);
+
+  const activeParts = useMemo(() => {
+    const fallback = dateOptions[0];
+    const [year, month, day] = activeDate.split("/").map(Number);
+    return {
+      year: year || fallback?.year || new Date().getFullYear(),
+      month: month || fallback?.month || 1,
+      day: day || fallback?.day || 1,
+    };
+  }, [activeDate, dateOptions]);
+
+  const years = useMemo(() => Array.from(new Set(dateOptions.map((d) => d.year))).sort((a, b) => b - a), [dateOptions]);
+  const months = useMemo(() => Array.from(new Set(dateOptions.filter((d) => d.year === activeParts.year).map((d) => d.month))).sort((a, b) => b - a), [dateOptions, activeParts.year]);
+  const days = useMemo(() => Array.from(new Set(dateOptions.filter((d) => d.year === activeParts.year && d.month === activeParts.month).map((d) => d.day))).sort((a, b) => b - a), [dateOptions, activeParts.year, activeParts.month]);
+
+  const changeTimelineDatePart = useCallback((part: "year" | "month" | "day", value: number) => {
+    let year = activeParts.year;
+    let month = activeParts.month;
+    let day = activeParts.day;
+    if (part === "year") year = value;
+    if (part === "month") month = value;
+    if (part === "day") day = value;
+
+    const exact = dateOptions.find((d) => d.year === year && d.month === month && d.day === day);
+    const sameMonth = dateOptions.find((d) => d.year === year && d.month === month);
+    const sameYear = dateOptions.find((d) => d.year === year);
+    const next = exact || sameMonth || sameYear || dateOptions[0];
+    if (next) {
+      onActiveDateChange(next.date);
+      requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "smooth" }));
+    }
+  }, [activeParts, dateOptions, onActiveDateChange]);
+
+  const renderDateDropdown = useCallback((part: "year" | "month" | "day", label: string, value: number, options: number[]) => {
+    const menu: MenuProps = {
+      items: options.map((option) => ({
+        key: String(option),
+        label: part === "year" ? `${option}年` : part === "month" ? `${option}月` : `${option}日`,
+      })),
+      selectable: true,
+      selectedKeys: [String(value)],
+      onClick: ({ key }) => changeTimelineDatePart(part, Number(key)),
+    };
+    return (
+      <Dropdown key={part} menu={menu} trigger={["click"]} overlayStyle={{ maxHeight: 240, overflowY: "auto" }}>
+        <button type="button" onClick={(e) => e.preventDefault()} style={{
+          cursor: "pointer",
+          border: `1px solid ${value ? accentColor : "var(--ant-color-border)"}`,
+          background: value ? `${accentColor}12` : "var(--ant-color-bg-container)",
+          color: value ? accentColor : "var(--ant-color-text)",
+          borderRadius: 10,
+          padding: "5px 10px",
+          fontSize: 14,
+          fontWeight: 700,
+          lineHeight: 1.2,
+          minWidth: part === "year" ? 74 : 54,
+        }}>
+          {label}<CaretRightOutlined rotate={90} style={{ fontSize: 10, marginLeft: 4 }} />
+        </button>
+      </Dropdown>
+    );
+  }, [accentColor, changeTimelineDatePart]);
 
   // 无限滚动
   useEffect(() => {
@@ -1292,57 +1363,14 @@ function TimelineView({ images, loading, page, totalPages, loadImages, getImgPro
           <Text strong style={{ fontSize: 14 }}>时间轴</Text>
           <Text type="secondary" style={{ fontSize: 12, marginLeft: 8 }}>共 {dateGroups.length} 个日期</Text>
         </div>
-        <div style={{ position: "relative", padding: "0 20px" }}>
-          {/* 时间线 */}
-          <div style={{
-            position: "absolute", top: 28, left: 20, right: 20,
-            height: 2, background: "var(--ant-color-border-secondary)",
-          }} />
-          <div ref={timelineRef} style={{
-            display: "flex", gap: 0, overflowX: "auto",
-            padding: "8px 0 12px",
-            scrollbarWidth: "thin",
-            WebkitOverflowScrolling: "touch",
-            position: "relative",
-          }}>
-            {dateGroups.map(([date, imgs]) => {
-              const isActive = date === activeDate;
-              const parts = date.split("/");
-              return (
-                <div key={date} onClick={() => onActiveDateChange(date)} style={{
-                  flexShrink: 0, cursor: "pointer",
-                  textAlign: "center",
-                  userSelect: "none",
-                  padding: "0 14px",
-                  position: "relative",
-                }}>
-                  {/* 时间点 */}
-                  <div style={{
-                    width: isActive ? 14 : 10, height: isActive ? 14 : 10,
-                    borderRadius: "50%",
-                    background: isActive ? "var(--ant-color-primary)" : "var(--ant-color-border-secondary)",
-                    border: isActive ? "3px solid var(--ant-color-primary-bg)" : "none",
-                    margin: "0 auto 6px",
-                    transition: "all 0.2s",
-                    position: "relative", zIndex: 1,
-                  }} />
-                  <div style={{
-                    fontSize: isActive ? 15 : 13,
-                    fontWeight: isActive ? 700 : 500,
-                    color: isActive ? "var(--ant-color-primary)" : "var(--ant-color-text)",
-                    lineHeight: 1.2,
-                  }}>{parts[1]}/{parts[2]}</div>
-                  <div style={{
-                    fontSize: 10,
-                    color: isActive ? "var(--ant-color-primary)" : "var(--ant-color-text-secondary)",
-                    marginTop: 1,
-                  }}>{imgs.length}张</div>
-                  {parts[0] !== dateGroups[0]?.[0]?.split("/")[0] && (
-                    <div style={{ fontSize: 9, color: "var(--ant-color-text-quaternary)", marginTop: 1 }}>{parts[0]}年</div>
-                  )}
-                </div>
-              );
-            })}
+        <div style={{ padding: "0 16px 10px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            {renderDateDropdown("year", `${activeParts.year}年`, activeParts.year, years)}
+            {renderDateDropdown("month", `${activeParts.month}月`, activeParts.month, months)}
+            {renderDateDropdown("day", `${activeParts.day}日`, activeParts.day, days)}
+            <Text type="secondary" style={{ fontSize: 12 }}>
+              {activeImages.length}张
+            </Text>
           </div>
         </div>
       </div>

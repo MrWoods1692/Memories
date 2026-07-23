@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Tooltip, theme } from "antd";
+import { theme } from "antd";
 import { FieldTimeOutlined, CaretUpOutlined, CaretDownOutlined } from "@ant-design/icons";
 import type { ImageItem } from "@/types";
 
@@ -14,8 +14,6 @@ interface TimelineScrollBarProps {
   viewMode: GalleryView;
   /** 时间线视图下当前激活的日期（zh-CN 格式），用于在选中的天内精细滚动 */
   timelineActiveDate?: string;
-  /** 时间线视图下切换到指定日期的回调 */
-  onTimelineDateChange?: (date: string) => void;
 }
 
 /** zh-CN 日期: "2026/7/19" */
@@ -42,10 +40,8 @@ export default function TimelineScrollBar({
   isDesktop,
   viewMode,
   timelineActiveDate,
-  onTimelineDateChange,
 }: TimelineScrollBarProps) {
   const [activeDate, setActiveDate] = useState<string>("");
-  const [isHovering, setIsHovering] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const { token: themeToken } = theme.useToken();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -191,13 +187,8 @@ export default function TimelineScrollBar({
   // ── 自由视图：完全隐藏 ──
   if (viewMode === "free") return null;
 
-  // ========== 移动端：长条圆头按钮 + 弹出面板 ==========
-  if (!isDesktop) {
-    const isActiveThisView = isTimelineMode && !!timelineActiveDate;
-    const parts = (timelineActiveDate || "").split("/");
-    const shortLabel = parts.length >= 3 ? `${parts[1]}/${parts[2]}` : (timelineActiveDate || "");
-
-    return (
+  // ========== 侧边长条按钮 + 弹出面板（电脑端与手机端一致） ==========
+  return (
       <>
         {/* 触发按钮 — 长条、两头圆 */}
         <div
@@ -234,27 +225,14 @@ export default function TimelineScrollBar({
           }}
         >
             <FieldTimeOutlined style={{ fontSize: 14, filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.2))" }} />
-          {isActiveThisView && (
-            <span style={{
-              fontSize: 9,
-              fontWeight: 700,
-              writingMode: "vertical-rl",
-              textOrientation: "mixed",
-              letterSpacing: 1,
-            }}>
-              {shortLabel}
-            </span>
-          )}
-          {!isActiveThisView && (
-            <span style={{
-              fontSize: 7,
-              opacity: 0.8,
-              writingMode: "vertical-rl",
-              textOrientation: "mixed",
-            }}>
-              日期
-            </span>
-          )}
+          <span style={{
+            fontSize: 7,
+            opacity: 0.8,
+            writingMode: "vertical-rl",
+            textOrientation: "mixed",
+          }}>
+            日期
+          </span>
         </div>
 
         {/* 弹出面板 */}
@@ -305,32 +283,6 @@ export default function TimelineScrollBar({
           {/* 时间线模式：按小时分组 */}
           {isTimelineMode && hourGroupsForActiveDate.length > 0 ? (
             <>
-              {/* 日期切换 */}
-              <div style={{
-                display: "flex", flexWrap: "wrap", gap: 2,
-                justifyContent: "center", marginBottom: 6,
-              }}>
-                {dateGroups.slice(0, 6).map(([date, { count }]) => (
-                  <div
-                    key={date}
-                    onClick={() => onTimelineDateChange?.(date)}
-                    style={{
-                      cursor: "pointer",
-                      padding: "2px 5px",
-                      borderRadius: 6,
-                      fontSize: 10,
-                      fontWeight: date === timelineActiveDate ? 700 : 400,
-                      color: date === timelineActiveDate ? "#fff" : "var(--ant-color-text-secondary)",
-                      background: date === timelineActiveDate ? accentColor : "var(--ant-color-fill-quaternary)",
-                      whiteSpace: "nowrap",
-                      transition: "all 0.15s",
-                    }}
-                  >
-                    {date.split("/").slice(1).join("/")}
-                  </div>
-                ))}
-              </div>
-              <div style={{ width: "100%", height: 1, background: "var(--ant-color-border-secondary)", marginBottom: 4 }} />
               {/* 小时分组 */}
               {hourGroupsForActiveDate.map(([hour, { count, firstId }]) => (
                 <div
@@ -404,317 +356,6 @@ export default function TimelineScrollBar({
         </div>
       </>
     );
-  }
-
-  // ========== 桌面端：固定侧边条 ==========
-  const barWidth = 50;
-
-  // ── 时间线模式：按小时分组列表 ──
-  if (isTimelineMode && timelineActiveDate && hourGroupsForActiveDate.length > 0) {
-    const imgCount = hourGroupsForActiveDate.reduce((s, [, { count }]) => s + count, 0);
-
-    return (
-      <div
-        ref={containerRef}
-        onMouseEnter={() => setIsHovering(true)}
-        onMouseLeave={() => setIsHovering(false)}
-        style={{
-          position: "fixed",
-          right: 4,
-          top: "50%",
-          transform: "translateY(-50%)",
-          zIndex: 997,
-          width: barWidth,
-          maxHeight: "calc(100vh - 120px)",
-          overflowY: "auto",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          gap: 2,
-          padding: "4px 6px",
-          borderRadius: 12,
-          background: isHovering
-            ? `color-mix(in srgb, var(--ant-color-bg-container) 92%, transparent)`
-            : "transparent",
-          backdropFilter: isHovering ? "blur(12px)" : "none",
-          border: isHovering ? "1px solid var(--ant-color-border-secondary)" : "1px solid transparent",
-          boxShadow: isHovering ? "0 2px 12px rgba(0,0,0,0.08)" : "none",
-          transition: "all 0.25s ease",
-          userSelect: "none",
-          scrollbarWidth: "none",
-        }}
-      >
-        {/* 快速导航按钮 */}
-        <div style={{ display: "flex", gap: 2, marginBottom: 2 }}>
-          <Tooltip title="回到顶部" placement="left" mouseEnterDelay={0.3}>
-            <div onClick={scrollToTop} style={deskQuickBtn(accentColor)}>
-              <CaretUpOutlined style={{ fontSize: 10 }} />
-            </div>
-          </Tooltip>
-          <Tooltip title="去到底部" placement="left" mouseEnterDelay={0.3}>
-            <div onClick={scrollToBottom} style={deskQuickBtn(accentColor)}>
-              <CaretDownOutlined style={{ fontSize: 10 }} />
-            </div>
-          </Tooltip>
-        </div>
-
-        {/* 日期导航 */}
-        <div style={{
-          display: "flex", alignItems: "center", gap: 4,
-          padding: "2px 0", width: "100%", justifyContent: "center",
-        }}>
-          <FieldTimeOutlined style={{ fontSize: 10, color: accentColor, opacity: 0.7 }} />
-          <span style={{ fontSize: 10, fontWeight: 700, color: accentColor }}>
-            {timelineActiveDate.split("/").slice(1).join("/")}
-          </span>
-          <span style={{ fontSize: 9, color: "var(--ant-color-text-quaternary)" }}>
-            ({imgCount})
-          </span>
-        </div>
-
-        {/* 日期切换按钮 */}
-        <div style={{ display: "flex", gap: 2, marginBottom: 2 }}>
-          {dateGroups.slice(0, Math.min(dateGroups.length, 5)).map(([date]) => {
-            const isActive = date === timelineActiveDate;
-            const parts = date.split("/");
-            const label = parts.length >= 3 ? `${parts[1]}/${parts[2]}` : date;
-            return (
-              <div
-                key={date}
-                onClick={() => onTimelineDateChange?.(date)}
-                style={{
-                  cursor: "pointer",
-                  padding: "1px 4px",
-                  borderRadius: 6,
-                  fontSize: 9,
-                  fontWeight: isActive ? 700 : 400,
-                  color: isActive ? "#fff" : "var(--ant-color-text-secondary)",
-                  background: isActive ? accentColor : "var(--ant-color-fill-quaternary)",
-                  whiteSpace: "nowrap",
-                  transition: "all 0.15s",
-                }}
-              >
-                {label}
-              </div>
-            );
-          })}
-        </div>
-
-        <div style={{ width: 20, height: 1, background: "var(--ant-color-border-secondary)", margin: "2px 0" }} />
-
-        {/* 小时分组列表 — 显示时间和张数 */}
-        {hourGroupsForActiveDate.map(([hour, { count, firstId }]) => (
-          <Tooltip
-            key={hour}
-            title={`${hour} · ${count} 张照片`}
-            placement="left"
-            mouseEnterDelay={0.2}
-          >
-            <div
-              onClick={() => scrollToImage(firstId)}
-              style={{
-                cursor: "pointer",
-                width: 36,
-                padding: "3px 0",
-                borderRadius: 6,
-                textAlign: "center",
-                fontSize: 10,
-                fontWeight: 500,
-                color: "var(--ant-color-text-secondary)",
-                background: "transparent",
-                transition: "all 0.15s",
-                lineHeight: 1.3,
-                opacity: isHovering ? 1 : 0.55,
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = `${accentColor}14`;
-                e.currentTarget.style.color = accentColor;
-                e.currentTarget.style.opacity = "1";
-                e.currentTarget.style.transform = "scale(1.08)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = "transparent";
-                e.currentTarget.style.color = "var(--ant-color-text-secondary)";
-                e.currentTarget.style.opacity = isHovering ? "1" : "0.55";
-                e.currentTarget.style.transform = "scale(1)";
-              }}
-            >
-              <div style={{ fontWeight: 700 }}>{hour.replace("时", "")}</div>
-              <div style={{ fontSize: 8, opacity: 0.7 }}>{count}张</div>
-            </div>
-          </Tooltip>
-        ))}
-      </div>
-    );
-  }
-
-  // ── 常规模式：日期列表 ──
-  const maxItems = Math.min(dateGroups.length, Math.floor((window.innerHeight - 160) / 26));
-
-  return (
-    <div
-      ref={containerRef}
-      onMouseEnter={() => setIsHovering(true)}
-      onMouseLeave={() => setIsHovering(false)}
-      style={{
-        position: "fixed",
-        right: 4,
-        top: "50%",
-        transform: "translateY(-50%)",
-        zIndex: 997,
-        width: barWidth,
-        maxHeight: "calc(100vh - 120px)",
-        overflow: "hidden",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        gap: 1,
-        padding: "8px 4px",
-        borderRadius: 12,
-        background: isHovering
-          ? `color-mix(in srgb, var(--ant-color-bg-container) 90%, transparent)`
-          : "transparent",
-        backdropFilter: isHovering ? "blur(12px)" : "none",
-        border: isHovering ? "1px solid var(--ant-color-border-secondary)" : "1px solid transparent",
-        boxShadow: isHovering ? "0 2px 12px rgba(0,0,0,0.08)" : "none",
-        transition: "all 0.25s ease",
-        userSelect: "none",
-      }}
-    >
-      {/* 快速到顶部 */}
-      <Tooltip title="回到顶部" placement="left" mouseEnterDelay={0.3}>
-        <div onClick={scrollToTop} style={{
-          cursor: "pointer", width: 28, height: 28, borderRadius: 8,
-          display: "flex", alignItems: "center", justifyContent: "center",
-          fontSize: 14,
-          color: isHovering ? accentColor : "var(--ant-color-text-quaternary)",
-          transition: "all 0.2s", marginBottom: 2,
-        }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = `${accentColor}14`; e.currentTarget.style.color = accentColor; }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = isHovering ? accentColor : "var(--ant-color-text-quaternary)"; }}
-        >
-          <CaretUpOutlined />
-        </div>
-      </Tooltip>
-
-      <div style={{
-        fontSize: 11,
-        color: accentColor,
-        opacity: isHovering ? 0.8 : 0.35,
-        marginBottom: 2,
-        transition: "opacity 0.25s",
-        lineHeight: 1,
-      }}>
-        <FieldTimeOutlined />
-      </div>
-
-      <div style={{
-        flex: 1,
-        width: 2,
-        borderRadius: 1,
-        background: `linear-gradient(180deg, ${accentColor}30 0%, ${accentColor}10 100%)`,
-        margin: "2px 0",
-        position: "relative",
-        minHeight: maxItems * 2,
-      }}>
-        {activeDate && (
-          <div style={{
-            position: "absolute",
-            left: "50%",
-            transform: "translateX(-50%)",
-            width: 5,
-            height: 5,
-            borderRadius: "50%",
-            background: accentColor,
-            boxShadow: `0 0 6px ${accentColor}55`,
-            top: `${(dateGroups.findIndex(([d]) => d === activeDate) + 0.5) / dateGroups.length * 100}%`,
-            transition: "top 0.3s ease",
-          }} />
-        )}
-      </div>
-
-      <div style={{
-        flex: 1,
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: "space-between",
-        width: "100%",
-        padding: "0 2px",
-      }}>
-        {dateGroups.slice(0, maxItems).map(([date, { count }]) => {
-          const isActive = date === activeDate;
-          const parts = date.split("/");
-          const label = parts.length >= 3 ? `${parts[1]}/${parts[2]}` : date;
-
-          return (
-            <Tooltip
-              key={date}
-              title={`${date}（共 ${count} 张）`}
-              placement="left"
-              mouseEnterDelay={0.3}
-            >
-              <div
-                onClick={() => scrollToDate(date)}
-                style={{
-                  cursor: "pointer",
-                  textAlign: "center",
-                  padding: "1px 0",
-                  borderRadius: 6,
-                  fontSize: isActive ? 11 : 9,
-                  fontWeight: isActive ? 700 : 400,
-                  color: isActive
-                    ? accentColor
-                    : isHovering
-                      ? "var(--ant-color-text)"
-                      : "var(--ant-color-text-quaternary)",
-                  background: isActive ? `${accentColor}14` : "transparent",
-                  transition: "all 0.2s ease",
-                  lineHeight: "22px",
-                  height: 24,
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  letterSpacing: isActive ? 0.3 : 0,
-                }}
-                onMouseEnter={(e) => {
-                  if (!isActive) {
-                    e.currentTarget.style.background = `${accentColor}0A`;
-                    e.currentTarget.style.color = accentColor;
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!isActive) {
-                    e.currentTarget.style.background = "transparent";
-                    e.currentTarget.style.color = isHovering
-                      ? "var(--ant-color-text)"
-                      : "var(--ant-color-text-quaternary)";
-                  }
-                }}
-              >
-                {label}
-              </div>
-            </Tooltip>
-          );
-        })}
-      </div>
-
-      {/* 快速到底部 */}
-      <Tooltip title="去到底部" placement="left" mouseEnterDelay={0.3}>
-        <div onClick={scrollToBottom} style={{
-          cursor: "pointer", width: 28, height: 28, borderRadius: 8,
-          display: "flex", alignItems: "center", justifyContent: "center",
-          fontSize: 14,
-          color: isHovering ? accentColor : "var(--ant-color-text-quaternary)",
-          transition: "all 0.2s", marginTop: 4,
-        }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = `${accentColor}14`; e.currentTarget.style.color = accentColor; }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = isHovering ? accentColor : "var(--ant-color-text-quaternary)"; }}
-        >
-          <CaretDownOutlined />
-        </div>
-      </Tooltip>
-    </div>
-  );
 }
 
 /** 移动端弹出面板内快速按钮样式 */
