@@ -1050,25 +1050,6 @@ public class MainActivity extends Activity {
         panel.addView(titleView, titleParams);
 
         if (timelineMode) {
-            GridLayout dateRow = new GridLayout(this);
-            dateRow.setColumnCount(3);
-            int added = 0;
-            for (Map.Entry<String, Integer> entry : galleryDateCounts().entrySet()) {
-                if (added++ >= 6) break;
-                GridLayout.LayoutParams dateParams = new GridLayout.LayoutParams();
-                dateParams.width = dp(34);
-                dateParams.height = dp(22);
-                dateParams.setMargins(dp(1), dp(1), dp(1), dp(1));
-                dateRow.addView(sideTimelineDateButton(entry.getKey(), entry.getValue()), dateParams);
-            }
-            panel.addView(dateRow, matchWrap());
-
-            View divider = new View(this);
-            divider.setBackgroundColor(Color.rgb(218, 226, 224));
-            LinearLayout.LayoutParams dividerParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(1));
-            dividerParams.setMargins(dp(4), dp(4), dp(4), dp(3));
-            panel.addView(divider, dividerParams);
-
             ScrollView hourScroll = new ScrollView(this);
             LinearLayout hourList = vertical();
             Map<String, List<Integer>> hourGroups = timelineHourGroupsForActiveDate();
@@ -1925,6 +1906,130 @@ public class MainActivity extends Activity {
         masonryColCounts[col] += imgH;
     }
 
+    private LinearLayout timelineDateSelector(Map<String, List<Integer>> groups) {
+        String[] parts = timelineDateParts(selectedTimelineDate);
+        LinearLayout box = vertical();
+
+        LinearLayout row = horizontal();
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.addView(timelineDatePartButton(parts[0], "选择年份", () -> timelineYears(groups), value -> applyTimelineDatePart(groups, value, parts[1], parts[2])), timelinePartParams());
+        row.addView(timelineDatePartButton(parts[1], "选择月份", () -> timelineMonths(groups, parts[0]), value -> applyTimelineDatePart(groups, parts[0], value, parts[2])), timelinePartParams());
+        row.addView(timelineDatePartButton(parts[2], "选择日期", () -> timelineDays(groups, parts[0], parts[1]), value -> applyTimelineDatePart(groups, parts[0], parts[1], value)), timelinePartParams());
+        box.addView(row, matchWrap());
+
+        int count = groups.containsKey(selectedTimelineDate) ? groups.get(selectedTimelineDate).size() : 0;
+        TextView countText = text(count + "张照片", 11, false);
+        countText.setTextColor(theme.secondaryText);
+        countText.setGravity(Gravity.CENTER_VERTICAL);
+        LinearLayout.LayoutParams countParams = matchWrap();
+        countParams.setMargins(dp(4), dp(4), 0, 0);
+        box.addView(countText, countParams);
+        return box;
+    }
+
+    private interface TimelineOptionsProvider { List<String> options(); }
+
+    private TextView timelineDatePartButton(String label, String title, TimelineOptionsProvider provider, TimelinePartCallback callback) {
+        TextView btn = timelinePartButton(label + " ▼");
+        btn.setOnClickListener(v -> showTimelinePartDropdown(btn, provider.options(), callback));
+        return btn;
+    }
+
+    private void applyTimelineDatePart(Map<String, List<Integer>> groups, String year, String month, String day) {
+        selectedTimelineDate = bestTimelineDate(groups, year, month, day);
+        renderTimelineView();
+        galleryScrollView.post(() -> galleryScrollView.smoothScrollTo(0, 0));
+        refreshGalleryTimelineSideControl();
+    }
+
+    private TextView timelinePartButton(String label) {
+        TextView btn = text(label, 12, true);
+        btn.setGravity(Gravity.CENTER);
+        btn.setTextColor(theme.primaryButton);
+        btn.setBackground(roundedDrawable(blend(theme.primaryButton, Color.WHITE, 0.9f), dp(8)));
+        addPressEffect(btn);
+        return btn;
+    }
+
+    private LinearLayout.LayoutParams timelinePartParams() {
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, dp(34), 1);
+        params.setMargins(dp(3), 0, dp(3), 0);
+        return params;
+    }
+
+    private interface TimelinePartCallback { void onSelect(String value); }
+
+    private void showTimelinePartDropdown(View anchor, List<String> options, TimelinePartCallback callback) {
+        LinearLayout panel = vertical();
+        panel.setPadding(dp(4), dp(4), dp(4), dp(4));
+        String current = anchor instanceof TextView ? ((TextView) anchor).getText().toString().replace(" ▼", "") : "";
+
+        ScrollView scroll = new ScrollView(this);
+        scroll.setBackground(roundedDrawable(Color.WHITE, dp(8)));
+        if (Build.VERSION.SDK_INT >= 21) scroll.setElevation(dp(8));
+        scroll.addView(panel);
+
+        int maxItems = Math.min(options.size(), 6);
+        android.widget.PopupWindow popup = new android.widget.PopupWindow(scroll, Math.max(anchor.getWidth(), dp(76)), maxItems * dp(30) + dp(8), true);
+        popup.setOutsideTouchable(true);
+        popup.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));
+        for (int i = 0; i < options.size(); i++) {
+            String option = options.get(i);
+            boolean selected = option.equals(current);
+            TextView item = text(option, 12, selected);
+            item.setGravity(Gravity.CENTER);
+            item.setTextColor(selected ? theme.primaryButton : theme.primaryText);
+            item.setBackground(roundedDrawable(selected ? blend(theme.primaryButton, Color.WHITE, 0.84f) : Color.WHITE, dp(6)));
+            item.setOnClickListener(v -> {
+                popup.dismiss();
+                callback.onSelect(option);
+            });
+            panel.addView(item, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(30)));
+        }
+        popup.showAsDropDown(anchor, 0, dp(4));
+    }
+
+    private String[] timelineDateParts(String date) {
+        int y = date.indexOf('年');
+        int m = date.indexOf('月');
+        return new String[]{date.substring(0, y + 1), date.substring(y + 1, m + 1), date.substring(m + 1)};
+    }
+
+    private List<String> timelineYears(Map<String, List<Integer>> groups) {
+        List<String> list = new ArrayList<>();
+        for (String date : groups.keySet()) {
+            String value = timelineDateParts(date)[0];
+            if (!list.contains(value)) list.add(value);
+        }
+        return list;
+    }
+
+    private List<String> timelineMonths(Map<String, List<Integer>> groups, String year) {
+        List<String> list = new ArrayList<>();
+        for (String date : groups.keySet()) {
+            String[] parts = timelineDateParts(date);
+            if (parts[0].equals(year) && !list.contains(parts[1])) list.add(parts[1]);
+        }
+        return list;
+    }
+
+    private List<String> timelineDays(Map<String, List<Integer>> groups, String year, String month) {
+        List<String> list = new ArrayList<>();
+        for (String date : groups.keySet()) {
+            String[] parts = timelineDateParts(date);
+            if (parts[0].equals(year) && parts[1].equals(month) && !list.contains(parts[2])) list.add(parts[2]);
+        }
+        return list;
+    }
+
+    private String bestTimelineDate(Map<String, List<Integer>> groups, String year, String month, String day) {
+        String exact = year + month + day;
+        if (groups.containsKey(exact)) return exact;
+        for (String date : groups.keySet()) if (date.startsWith(year + month)) return date;
+        for (String date : groups.keySet()) if (date.startsWith(year)) return date;
+        return groups.keySet().iterator().next();
+    }
+
     private void renderTimelineView() {
         LinearLayout timeline = (LinearLayout) galleryContainer;
         timeline.removeAllViews();
@@ -1951,29 +2056,10 @@ public class MainActivity extends Activity {
             selectedTimelineDate = groups.keySet().iterator().next();
         }
 
-        HorizontalScrollView dateScroll = new HorizontalScrollView(this);
-        dateScroll.setHorizontalScrollBarEnabled(false);
-        LinearLayout dateRow = horizontal();
-        dateRow.setPadding(0, dp(4), 0, dp(8));
-        for (String date : groups.keySet()) {
-            boolean selected = date.equals(selectedTimelineDate);
-            TextView dateButton = text(date + " · " + groups.get(date).size(), 13, selected);
-            dateButton.setTextColor(selected ? theme.primaryButton : theme.primaryText);
-            dateButton.setGravity(Gravity.CENTER_VERTICAL);
-            dateButton.setPadding(0, 0, 0, 0);
-            dateButton.setBackgroundColor(Color.TRANSPARENT);
-            dateButton.setOnClickListener(v -> {
-                selectedTimelineDate = date;
-                renderTimelineView();
-                refreshGalleryTimelineSideControl();
-            });
-            addPressEffect(dateButton);
-            LinearLayout.LayoutParams dateParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(32));
-            dateParams.setMargins(0, 0, dp(14), 0);
-            dateRow.addView(dateButton, dateParams);
-        }
-        dateScroll.addView(dateRow);
-        timeline.addView(dateScroll, matchWrap());
+        LinearLayout dateSelector = timelineDateSelector(groups);
+        LinearLayout.LayoutParams dateParams = matchWrap();
+        dateParams.setMargins(0, dp(4), 0, dp(8));
+        timeline.addView(dateSelector, dateParams);
 
         GridLayout dayGrid = new GridLayout(this);
         dayGrid.setColumnCount(2);
