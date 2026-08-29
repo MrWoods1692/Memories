@@ -794,21 +794,12 @@ export default function ProfilePage() {
           <Card size="small" hoverable
             style={{
               borderRadius: 16, marginBottom: 16,
-              position: "relative", overflow: "hidden",
               border: `1px solid ${accentColor}20`,
               background: `linear-gradient(135deg, ${accentColor}06 0%, transparent 60%)`,
               transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
               boxShadow: `0 1px 4px ${accentColor}08`,
             }}
             styles={{ body: { padding: "14px 20px" } }}>
-            {/* 顶部彩色装饰条 */}
-            <div style={{
-              position: "absolute",
-              top: 0, left: 0, right: 0,
-              height: 3,
-              background: `linear-gradient(90deg, ${accentColor} 0%, ${accentColor}80 60%, transparent 100%)`,
-              opacity: 0.6,
-            }} />
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <div>
                 <Text type="secondary" style={{ fontSize: 11, display: "block", marginBottom: 2, letterSpacing: 0.5 }}>
