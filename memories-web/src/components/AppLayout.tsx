@@ -4,7 +4,7 @@ import { Button, Dropdown, Layout, Menu, Tooltip, theme } from "antd";
 import type { MenuProps } from "antd";
 import {
   PictureOutlined, CloudUploadOutlined, UserOutlined, LoginOutlined, AuditOutlined,
-  MenuFoldOutlined, MenuUnfoldOutlined,
+  MenuFoldOutlined, MenuUnfoldOutlined, ControlOutlined,
   GlobalOutlined, InfoCircleOutlined, SunOutlined, MoonOutlined,
 } from "@ant-design/icons";
 import { useAuth } from "@/contexts/AuthContext";
@@ -86,6 +86,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     { label: "广场", key: "/gallery", icon: <PictureOutlined /> },
     ...(isLoggedIn ? [{ label: "上传", key: "/upload", icon: <CloudUploadOutlined /> }] : []),
     ...(isReviewerOrAdmin ? [{ label: "审核", key: "/review", icon: <AuditOutlined /> }] : []),
+    ...(user?.is_admin ? [{ label: "管理后台", key: "/admin", icon: <ControlOutlined /> }] : []),
     ...(isLoggedIn ? [{ label: "个人中心", key: "/profile", icon: <UserOutlined /> }] : []),
   ];
   const currentKey = items?.find((opt) => opt && location.pathname.startsWith(opt.key as string))?.key || "/gallery";

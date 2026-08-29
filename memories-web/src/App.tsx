@@ -10,6 +10,7 @@ import GalleryPage from "@/pages/Gallery";
 import UploadPage from "@/pages/Upload";
 import ProfilePage from "@/pages/Profile";
 import ReviewPage from "@/pages/Review";
+import AdminPage from "@/pages/Admin";
 import BannedPage from "@/pages/Banned";
 
 /** 需要登录才能访问的页面包裹 */
@@ -40,6 +41,20 @@ function RequireReviewer({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+/** 需要管理员权限才能访问的页面包裹 */
+function RequireAdmin({ children }: { children: React.ReactNode }) {
+  const { user, isLoggedIn, loading, banned } = useAuth();
+  const navigate = useNavigate();
+  if (loading) return null;
+  if (banned) return <BannedPage />;
+  if (!isLoggedIn) {
+    navigate("/", { replace: true });
+    return null;
+  }
+  if (!user?.is_admin) return <Navigate to="/gallery" replace />;
+  return <>{children}</>;
+}
+
 function AppRoutes() {
   const { isLoggedIn, banned } = useAuth();
   const location = useLocation();
@@ -60,6 +75,7 @@ function AppRoutes() {
         <Route path="/gallery" element={<GalleryPage />} />
         <Route path="/upload" element={<RequireAuth><UploadPage /></RequireAuth>} />
         <Route path="/review" element={<RequireReviewer><ReviewPage /></RequireReviewer>} />
+        <Route path="/admin" element={<RequireAdmin><AdminPage /></RequireAdmin>} />
         <Route path="/profile" element={<RequireAuth><ProfilePage /></RequireAuth>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

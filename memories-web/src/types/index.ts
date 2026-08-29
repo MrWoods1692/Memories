@@ -45,6 +45,20 @@ export interface UploadRecord {
   createdAt: number;
 }
 
+/** 后台用户记录（GET /users） */
+export interface AdminUser {
+  id: number;
+  qq: string;
+  role: number;  // 1=审核员, 2=管理员
+}
+
+/** 后台封禁记录（GET /bans） */
+export interface AdminBan {
+  qq: string;
+  reason: string;
+  banned_at: number;  // Unix 毫秒时间戳
+}
+
 /** 健康检查响应 */
 export interface HealthResponse {
   status: string;

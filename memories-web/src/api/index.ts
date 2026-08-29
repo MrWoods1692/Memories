@@ -9,7 +9,7 @@ import type {
 } from "@/types";
 
 /** API 基地址：开发/生产均直连后端，避免 Vite 代理干扰 OAuth 重定向流程 */
-const BASE = "https://api.mrcwoods.com";
+export const BASE = "https://api.mrcwoods.com";
 
 /* ==================== Token 管理 ==================== */
 
