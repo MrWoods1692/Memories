@@ -143,9 +143,9 @@ export default function FirstVisitModal() {
       styles={{
         // 蒙层虚化：backdrop-filter 需作用于蒙层自身（mask 层），而非弹窗 content
         mask: {
-          background: isDark ? "rgba(0, 0, 0, 0.55)" : "rgba(255, 255, 255, 0.45)",
-          backdropFilter: "blur(6px) saturate(120%)",
-          WebkitBackdropFilter: "blur(6px) saturate(120%)",
+          background: isDark ? "rgba(0, 0, 0, 0.72)" : "rgba(255, 255, 255, 0.68)",
+          backdropFilter: "blur(8px) saturate(120%)",
+          WebkitBackdropFilter: "blur(8px) saturate(120%)",
           transition: "background-color 0.25s",
         },
         content: {
