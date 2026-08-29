@@ -5,6 +5,7 @@ import { Analytics } from "@vercel/analytics/react";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { ThemeProvider, useTheme } from "@/contexts/ThemeContext";
 import AppLayout from "@/components/AppLayout";
+import FirstVisitModal from "@/components/FirstVisitModal";
 import LoginPage from "@/pages/Login";
 import GalleryPage from "@/pages/Gallery";
 import UploadPage from "@/pages/Upload";
@@ -99,6 +100,8 @@ function ThemedApp() {
             <Routes>
               <Route path="/*" element={<AppRoutes />} />
             </Routes>
+            {/* 首次访问提示：指向老网站项目「沙塘大道第一墙」新域名与本项目地址 */}
+            <FirstVisitModal />
           </AuthProvider>
         </BrowserRouter>
       </AntdApp>
