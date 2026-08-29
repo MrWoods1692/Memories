@@ -1,10 +1,20 @@
 import type { AdminBan, AdminUser } from "@/types";
 import { BASE, getAccessToken } from "@/api";
 
+/** 读取本地登录用户的 QQ，用于后端 x-user-qq 鉴权（内网请求不依赖该头） */
+function getUserInfoQQ(): string {
+  try {
+    return String(JSON.parse(localStorage.getItem("user_info") || "{}")?.qq || "");
+  } catch {
+    return "";
+  }
+}
+
 async function adminFetch<T>(url: string, init?: RequestInit): Promise<T> {
-  const token = getAccessToken();
   const headers = new Headers(init?.headers);
-  if (token) headers.set("Authorization", `Bearer ${token}`);
+  // 后端公网通过 x-user-qq 判断角色；Authorization 保留 Bearer 作为管理员 token 的兼容通道
+  const qq = getUserInfoQQ();
+  if (qq) headers.set("x-user-qq", qq);
 
   const res = await fetch(`${BASE}${url}`, { ...init, headers });
   if (!res.ok) {
@@ -35,7 +45,10 @@ export async function removeAdminUser(qq: string): Promise<unknown> {
 
 /** GET /bans — 获取封禁用户列表（管理员权限） */
 export async function fetchAdminBans(): Promise<AdminBan[]> {
-  return adminFetch<AdminBan[]>("/bans");
+  const res = await adminFetch<AdminBan[]>("/bans", {
+    headers: { "x-user-qq": String(getUserInfoQQ() || "") },
+  });
+  return Array.isArray(res) ? res : [];
 }
 
 /** POST /bans — 封禁用户（管理员权限） */

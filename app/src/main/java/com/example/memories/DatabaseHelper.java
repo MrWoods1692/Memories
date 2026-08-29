@@ -518,12 +518,18 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     }
 
     public String getConfig(String k) {
-        SQLiteDatabase db = getSharedDb();
-        Cursor c = db.rawQuery("SELECT v FROM config WHERE k=?", new String[]{k});
-        String v = null;
-        if (c.moveToFirst()) v = c.getString(0);
-        c.close();
-        return v;
+        try {
+            SQLiteDatabase db = getSharedDb();
+            Cursor c = db.rawQuery("SELECT v FROM config WHERE k=?", new String[]{k});
+            String v = null;
+            if (c.moveToFirst()) v = c.getString(0);
+            c.close();
+            return v;
+        } catch (Exception e) {
+            // 外部库尚未授权（新装/重装后 MANAGE_EXTERNAL_STORAGE 未开）时不能让启动路径崩溃
+            Log.w("DatabaseHelper", "getConfig skipped: " + e.getMessage());
+            return null;
+        }
     }
 
     public String listUsersJson() {
@@ -599,9 +605,25 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         return banned;
     }
 
-    public String listBannedUsersJson() {
+    /**
+     * 读取指定 QQ 的封禁原因，未封禁时返回 null。
+     * 供 OAuth 回调把原因透传给前端，让用户在封禁页看到自己被禁的具体理由。
+     */
+    public String getBanReason(String qq) {
+        if (qq == null) return null;
         SQLiteDatabase db = getSharedDb();
-        Cursor c = db.rawQuery("SELECT qq, reason, banned_at FROM banned_users ORDER BY banned_at DESC", null);
+        Cursor c = db.rawQuery("SELECT reason FROM banned_users WHERE qq=?", new String[]{qq});
+        String reason = c.moveToFirst() ? c.getString(0) : null;
+        c.close();
+        return reason;
+    }
+
+    public String listBannedUsersJson(String filterQq) {
+        SQLiteDatabase db = getSharedDb();
+        String sql = "SELECT qq, reason, banned_at FROM banned_users";
+        if (filterQq != null && !filterQq.isEmpty()) sql += " WHERE qq=?";
+        sql += " ORDER BY banned_at DESC";
+        Cursor c = db.rawQuery(sql, filterQq != null && !filterQq.isEmpty() ? new String[]{filterQq} : null);
         JSONArray arr = new JSONArray();
         while (c.moveToNext()) {
             JSONObject o = new JSONObject();

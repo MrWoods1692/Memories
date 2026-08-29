@@ -248,6 +248,9 @@ public class MainActivity extends android.app.Activity {
 
     // --- 权限 ---
     private void requestPermissions() {
+        // 0. 完全存储访问：数据库在 /storage/emulated/0/Memories/，未授权时打开会闪退
+        PermissionHelper.requestManageStoragePermission(this);
+
         // 1. 请求所有运行时权限（通知、摄像头、麦克风、定位等）
         PermissionHelper.requestAllRuntimePermissions(this);
 
@@ -276,6 +279,11 @@ public class MainActivity extends android.app.Activity {
         if (requestCode == PermissionHelper.REQ_OVERLAY) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && Settings.canDrawOverlays(this)) {
                 startFloatingWindow();
+            }
+        }
+        if (requestCode == PermissionHelper.REQ_STORAGE) {
+            if (PermissionHelper.hasStoragePermission(this)) {
+                loadAdminPageWithRetry();
             }
         }
         // 无障碍服务开启后启动它

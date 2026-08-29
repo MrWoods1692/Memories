@@ -7,7 +7,7 @@ import {
   type ReactNode,
 } from "react";
 import type { AuthResponse } from "@/types";
-import { clearTokens, getAccessToken, getOAuthError, oauthLogin, parseOAuthCallback, type OAuthErrorInfo } from "@/api";
+import { clearTokens, fetchBanRecord, getAccessToken, getOAuthError, oauthLogin, parseOAuthCallback, type OAuthErrorInfo } from "@/api";
 import { useTheme } from "@/contexts/ThemeContext";
 
 interface AuthContextType {
@@ -33,6 +33,9 @@ const AuthContext = createContext<AuthContextType>({
   oauthError: null,
   clearOAuthError: () => {},
 });
+
+// 封禁状态轮询间隔：已登录用户每 10 分钟向后端核实一次是否被封禁
+const BAN_CHECK_INTERVAL_MS = 10 * 60 * 1000;
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthResponse | null>(null);
@@ -84,6 +87,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(() => {
     clearTokens();
     setUser(null);
+    setBanned(false);
+    setOauthError(null);
     resetTheme();
   }, [resetTheme]);
 
@@ -101,6 +106,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       resetTheme();
     }
   }, [user, loading, resetTheme]);
+
+  // 定期复查封禁状态：被管理员封禁后立即清除登录态并展示封禁页（含封禁原因）
+  useEffect(() => {
+    if (!user) return;
+    const check = async () => {
+      const record = await fetchBanRecord(String(user.qq));
+      if (!record) return; // 未封禁或查询失败，保持当前状态
+      clearTokens();
+      setUser(null);
+      setOauthError({
+        code: "banned",
+        message: record.reason || "该账号已被封禁，无法登录",
+        retryable: false,
+        ban_reason: record.reason || undefined,
+      });
+      setBanned(true);
+    };
+    const timer = window.setInterval(check, BAN_CHECK_INTERVAL_MS);
+    return () => window.clearInterval(timer);
+  }, [user]);
 
   return (
     <AuthContext.Provider

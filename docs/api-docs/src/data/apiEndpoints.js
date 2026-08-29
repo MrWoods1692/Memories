@@ -175,7 +175,7 @@ export const endpointGroups = [
         path: '/bans',
         summary: '获取封禁列表',
         auth: 'admin',
-        description: '获取所有封禁用户列表，按封禁时间倒序排列。',
+        description: '获取所有封禁用户列表，按封禁时间倒序排列。传入 qq 参数时仅返回该用户，供被封禁用户查看自己的封禁原因。',
         response: {
           type: 'json',
           content: `[
@@ -187,6 +187,7 @@ export const endpointGroups = [
           { name: 'reason', type: 'string', desc: '封禁原因' },
           { name: 'banned_at', type: 'number', desc: '封禁时间（Unix 毫秒时间戳）' },
         ],
+        queryParams: [{ name: 'qq', type: 'string', required: false, desc: '仅返回该 QQ 号的封禁记录' }],
       },
       {
         id: 'bans-post',

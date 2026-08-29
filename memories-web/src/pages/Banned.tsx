@@ -1,5 +1,5 @@
 import { Button, Card, Typography, Divider, App } from "antd";
-import { EyeOutlined, MailOutlined, StopOutlined, CopyOutlined } from "@ant-design/icons";
+import { EyeOutlined, MailOutlined, StopOutlined, CopyOutlined, WarningOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -10,7 +10,7 @@ const APPEAL_EMAIL = "mail@mrcwoods.com";
 
 export default function BannedPage() {
   const navigate = useNavigate();
-  const { clearBanned } = useAuth();
+  const { clearBanned, oauthError } = useAuth();
   const { isDark } = useTheme();
   const { message } = App.useApp();
 
@@ -73,6 +73,26 @@ export default function BannedPage() {
         <Paragraph style={{ marginBottom: 8, fontSize: 15, color: isDark ? "#cf9a9a" : "#8C1A1A" }}>
           您的账号因违规行为已被管理员封禁
         </Paragraph>
+        {/* 封禁原因（后端 /oauth/callback 通过 ban_reason 参数下发） */}
+        {oauthError?.ban_reason && (
+          <div style={{
+            display: "flex", gap: 10, alignItems: "flex-start",
+            textAlign: "left",
+            background: isDark ? "rgba(255,77,79,0.10)" : "#FFE9E9",
+            border: `1px solid ${isDark ? "#5a2020" : "#FFC4C4"}`,
+            borderRadius: 12, padding: "12px 14px", marginBottom: 8,
+          }}>
+            <WarningOutlined style={{ fontSize: 16, color: isDark ? "#FF7875" : "#F5222D", marginTop: 2, flexShrink: 0 }} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <Paragraph style={{ marginBottom: 4, fontSize: 12, fontWeight: 600, color: isDark ? "#FF9C9C" : "#A8071A" }}>
+                封禁原因
+              </Paragraph>
+              <Paragraph style={{ marginBottom: 0, fontSize: 13, lineHeight: 1.6, wordBreak: "break-word", color: isDark ? "#f0b3b3" : "#5C0E0E" }}>
+                {oauthError.ban_reason}
+              </Paragraph>
+            </div>
+          </div>
+        )}
 
         <Divider style={{ margin: "16px 0", borderColor: isDark ? "#4a1a1a" : "#FFB8B8" }} />
 

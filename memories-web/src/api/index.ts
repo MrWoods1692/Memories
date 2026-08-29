@@ -134,6 +134,8 @@ export interface OAuthErrorInfo {
   code: string;
   message: string;
   retryable: boolean;
+  /** 封禁原因（仅 code === "banned" 时有值） */
+  ban_reason?: string;
 }
 
 // 错误码到用户友好提示的映射（与后端 redirectWithError 的 errorCode 对应）
@@ -168,7 +170,27 @@ export function getOAuthError(): OAuthErrorInfo | null {
     code: error,
     message: errorMsgParam || info.message,
     retryable: info.retryable,
+    ban_reason: error === "banned" ? params.get("ban_reason") || undefined : undefined,
   };
+}
+
+/** 封禁记录（GET /bans?q=<qq>，需要管理员权限） */
+export interface BanRecord {
+  qq: string;
+  reason: string;
+  banned_at: number;
+}
+
+/**
+ * 查询指定 QQ 的封禁记录，供被封禁用户在登录页看到封禁原因。
+ * 需要管理员权限：外网封禁的用户只能查自己；内网访问时后端直接放行（/bans 路由对内网开放）。
+ */
+export async function fetchBanRecord(qq: string): Promise<BanRecord | null> {
+  try {
+    return await getRequest<BanRecord>(`/bans?q=${encodeURIComponent(qq)}`);
+  } catch {
+    return null;
+  }
 }
 
 /* ==================== 图片 ==================== */

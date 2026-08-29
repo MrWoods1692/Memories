@@ -1,12 +1,13 @@
 import { useState } from "react";
-import { Button, Modal, Typography } from "antd";
+import { Button, Checkbox, Modal, theme, Typography } from "antd";
 import { ArrowRightOutlined, LinkOutlined } from "@ant-design/icons";
 import { useTheme } from "@/contexts/ThemeContext";
 import LogoIcon from "@/components/LogoIcon";
 
 const { Title, Paragraph } = Typography;
 
-const SEEN_KEY = "memories_first_visit_seen";
+// v2：关闭不再默认写入；只有勾选「不再提示」才持久化
+const SEEN_KEY = "memories_first_visit_seen_v2";
 
 // 老网站项目「沙塘大道第一墙」的新域名
 const OLD_SITE_URL = "https://gz.campux.top";
@@ -34,15 +35,18 @@ function markSeen() {
 
 export default function FirstVisitModal() {
   const { isDark, accentColor } = useTheme();
+  // 跟随用户在「主题」里选的字体，与页面其余部分保持一致
+  const { token: { fontFamily } } = theme.useToken();
   const [open, setOpen] = useState(() => !hasSeen());
+  // 未勾选时只关本次会话，刷新/下次打开仍会弹出
+  const [dontShowAgain, setDontShowAgain] = useState(false);
 
   const close = () => {
-    markSeen();
+    if (dontShowAgain) markSeen();
     setOpen(false);
   };
 
   const openLink = (url: string) => {
-    markSeen();
     window.open(url, "_blank", "noopener,noreferrer");
   };
 
@@ -88,7 +92,8 @@ export default function FirstVisitModal() {
         style={{
           width: 36,
           height: 36,
-          borderRadius: 10,
+          // 图片 Logo 用圆形裁剪，图标分支保持圆角方块
+          borderRadius: iconUrl ? "50%" : 10,
           flexShrink: 0,
           display: "flex",
           alignItems: "center",
@@ -108,7 +113,7 @@ export default function FirstVisitModal() {
             alt={title}
             width={36}
             height={36}
-            style={{ width: "100%", height: "100%", objectFit: "contain" }}
+            style={{ width: "100%", height: "100%", objectFit: "cover" }}
           />
         ) : (
           <LinkOutlined style={{ fontSize: 16 }} />
@@ -136,11 +141,20 @@ export default function FirstVisitModal() {
       width={420}
       centered
       styles={{
+        // 蒙层虚化：backdrop-filter 需作用于蒙层自身（mask 层），而非弹窗 content
+        mask: {
+          background: isDark ? "rgba(0, 0, 0, 0.55)" : "rgba(255, 255, 255, 0.45)",
+          backdropFilter: "blur(6px) saturate(120%)",
+          WebkitBackdropFilter: "blur(6px) saturate(120%)",
+          transition: "background-color 0.25s",
+        },
         content: {
           borderRadius: 20,
           padding: "28px 24px 22px",
           overflow: "hidden",
           maxWidth: "calc(100vw - 32px)",
+          // font-family 可继承，声明在 content 根节点即可覆盖弹窗内所有文字
+          fontFamily,
           background: isDark ? "var(--ant-color-bg-container)" : "#ffffff",
         },
         body: { padding: 0 },
@@ -190,9 +204,15 @@ export default function FirstVisitModal() {
         我知道了
       </Button>
 
-      <Paragraph type="secondary" style={{ textAlign: "center", marginTop: 12, marginBottom: 0, fontSize: 11 }}>
-        仅首次访问时提示
-      </Paragraph>
+      <div style={{ textAlign: "center", marginTop: 12 }}>
+        <Checkbox
+          checked={dontShowAgain}
+          onChange={(e) => setDontShowAgain(e.target.checked)}
+          style={{ fontSize: 13, color: "var(--ant-color-text-secondary)" }}
+        >
+          不再提示
+        </Checkbox>
+      </div>
     </Modal>
   );
 }

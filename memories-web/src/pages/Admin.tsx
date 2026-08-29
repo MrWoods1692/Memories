@@ -7,6 +7,7 @@ import {
   UserAddOutlined, UserDeleteOutlined, StopOutlined, ReloadOutlined,
 } from "@ant-design/icons";
 import { useTheme } from "@/contexts/ThemeContext";
+import { theme } from "antd";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   addAdminUser, banAdminUser, fetchAdminBans, fetchAdminUsers,
@@ -22,6 +23,33 @@ const roleOptions = [
 ];
 
 const roleLabel = (role: number) => (role === 2 ? "管理员" : "审核员");
+
+/** QQ 圆形头像地址（腾讯 qlogo 服务，s=640 为原始尺寸） */
+const qqAvatar = (qq: string) => `https://q1.qlogo.cn/g?b=qq&nk=${encodeURIComponent(String(qq))}&s=640`;
+
+/** 加载失败（号码不存在或无头像）时显示的默认占位头像 */
+const avatarFallback = qqAvatar("0");
+
+/** 表格中显示的 QQ 圆形头像（边框与背景取当前主题 token，亮/暗色模式均适用） */
+function QqAvatar({ qq }: { qq: string }) {
+  const { token } = theme.useToken();
+  return (
+    <img
+      src={qqAvatar(qq)}
+      alt={qq}
+      onError={(e) => {
+        e.currentTarget.onerror = null;
+        e.currentTarget.src = avatarFallback;
+      }}
+      style={{
+        width: 32, height: 32, borderRadius: "50%",
+        objectFit: "cover", flexShrink: 0,
+        border: `1px solid ${token.colorBorderSecondary}`,
+        background: token.colorFillQuaternary,
+      }}
+    />
+  );
+}
 
 /** 后台页面：仅管理员可见，管理审核员/管理员与封禁名单 */
 export default function AdminPage() {
@@ -75,6 +103,11 @@ export default function AdminPage() {
 
   const handleRemoveUser = (target: AdminUser) => {
     const isSelf = String(target.qq) === String(user?.qq);
+    // 移除管理员必须在内网管理页面操作：外网站点只允许移除审核员，避免管理员把自己或同伴踢下线
+    if (target.role >= 2) {
+      message.info("管理员的移除仅支持在内网管理页面操作");
+      return;
+    }
     modal.confirm({
       title: "移除权限",
       icon: <UserDeleteOutlined />,
@@ -136,7 +169,8 @@ export default function AdminPage() {
       dataIndex: "qq",
       key: "qq",
       render: (qq: string) => (
-        <Space size="small">
+        <Space size="small" align="center">
+          <QqAvatar qq={qq} />
           <Text style={{ fontWeight: 500 }}>{qq}</Text>
           {String(qq) === String(user?.qq) && <Tag color="blue" style={{ margin: 0 }}>我</Tag>}
         </Space>
@@ -158,23 +192,32 @@ export default function AdminPage() {
       title: "操作",
       key: "action",
       width: 100,
-      render: (_: unknown, record: AdminUser) => (
-        <Tooltip title={String(record.qq) === String(user?.qq) ? "不能移除自己的权限" : "移除"}>
-          <Button
-            danger
-            size="small"
-            icon={<UserDeleteOutlined />}
-            disabled={String(record.qq) === String(user?.qq)}
-            onClick={() => handleRemoveUser(record)}
-            style={{ borderRadius: 8 }}
-          />
-        </Tooltip>
-      ),
+      render: (_: unknown, record: AdminUser) => {
+        const isSelf = String(record.qq) === String(user?.qq);
+        const isProtectedAdmin = record.role >= 2;
+        const tip = isSelf
+          ? "不能移除自己的权限"
+          : isProtectedAdmin
+            ? "管理员的移除仅支持在内网管理页面操作"
+            : "移除";
+        return (
+          <Tooltip title={tip}>
+            <Button
+              danger
+              size="small"
+              icon={<UserDeleteOutlined />}
+              disabled={isSelf || isProtectedAdmin}
+              onClick={() => handleRemoveUser(record)}
+              style={{ borderRadius: 8 }}
+            />
+          </Tooltip>
+        );
+      },
     },
   ];
 
   const banColumns = [
-    { title: "QQ 号", dataIndex: "qq", key: "qq", render: (qq: string) => <Text style={{ fontWeight: 500 }}>{qq}</Text> },
+    { title: "QQ 号", dataIndex: "qq", key: "qq", render: (qq: string) => (<Space size="small" align="center"><QqAvatar qq={qq} /><Text style={{ fontWeight: 500 }}>{qq}</Text></Space>) },
     {
       title: "原因",
       dataIndex: "reason",

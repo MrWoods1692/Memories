@@ -1001,28 +1001,25 @@ public class EmbeddedServer extends NanoHTTPD {
 
         return NanoHTTPD.newFixedLengthResponse(Status.NOT_IMPLEMENTED, "text/plain", "Not Implemented");
     }
-
     // --- 封禁用户管理 ---
-
     private Response handleBans(IHTTPSession session) {
         DatabaseHelper db = new DatabaseHelper(context);
         String uri = session.getUri();
         Method method = session.getMethod();
+        Map<String, String> params = session.getParms();
 
         if (!isAdmin(session, db)) return NanoHTTPD.newFixedLengthResponse(Status.UNAUTHORIZED, "text/plain", "admin required");
 
         try {
-            // GET /bans - 列出所有封禁用户
+            // GET /bans - 列出所有封禁用户；?qq=<QQ> 时仅返回该用户，供被封禁用户查看自己的封禁原因
             if ("/bans".equals(uri) && Method.GET.equals(method)) {
-                String json = db.listBannedUsersJson();
+                String queryQq = params.get("qq");
+                String json = db.listBannedUsersJson(queryQq != null ? queryQq : null);
                 return NanoHTTPD.newFixedLengthResponse(Status.OK, "application/json", json);
             }
-
             // POST /bans - 封禁用户 (qq, reason)
             if ("/bans".equals(uri) && Method.POST.equals(method)) {
-                Map<String, String> files = new java.util.HashMap<>();
-                session.parseBody(files);
-                Map<String, String> params = session.getParms();
+                session.parseBody(new java.util.HashMap<String, String>());
                 String targetQq = params.get("qq");
                 String reason = params.get("reason");
                 if (targetQq == null || targetQq.isEmpty()) {
@@ -1513,7 +1510,9 @@ public class EmbeddedServer extends NanoHTTPD {
                         if (db.isUserBanned(userQq)) {
                             if (frontendRedirect != null && !frontendRedirect.isEmpty()) {
                                 String sep2 = frontendRedirect.contains("?") ? "&" : "?";
-                                String loc2 = frontendRedirect + sep2 + "error=banned";
+                                String banReason = db.getBanReason(userQq);
+                                String loc2 = frontendRedirect + sep2 + "error=banned"
+                                    + (banReason != null && !banReason.isEmpty() ? "&ban_reason=" + urlEncode(banReason) : "");
                                 Response r2 = NanoHTTPD.newFixedLengthResponse(Status.REDIRECT, "text/html",
                                     "<html><body>账号已被封禁，正在跳转...<script>location.replace('" + loc2 + "');</script></body></html>");
                                 r2.addHeader("Location", loc2);
@@ -1582,7 +1581,9 @@ public class EmbeddedServer extends NanoHTTPD {
                 if (db.isUserBanned(userQq)) {
                     if (frontendRedirect != null && !frontendRedirect.isEmpty()) {
                         String sep2 = frontendRedirect.contains("?") ? "&" : "?";
-                        String loc2 = frontendRedirect + sep2 + "error=banned";
+                        String banReason2 = db.getBanReason(userQq);
+                        String loc2 = frontendRedirect + sep2 + "error=banned"
+                            + (banReason2 != null && !banReason2.isEmpty() ? "&ban_reason=" + urlEncode(banReason2) : "");
                         Response r2 = NanoHTTPD.newFixedLengthResponse(Status.REDIRECT, "text/html",
                             "<html><body>账号已被封禁，正在跳转...<script>location.replace('" + loc2 + "');</script></body></html>");
                         r2.addHeader("Location", loc2);
