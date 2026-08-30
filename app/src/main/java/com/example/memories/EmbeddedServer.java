@@ -339,7 +339,15 @@ public class EmbeddedServer extends NanoHTTPD {
                     if (limitStr != null && !limitStr.isEmpty()) limit = Integer.parseInt(limitStr);
                 } catch (NumberFormatException ignored) {}
 
-                String json = db.listImagesPaginatedJson(table, page, limit);
+                // 广场搜索/筛选：q=描述关键词，tag=标签，make/model/lens/iso=EXIF 过滤
+                String q = params.get("q");
+                String tag = params.get("tag");
+                String make = params.get("make");
+                String model = params.get("model");
+                String lens = params.get("lens");
+                String iso = params.get("iso");
+
+                String json = db.listImagesPaginatedJson(table, page, limit, q, tag, make, model, iso, lens);
                 return NanoHTTPD.newFixedLengthResponse(Status.OK, "application/json", json);
             }
 
@@ -351,14 +359,47 @@ public class EmbeddedServer extends NanoHTTPD {
                 if (url == null || url.isEmpty()) {
                     return NanoHTTPD.newFixedLengthResponse(Status.BAD_REQUEST, "text/plain", "missing url");
                 }
-                // 记录上传者的 QQ（局域网未登录时为空），上传时间由 addImage 写入 created_at
+                // 记录上传者的 QQ（局域网未登录时为空），上传时间由 addImage 写入 created_at；
+                // tags/description/exif 为上传时前端提取的元数据（tags=JSON 数组字符串，exif=JSON 字符串）
                 String qq = session.getHeaders().get("x-user-qq");
-                long id = db.addImage(url, qq == null ? "" : qq);
+                long id = db.addImage(url, qq == null ? "" : qq,
+                        params.get("tags"), params.get("description"), params.get("exif"));
 
                 // 自动同步到 WebDAV（后台线程，不阻塞响应）
                 autoSyncToWebdav();
 
                 return NanoHTTPD.newFixedLengthResponse(Status.OK, "application/json", "{\"id\":"+id+"}");
+            }
+
+            // POST /images/meta?url=...&table=... — 修改图片元数据（审核员及以上可改标签，管理员可改描述）
+            if ("/images/meta".equals(uri) && Method.POST.equals(method)) {
+                String qq = session.getHeaders().get("x-user-qq");
+                int role = db.getUserRole(qq);
+                boolean lan = isLanRequest(session);
+                boolean isReviewer = lan || role >= 1;
+                boolean isAdmin = lan || role >= 2;
+
+                Map<String, String> files = new java.util.HashMap<>();
+                session.parseBody(files);
+                Map<String, String> params = session.getParms();
+                String url = params.get("url");
+                if (url == null || url.isEmpty()) {
+                    return NanoHTTPD.newFixedLengthResponse(Status.BAD_REQUEST, "text/plain", "missing url");
+                }
+                String tags = params.get("tags");
+                String description = params.get("description");
+                boolean touchTags = tags != null;
+                boolean touchDesc = description != null;
+                if (!touchTags && !touchDesc) {
+                    return NanoHTTPD.newFixedLengthResponse(Status.BAD_REQUEST, "text/plain", "nothing to update");
+                }
+                // 改描述需要管理员权限；改标签需要审核员及以上
+                if (touchDesc && !isAdmin) return NanoHTTPD.newFixedLengthResponse(Status.UNAUTHORIZED, "text/plain", "admin required");
+                if (touchTags && !isReviewer) return NanoHTTPD.newFixedLengthResponse(Status.UNAUTHORIZED, "text/plain", "reviewer required");
+
+                String table = params.get("table");
+                boolean ok = db.updateImageMeta(table, url, touchTags ? tags : null, touchDesc ? description : null);
+                return NanoHTTPD.newFixedLengthResponse(ok ? Status.OK : Status.NOT_FOUND, "text/plain", ok ? "updated" : "not found");
             }
 
             // DELETE /images/cleanup - 批量清理已拒绝图片（仅管理员）

@@ -25,7 +25,7 @@ import java.util.concurrent.ThreadFactory;
 
 public class DatabaseHelper extends SQLiteOpenHelper {
     private static final String DB_NAME = "memories.db";
-    private static final int DB_VERSION = 6;
+    private static final int DB_VERSION = 7;
     private static String dbPath = null;
     private static SQLiteDatabase sharedDb = null;
     private static final ExecutorService requestLogExecutor = Executors.newFixedThreadPool(
@@ -170,9 +170,10 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     @Override
     public void onCreate(SQLiteDatabase db) {
         // 图片按审核状态拆分为三张表；拒绝的图片保留在 images_rejected，不自动删除
-        db.execSQL("CREATE TABLE images_pending (id INTEGER PRIMARY KEY AUTOINCREMENT, url TEXT, created_at INTEGER, qq TEXT)");
-        db.execSQL("CREATE TABLE images_approved (id INTEGER PRIMARY KEY AUTOINCREMENT, url TEXT, created_at INTEGER, qq TEXT)");
-        db.execSQL("CREATE TABLE images_rejected (id INTEGER PRIMARY KEY AUTOINCREMENT, url TEXT, created_at INTEGER, qq TEXT)");
+        // v7 起三张表均带 tags（JSON 数组字符串）、description（描述）、exif（完整 EXIF JSON 字符串）
+        db.execSQL("CREATE TABLE images_pending (id INTEGER PRIMARY KEY AUTOINCREMENT, url TEXT, created_at INTEGER, qq TEXT, tags TEXT, description TEXT, exif TEXT)");
+        db.execSQL("CREATE TABLE images_approved (id INTEGER PRIMARY KEY AUTOINCREMENT, url TEXT, created_at INTEGER, qq TEXT, tags TEXT, description TEXT, exif TEXT)");
+        db.execSQL("CREATE TABLE images_rejected (id INTEGER PRIMARY KEY AUTOINCREMENT, url TEXT, created_at INTEGER, qq TEXT, tags TEXT, description TEXT, exif TEXT)");
         db.execSQL("CREATE TABLE users (id INTEGER PRIMARY KEY AUTOINCREMENT, qq TEXT, role INTEGER)");
         db.execSQL("CREATE TABLE config (k TEXT PRIMARY KEY, v TEXT)");
         db.execSQL("CREATE TABLE banned_users (qq TEXT PRIMARY KEY, reason TEXT, banned_at INTEGER)");
@@ -216,12 +217,29 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             db.execSQL("INSERT INTO images_rejected (id, url, created_at, qq) SELECT id, url, created_at, qq FROM images WHERE status=2");
             db.execSQL("DROP TABLE images");
         }
+        if (oldVersion < 7) {
+            // v7：三张图片表新增 tags（JSON 数组字符串）/ description（描述）/ exif（完整 EXIF JSON），旧记录默认空
+            for (String t : IMAGE_TABLES) {
+                try {
+                    db.execSQL("ALTER TABLE " + t + " ADD COLUMN tags TEXT");
+                } catch (Exception ignored) {
+                    // 列已存在（如重复升级）时忽略
+                }
+                try {
+                    db.execSQL("ALTER TABLE " + t + " ADD COLUMN description TEXT");
+                } catch (Exception ignored) {}
+                try {
+                    db.execSQL("ALTER TABLE " + t + " ADD COLUMN exif TEXT");
+                } catch (Exception ignored) {}
+            }
+        }
     }
 
     /**
-     * 添加上传图片到待审核表，返回自增主键 id；同时记录上传者 qq 与上传时间 created_at。
+     * 添加上传图片到待审核表，返回自增主键 id；同时记录上传者 qq、上传时间 created_at，
+     * 以及上传时记录的标签（tags，JSON 数组字符串）、描述（description）与完整 EXIF（exif，JSON 字符串）。
      */
-    public long addImage(String url, String qq) {
+    public long addImage(String url, String qq, String tags, String description, String exif) {
         try {
             return WriteQueue.submit(() -> {
                 SQLiteDatabase db = getSharedDb();
@@ -229,6 +247,9 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 cv.put("url", url);
                 cv.put("qq", qq == null ? "" : qq);
                 cv.put("created_at", System.currentTimeMillis());
+                cv.put("tags", tags == null ? "" : tags);
+                cv.put("description", description == null ? "" : description);
+                cv.put("exif", exif == null ? "" : exif);
                 long result = db.insert("images_pending", null, cv);
                 markDatabaseDirty();
                 return result;
@@ -381,24 +402,65 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         return listImagesPaginatedJson("images_approved", 1, 1000000);
     }
 
+    /** 无过滤版本：复用带过滤实现 */
+    public String listImagesPaginatedJson(String table, int page, int limit) {
+        return listImagesPaginatedJson(table, page, limit, null, null, null, null, null, null);
+    }
+
     /**
-     * 分页查询指定图片表（images_pending / images_approved / images_rejected）
-     * @param table 目标表名（白名单校验，非法值回落为通过表）
-     * @param page 页码，从 1 开始
-     * @param limit 每页条数，默认 20
+     * 分页查询指定图片表（images_pending / images_approved / images_rejected），支持组合过滤：
+     * q=描述关键词（LIKE 模糊），tag=标签精确匹配（tags 为 JSON 数组字符串），
+     * make/model/lens=EXIF 字段（exif 为 JSON 字符串，LOWER LIKE 匹配），iso=EXIF ISO（数字精确）。
      * @return JSON: {"items":[...], "total":N, "page":1, "limit":20, "totalPages":N}
      */
-    public String listImagesPaginatedJson(String table, int page, int limit) {
+    public String listImagesPaginatedJson(String table, int page, int limit,
+                                          String q, String tag, String make, String model, String iso, String lens) {
         if (!isImageTable(table)) table = "images_approved";
         if (page < 1) page = 1;
         if (limit < 1) limit = 20;
         int offset = (page - 1) * limit;
         int status = tableStatus(table);
 
+        StringBuilder where = new StringBuilder();
+        java.util.List<String> args = new java.util.ArrayList<>();
+
+        if (q != null && !q.isEmpty()) {
+            where.append("LOWER(description) LIKE ? ESCAPE '\\'");
+            args.add("%" + likeEscape(q.toLowerCase()) + "%");
+        }
+        if (tag != null && !tag.isEmpty()) {
+            // tags 以 JSON 数组字符串存储，精确匹配某个标签：["a","b"] 中找 "a"
+            if (where.length() > 0) where.append(" AND ");
+            where.append("LOWER(tags) LIKE ? ESCAPE '\\'");
+            args.add("%\"" + likeEscape(tag.toLowerCase()) + "\"%");
+        }
+        if (make != null && !make.isEmpty()) {
+            if (where.length() > 0) where.append(" AND ");
+            where.append("LOWER(exif) LIKE ? ESCAPE '\\'");
+            args.add("%\"make\":\"" + likeEscape(make.toLowerCase()) + "\"%");
+        }
+        if (model != null && !model.isEmpty()) {
+            if (where.length() > 0) where.append(" AND ");
+            where.append("LOWER(exif) LIKE ? ESCAPE '\\'");
+            args.add("%\"model\":\"" + likeEscape(model.toLowerCase()) + "\"%");
+        }
+        if (lens != null && !lens.isEmpty()) {
+            if (where.length() > 0) where.append(" AND ");
+            where.append("LOWER(exif) LIKE ? ESCAPE '\\'");
+            args.add("%\"lensModel\":\"" + likeEscape(lens.toLowerCase()) + "\"%");
+        }
+        if (iso != null && !iso.isEmpty() && iso.matches("\\d+")) {
+            if (where.length() > 0) where.append(" AND ");
+            where.append("LOWER(exif) LIKE ? ESCAPE '\\'");
+            args.add("%\"iso\":" + iso + "%");
+        }
+        String whereClause = where.length() > 0 ? where.toString() : null;
+        String[] whereArgs = args.isEmpty() ? null : args.toArray(new String[0]);
+
         SQLiteDatabase db = getSharedDb();
 
-        // 查总数（通过表的总数即广场展示的总图片数）
-        Cursor countCur = db.rawQuery("SELECT COUNT(*) FROM " + table, null);
+        // 查总数
+        Cursor countCur = db.rawQuery("SELECT COUNT(*) FROM " + table + (whereClause == null ? "" : " WHERE " + whereClause), whereArgs);
         long total = 0;
         if (countCur.moveToFirst()) total = countCur.getLong(0);
         countCur.close();
@@ -407,8 +469,10 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
         // 查分页数据
         Cursor c = db.rawQuery(
-            "SELECT id, url, created_at, qq FROM " + table + " ORDER BY created_at DESC LIMIT ? OFFSET ?",
-            new String[]{String.valueOf(limit), String.valueOf(offset)}
+            "SELECT id, url, created_at, qq, tags, description, exif FROM " + table
+                + (whereClause == null ? "" : " WHERE " + whereClause)
+                + " ORDER BY created_at DESC LIMIT ? OFFSET ?",
+            concatArgs(whereArgs, new String[]{String.valueOf(limit), String.valueOf(offset)})
         );
         JSONArray items = new JSONArray();
         while (c.moveToNext()) {
@@ -419,6 +483,9 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 o.put("status", status);
                 o.put("created_at", c.getLong(2));
                 o.put("qq", c.getString(3) == null ? "" : c.getString(3));
+                o.put("tags", c.getString(4) == null ? "" : c.getString(4));
+                o.put("description", c.getString(5) == null ? "" : c.getString(5));
+                o.put("exif", c.getString(6) == null ? "" : c.getString(6));
                 items.put(o);
             } catch (Exception ignored) {}
         }
@@ -435,6 +502,20 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         } catch (Exception ignored) {}
 
         return result.toString();
+    }
+
+    /** 拼接 where 参数与分页参数 */
+    private static String[] concatArgs(String[] first, String[] second) {
+        if (first == null) return second;
+        String[] out = new String[first.length + second.length];
+        System.arraycopy(first, 0, out, 0, first.length);
+        System.arraycopy(second, 0, out, first.length, second.length);
+        return out;
+    }
+
+    /** 转义 LIKE 通配符 % _ 与转义符本身，配合 ESCAPE '\' 使用 */
+    private static String likeEscape(String s) {
+        return s.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
     }
 
     /** 根据 url 查找指定图片表中的主键 id，用于 delete/audit/recover 操作 */
@@ -477,7 +558,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     }
 
     /**
-     * 把一行图片从 fromTable 移动到 toTable（保留 id/url/created_at/qq）。
+     * 把一行图片从 fromTable 移动到 toTable（保留 id/url/created_at/qq/tags/description/exif）。
      * 审核（待审核→通过/拒绝）与恢复（未通过→通过）都走移动而非删除，拒绝的图片不会消失。
      */
     public boolean moveImage(String fromTable, String toTable, long id) {
@@ -485,7 +566,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         try {
             return WriteQueue.submit(() -> {
                 SQLiteDatabase db = getSharedDb();
-                Cursor c = db.rawQuery("SELECT url, created_at, qq FROM " + fromTable + " WHERE id=?", new String[]{String.valueOf(id)});
+                Cursor c = db.rawQuery("SELECT url, created_at, qq, tags, description, exif FROM " + fromTable + " WHERE id=?", new String[]{String.valueOf(id)});
                 if (!c.moveToFirst()) {
                     c.close();
                     return false;
@@ -493,6 +574,9 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 String url = c.getString(0);
                 long createdAt = c.getLong(1);
                 String qq = c.getString(2);
+                String tags = c.getString(3);
+                String description = c.getString(4);
+                String exif = c.getString(5);
                 c.close();
 
                 ContentValues cv = new ContentValues();
@@ -500,6 +584,9 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 cv.put("url", url);
                 cv.put("created_at", createdAt);
                 cv.put("qq", qq == null ? "" : qq);
+                cv.put("tags", tags == null ? "" : tags);
+                cv.put("description", description == null ? "" : description);
+                cv.put("exif", exif == null ? "" : exif);
                 long inserted = db.insertWithOnConflict(toTable, null, cv, SQLiteDatabase.CONFLICT_REPLACE);
                 if (inserted >= 0) {
                     db.delete(fromTable, "id=?", new String[]{String.valueOf(id)});
@@ -527,6 +614,37 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         long id = findImageRowId("images_rejected", url);
         if (id < 0) return false;
         return moveImage("images_rejected", "images_approved", id);
+    }
+
+    /**
+     * 更新图片的标签与/或描述。tags/description 传 null 表示不修改该列；两者皆空则直接返回 false。
+     * table 为空时自动在三张图片表中查找该 url 所在表。权限校验由调用方（EmbeddedServer）负责。
+     */
+    public boolean updateImageMeta(String table, String url, String tags, String description) {
+        if (url == null || url.isEmpty()) return false;
+        if ((tags == null || tags.isEmpty()) && (description == null || description.isEmpty())) return false;
+
+        String[] tables = (table != null && !table.isEmpty()) ? new String[]{table} : IMAGE_TABLES;
+        for (String t : tables) {
+            if (!isImageTable(t)) continue;
+            long id = findImageRowId(t, url);
+            if (id < 0) continue;
+            try {
+                return WriteQueue.submit(() -> {
+                    SQLiteDatabase db = getSharedDb();
+                    ContentValues cv = new ContentValues();
+                    if (tags != null) cv.put("tags", tags);
+                    if (description != null) cv.put("description", description);
+                    int rows = db.update(t, cv, "id=?", new String[]{String.valueOf(id)});
+                    if (rows > 0) markDatabaseDirty();
+                    return rows > 0;
+                }).get();
+            } catch (Exception e) {
+                Log.e("DatabaseHelper", "updateImageMeta error", e);
+                return false;
+            }
+        }
+        return false;
     }
 
     public long getImageCount() {

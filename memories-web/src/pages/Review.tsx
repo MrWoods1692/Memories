@@ -7,7 +7,7 @@ import {
   ArrowDownOutlined, ArrowRightOutlined, CheckCircleOutlined, ExclamationCircleOutlined,
   DownloadOutlined, CopyOutlined,
 } from "@ant-design/icons";
-import { fetchPendingImages, auditImage, extractImageBedFilename, queryImageInfo } from "@/api";
+import { fetchPendingImages, auditImage, extractImageBedFilename, queryImageInfo, parseImageTags } from "@/api";
 import { useTheme } from "@/contexts/ThemeContext";
 import ExifPanel from "@/components/ExifPanel";
 import type { ImageBedInfo, ImageItem } from "@/types";
@@ -28,6 +28,8 @@ export default function ReviewPage() {
   const [infoLoading, setInfoLoading] = useState(false);
   const [imageInfo, setImageInfo] = useState<ImageBedInfo | null>(null);
   const [infoImageUrl, setInfoImageUrl] = useState<string>("");
+  /** 当前信息弹窗对应的本地图片记录（上传者 QQ / 描述 / 标签 / 存储的 EXIF） */
+  const [infoItem, setInfoItem] = useState<ImageItem | null>(null);
 
   const [isDesktop, setIsDesktop] = useState(
     typeof window !== "undefined" ? window.innerWidth >= 768 : false
@@ -95,10 +97,11 @@ export default function ReviewPage() {
     });
   }, [message]);
 
-  const handleQueryInfo = useCallback(async (url: string) => {
+  const handleQueryInfo = useCallback(async (url: string, item?: ImageItem) => {
     const filename = extractImageBedFilename(url);
     if (!filename) { message.warning("无法解析图片文件名"); return; }
     setInfoImageUrl(url);
+    setInfoItem(item || null);
     setInfoOpen(true); setInfoLoading(true); setImageInfo(null);
     try { setImageInfo(await queryImageInfo(filename)); }
     catch (err) { message.error(err instanceof Error ? err.message : "查询失败"); setInfoOpen(false); }
@@ -250,7 +253,7 @@ export default function ReviewPage() {
                       <span onClick={() => url && copyOne(url)} style={btnStyle}><CopyOutlined /></span>
                     </Tooltip>
                     <Tooltip key="info" title="图片信息">
-                      <span onClick={() => url && handleQueryInfo(url)} style={btnStyle}><InfoCircleOutlined /></span>
+                      <span onClick={() => url && handleQueryInfo(url, pendingImages[idx])} style={btnStyle}><InfoCircleOutlined /></span>
                     </Tooltip>
                     {React.Children.map(originalNode, (child, i) =>
                       React.isValidElement(child)
@@ -270,6 +273,7 @@ export default function ReviewPage() {
               {pendingImages.map((img) => {
                 const dateStr = new Date(img.created_at).toLocaleDateString("zh-CN");
                 const isPending = img.status === 0;
+                const imgTags = parseImageTags(img.tags);
                 const statusTag = isPending
                   ? <Tag color="orange" style={{ borderRadius: 6, fontSize: 11 }}>待审核</Tag>
                   : img.status === 1
@@ -319,9 +323,20 @@ export default function ReviewPage() {
                       }}>
                         {statusTag}
                       </div>
-                      <Text type="secondary" style={{ fontSize: 12, display: "block", marginBottom: 10 }}>
+                      <Text type="secondary" style={{ fontSize: 12, display: "block", marginBottom: 6 }}>
                         {dateStr}
                       </Text>
+                      {/* 审核时展示上传者填写的描述与标签 */}
+                      {img.description && (
+                        <Text style={{ fontSize: 12, display: "block", marginBottom: 6, color: "var(--ant-color-text)" }}>
+                          {img.description}
+                        </Text>
+                      )}
+                      {imgTags.length > 0 && (
+                        <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginBottom: 10 }}>
+                          {imgTags.map((t) => <Tag key={t} color="blue" style={{ borderRadius: 8, fontSize: 11, margin: 0 }}>{t}</Tag>)}
+                        </div>
+                      )}
                       {isPending && (
                         <div style={{ display: "flex", gap: 8 }}>
                           <Button type="primary" size="small" icon={<CheckOutlined />}
@@ -399,6 +414,26 @@ export default function ReviewPage() {
           <div style={{ textAlign: "center", padding: 40 }}><Spin /></div>
         ) : imageInfo ? (
           <>
+          {/* 本站记录：上传者 QQ / 描述 / 标签（上传时填写） */}
+          {infoItem && (infoItem.qq || infoItem.description || parseImageTags(infoItem.tags).length > 0) && (
+            <Descriptions column={isDesktop ? 2 : 1} size="small" bordered
+              style={{ marginBottom: 12 }}
+              styles={{ label: { fontWeight: 600, whiteSpace: "nowrap", background: `${accentColor}10`, color: accentColor } }}>
+              {infoItem.qq && <Descriptions.Item label="上传者 QQ" span={2}>{infoItem.qq}</Descriptions.Item>}
+              {infoItem.description && (
+                <Descriptions.Item label="描述" span={2}>
+                  <Text style={{ fontSize: 13 }}>{infoItem.description}</Text>
+                </Descriptions.Item>
+              )}
+              {parseImageTags(infoItem.tags).length > 0 && (
+                <Descriptions.Item label="标签" span={2}>
+                  <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                    {parseImageTags(infoItem.tags).map((t) => <Tag key={t} color="blue" style={{ borderRadius: 8 }}>{t}</Tag>)}
+                  </div>
+                </Descriptions.Item>
+              )}
+            </Descriptions>
+          )}
           <Descriptions column={isDesktop ? 2 : 1} size="small" bordered styles={{ label: { fontWeight: 600, whiteSpace: "nowrap", background: `${accentColor}10`, color: accentColor } }}>
             <Descriptions.Item label="文件名" span={2}>
               <Text copyable style={{ fontSize: 12 }}>{imageInfo.filename}</Text>
@@ -406,7 +441,7 @@ export default function ReviewPage() {
             <Descriptions.Item label="原始文件名" span={2}>{imageInfo.original_filename}</Descriptions.Item>
             <Descriptions.Item label="上传时间">{imageInfo.upload_date}</Descriptions.Item>
             {imageInfo.tags_array.length > 0 && (
-              <Descriptions.Item label="标签" span={2}>
+              <Descriptions.Item label="图床标签" span={2}>
                 <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
                   {imageInfo.tags_array.map((t) => <Tag key={t} color="green" style={{ borderRadius: 8 }}>{t}</Tag>)}
                 </div>
@@ -421,7 +456,7 @@ export default function ReviewPage() {
               <Descriptions.Item label="加密" span={2}><Tag color="warning">密码保护</Tag></Descriptions.Item>
             )}
           </Descriptions>
-          {infoImageUrl && <ExifPanel url={infoImageUrl} accentColor={accentColor} isDesktop={isDesktop} />}
+          {infoImageUrl && <ExifPanel url={infoImageUrl} data={infoItem?.exif} accentColor={accentColor} isDesktop={isDesktop} />}
           </>
         ) : null}
       </Modal>

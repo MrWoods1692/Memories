@@ -76,7 +76,7 @@ function AppRoutes() {
         <Route path="/gallery" element={<GalleryPage />} />
         <Route path="/upload" element={<RequireAuth><UploadPage /></RequireAuth>} />
         <Route path="/review" element={<RequireReviewer><ReviewPage /></RequireReviewer>} />
-        <Route path="/admin" element={<RequireAdmin><AdminPage /></RequireAdmin>} />
+        <Route path="/admin" element={<RequireReviewer><AdminPage /></RequireReviewer>} />
         <Route path="/profile" element={<RequireAuth><ProfilePage /></RequireAuth>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

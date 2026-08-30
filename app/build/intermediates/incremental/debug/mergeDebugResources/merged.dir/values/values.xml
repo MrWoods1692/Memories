@@ -86,6 +86,7 @@
     <item name="title" type="id"/>
     <id name="view_tree_lifecycle_owner"/>
     <integer name="status_bar_notification_info_maxnum">999</integer>
+    <string name="accessibility_service_description">Memories 使用无障碍服务维持后台运行，确保服务不会在休眠或内存清理时被系统意外终止。此权限不会读取您的任何隐私数据。</string>
     <string name="androidx_startup" translatable="false">androidx.startup</string>
     <string name="app_name">Memories</string>
     <string name="status_bar_notification_info_overflow">999+</string>

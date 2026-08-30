@@ -1,19 +1,19 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  Button, Card, Descriptions, Dropdown, Empty, Image, Modal, Segmented, Spin, Tag, Tooltip, Typography, App,
+  Button, Card, Descriptions, Dropdown, Empty, Image, Input, Modal, Segmented, Select, Spin, Tag, Tooltip, Typography, App,
 } from "antd";
 import type { MenuProps } from "antd";
 import {
   AppstoreOutlined, ArrowDownOutlined, BarsOutlined, BlockOutlined, BorderOutlined, CheckCircleOutlined, CheckSquareOutlined,
   CloseCircleOutlined, CopyOutlined, DownloadOutlined, DragOutlined, EyeOutlined, FieldTimeOutlined, InfoCircleOutlined, PictureOutlined,
-  PlayCircleOutlined, PauseCircleOutlined, CaretRightOutlined,
+  PlayCircleOutlined, PauseCircleOutlined, CaretRightOutlined, SearchOutlined,
   HeartOutlined, HeartFilled, UnorderedListOutlined,
 } from "@ant-design/icons";
-import { fetchImages, extractImageBedFilename, queryImageInfo, fetchAllCachedImages, prefetchImages } from "@/api";
+import { fetchImages, extractImageBedFilename, queryImageInfo, fetchAllCachedImages, prefetchImages, parseImageTags } from "@/api";
 import { useTheme } from "@/contexts/ThemeContext";
 import ExifPanel from "@/components/ExifPanel";
 import TimelineScrollBar from "@/components/TimelineScrollBar";
-import type { ImageBedInfo, ImageItem } from "@/types";
+import type { ImageBedInfo, ImageFilters, ImageItem } from "@/types";
 
 const { Title, Text } = Typography;
 
@@ -37,6 +37,13 @@ export default function GalleryPage() {
   const [infoLoading, setInfoLoading] = useState(false);
   const [imageInfo, setImageInfo] = useState<ImageBedInfo | null>(null);
   const [infoImageUrl, setInfoImageUrl] = useState<string>("");
+  /** 当前信息弹窗对应的本地图片记录（上传者 QQ / 描述 / 标签 / 存储的 EXIF） */
+  const [infoItem, setInfoItem] = useState<ImageItem | null>(null);
+
+  // 搜索/筛选：filters 为已应用条件，draftFilters 为弹窗中的草稿
+  const [filters, setFilters] = useState<ImageFilters>({});
+  const [draftFilters, setDraftFilters] = useState<ImageFilters>({});
+  const [filterOpen, setFilterOpen] = useState(false);
 
   // 响应式断点
   const [isDesktop, setIsDesktop] = useState(
@@ -251,10 +258,11 @@ export default function GalleryPage() {
     }
   }, [viewMode, batchMode]);
 
-  const handleQueryInfo = useCallback(async (url: string) => {
+  const handleQueryInfo = useCallback(async (url: string, item?: ImageItem) => {
     const filename = extractImageBedFilename(url);
     if (!filename) { message.warning("无法解析图片文件名"); return; }
     setInfoImageUrl(url);
+    setInfoItem(item || null);
     setInfoOpen(true); setInfoLoading(true); setImageInfo(null);
     try { setImageInfo(await queryImageInfo(filename)); }
     catch (err) { message.error(err instanceof Error ? err.message : "查询失败"); setInfoOpen(false); }
@@ -277,7 +285,7 @@ export default function GalleryPage() {
   }, [message]);
 
   // 统一预览工具条：自定义按钮 + antd 原生操作（旋转/缩放/关闭），移动端自动换行
-  const makePreviewTools = useCallback((url: string) => {
+  const makePreviewTools = useCallback((url: string, item?: ImageItem) => {
     const btnStyle: React.CSSProperties = {
       color: "rgba(255,255,255,0.9)",
       fontSize: 18,
@@ -344,7 +352,7 @@ export default function GalleryPage() {
         </Tooltip>
         <Tooltip title="图片信息">
           <span
-            onClick={() => url && handleQueryInfo(url)}
+            onClick={() => url && handleQueryInfo(url, item)}
             style={btnStyle}
             onMouseEnter={(e) => {
               e.currentTarget.style.background = `${accentColor}E6`;
@@ -380,7 +388,7 @@ export default function GalleryPage() {
         el?.click();
       } else if (key === "download") downloadOne(img.url);
       else if (key === "copy") copyOne(img.url);
-      else if (key === "info") handleQueryInfo(img.url);
+      else if (key === "info") handleQueryInfo(img.url, img);
     },
   }), [downloadOne, copyOne, handleQueryInfo]);
 
@@ -429,7 +437,7 @@ export default function GalleryPage() {
     loadingRef.current = true;
 
     try {
-      const res = await fetchImages(pageNum, 20, forceRefresh);
+      const res = await fetchImages(pageNum, 20, forceRefresh, filters);
       if (pageNum === 1) {
         setImages(res.items);
       } else {
@@ -477,7 +485,7 @@ export default function GalleryPage() {
         setInitialLoading(false);
       }
     }
-  }, [message]); // 移除 loading 依赖，避免无限重入
+  }, [message, filters]); // 移除 loading 依赖，避免无限重入
 
   // 单张图片 onError 重试
   const imgRetryCount = useRef<Map<number, number>>(new Map());
@@ -510,11 +518,29 @@ export default function GalleryPage() {
     fallback: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2VlZSIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSIgZmlsbD0iIzk5OSIgZm9udC1zaXplPSIxNiI+5Zu+54mH5Yqg6L295aSx6LSlPC90ZXh0Pjwvc3ZnPg==",
   }), [handleImgError]);
 
+  /** 是否已应用任一筛选条件 */
+  const hasFilters = useMemo(
+    () => !!filters && Object.values(filters).some((v) => v !== undefined && v !== ""),
+    [filters]
+  );
+
+  /** 广场内全部已知标签（供筛选弹窗建议） */
+  const allTags = useMemo(() => Array.from(new Set(images.flatMap((i) => parseImageTags(i.tags)))), [images]);
+
+  const openFilterModal = () => { setDraftFilters({ ...filters }); setFilterOpen(true); };
+  const applyFilters = () => { setFilters({ ...draftFilters }); setFilterOpen(false); };
+  const clearFilters = () => { setDraftFilters({}); setFilters({}); };
+
   // 初次加载：缓存优先 → 后台同步 → 有新增则提示
   const cachedIdsRef = useRef<Set<number>>(new Set());
 
   useEffect(() => {
     const init = async () => {
+      // 有筛选条件时跳过本地缓存，直接按条件拉取第一页
+      if (hasFilters) {
+        loadImages(1, true, true);
+        return;
+      }
       // 1. 先从统一缓存加载全部图片，立即显示
       const allCached = fetchAllCachedImages();
       if (allCached.length > 0) {
@@ -552,6 +578,13 @@ export default function GalleryPage() {
     };
     init();
   }, []); // 仅挂载时运行一次
+
+  // 筛选条件变化 → 回到第一页按新条件重新加载（跳过缓存；挂载时首次运行不触发）
+  const filtersChangedRef = useRef(false);
+  useEffect(() => {
+    if (!filtersChangedRef.current) { filtersChangedRef.current = true; return; }
+    loadImages(1, true, true);
+  }, [filters, loadImages]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!observerRef.current || page >= totalPages || loading) return;
@@ -649,6 +682,15 @@ export default function GalleryPage() {
             )}
               </>
             )}
+            <Button
+              onClick={openFilterModal}
+              type={hasFilters ? "primary" : "default"}
+              icon={<SearchOutlined />}
+              title="搜索与筛选"
+              style={{ borderRadius: 20, height: 36, fontWeight: 500 }}
+            >
+              {isDesktop ? (hasFilters ? "筛选" : "搜索") : ""}
+            </Button>
             {!batchMode ? (
               viewMode !== "free" ? (
               <Button
@@ -730,8 +772,22 @@ export default function GalleryPage() {
       </div>
       </Dropdown>
 
+      {/* 已应用的筛选条件（可单独移除） */}
+      {hasFilters && (
+        <div style={{ padding: "0 16px 8px", display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+          <Text type="secondary" style={{ fontSize: 12 }}>筛选：</Text>
+          {filters.q && <Tag closable onClose={() => setFilters((p) => ({ ...p, q: "" }))}>描述 “{filters.q}”</Tag>}
+          {filters.tag && <Tag closable onClose={() => setFilters((p) => ({ ...p, tag: "" }))}>标签 {filters.tag}</Tag>}
+          {filters.make && <Tag closable onClose={() => setFilters((p) => ({ ...p, make: "" }))}>品牌 {filters.make}</Tag>}
+          {filters.model && <Tag closable onClose={() => setFilters((p) => ({ ...p, model: "" }))}>型号 {filters.model}</Tag>}
+          {filters.lens && <Tag closable onClose={() => setFilters((p) => ({ ...p, lens: "" }))}>镜头 {filters.lens}</Tag>}
+          {filters.iso && <Tag closable onClose={() => setFilters((p) => ({ ...p, iso: "" }))}>ISO {filters.iso}</Tag>}
+          <Button type="link" size="small" onClick={clearFilters} style={{ fontSize: 12 }}>清除全部</Button>
+        </div>
+      )}
+
       {images.length === 0 && !loading ? (
-        <Empty description="还没有人分享回忆，快来上传第一张吧！" />
+        <Empty description={hasFilters ? "没有找到匹配的图片，试试调整筛选条件" : "还没有人分享回忆，快来上传第一张吧！"} />
       ) : viewMode === "river" ? (
         <>
         <Image.PreviewGroup
@@ -745,7 +801,7 @@ export default function GalleryPage() {
             countRender: () => null,
             toolbarRender: (originalNode: React.ReactNode, info: { current: number; actions: Record<string, unknown> }) => {
               const url = images[(info as any).current ?? 0]?.url || "";
-              return <>{makePreviewTools(url)}{originalNode}</>;
+              return <>{makePreviewTools(url, images[(info as any).current ?? 0])}{originalNode}</>;
             },
           } as any}
         >
@@ -822,7 +878,7 @@ export default function GalleryPage() {
 countRender: () => null,
 toolbarRender: (originalNode: React.ReactNode, info: { current: number; actions: Record<string, unknown> }) => {
               const url = images[(info as any).current ?? 0]?.url || "";
-              return <>{makePreviewTools(url)}{originalNode}</>;
+              return <>{makePreviewTools(url, images[(info as any).current ?? 0])}{originalNode}</>;
             },
           } as any}
         >
@@ -935,7 +991,7 @@ toolbarRender: (originalNode: React.ReactNode, info: { current: number; actions:
                 countRender: () => null,
                 toolbarRender: (originalNode: React.ReactNode, info: { current: number; actions: Record<string, unknown> }) => {
                   const url = images[(info as any).current ?? 0]?.url || "";
-                  return <>{makePreviewTools(url)}{originalNode}</>;
+                  return <>{makePreviewTools(url, images[(info as any).current ?? 0])}{originalNode}</>;
                 },
               } as any}
             >
@@ -1031,7 +1087,7 @@ toolbarRender: (originalNode: React.ReactNode, info: { current: number; actions:
                       </Tooltip>
                       <Tooltip title="图片信息">
                         <Button type="text" size="small" icon={<InfoCircleOutlined />}
-                          onClick={(e) => { e.stopPropagation(); handleQueryInfo(img.url); }}
+                          onClick={(e) => { e.stopPropagation(); handleQueryInfo(img.url, img); }}
                           style={{ color: accentColor }} />
                       </Tooltip>
                     </div>
@@ -1075,6 +1131,11 @@ toolbarRender: (originalNode: React.ReactNode, info: { current: number; actions:
                         {...getImgProps(img)} />
                     </div>
                   }>
+                  {parseImageTags(img.tags).length > 0 && (
+                    <div style={{ padding: "5px 8px 8px", display: "flex", gap: 4, flexWrap: "wrap" }}>
+                      {parseImageTags(img.tags).slice(0, 3).map((t) => <Tag key={t} color="blue" style={{ borderRadius: 6, fontSize: 10, margin: 0, lineHeight: "18px" }}>{t}</Tag>)}
+                    </div>
+                  )}
                 </Card>
                 </Dropdown>
               );
@@ -1098,6 +1159,54 @@ toolbarRender: (originalNode: React.ReactNode, info: { current: number; actions:
         </>
       )}
 
+      <Modal title={<span style={{ color: accentColor, fontWeight: 700 }}>搜索与筛选</span>} open={filterOpen} onCancel={() => setFilterOpen(false)}
+        onOk={applyFilters}
+        okText="应用筛选"
+        cancelText="取消"
+        width={isDesktop ? 460 : "100%"}
+        zIndex={1040}
+        destroyOnHidden>
+        <div style={{ display: "flex", flexDirection: "column", gap: 14, paddingTop: 4 }}>
+          <div>
+            <Text style={{ fontSize: 13, fontWeight: 600, display: "block", marginBottom: 6 }}>描述关键词</Text>
+            <Input placeholder="搜索描述中的关键词" allowClear
+              value={draftFilters.q || ""}
+              onChange={(e) => setDraftFilters((p) => ({ ...p, q: e.target.value }))} />
+          </div>
+          <div>
+            <Text style={{ fontSize: 13, fontWeight: 600, display: "block", marginBottom: 6 }}>标签</Text>
+            <Select
+              mode="tags" maxCount={1}
+              placeholder="选择或输入一个标签"
+              style={{ width: "100%" }}
+              value={draftFilters.tag ? [draftFilters.tag] : []}
+              onChange={(v: string[]) => setDraftFilters((p) => ({ ...p, tag: v[0] || "" }))}
+              options={allTags.map((t) => ({ value: t, label: t }))}
+            />
+          </div>
+          <div>
+            <Text style={{ fontSize: 13, fontWeight: 600, display: "block", marginBottom: 6 }}>EXIF 信息</Text>
+            <div style={{ display: "grid", gridTemplateColumns: isDesktop ? "1fr 1fr" : "1fr", gap: 10 }}>
+              <Input placeholder="相机品牌（如 Sony）" allowClear
+                value={draftFilters.make || ""}
+                onChange={(e) => setDraftFilters((p) => ({ ...p, make: e.target.value }))} />
+              <Input placeholder="相机型号（如 ILCE-7M4）" allowClear
+                value={draftFilters.model || ""}
+                onChange={(e) => setDraftFilters((p) => ({ ...p, model: e.target.value }))} />
+              <Input placeholder="镜头型号（如 FE 24-70mm）" allowClear
+                value={draftFilters.lens || ""}
+                onChange={(e) => setDraftFilters((p) => ({ ...p, lens: e.target.value }))} />
+              <Input placeholder="ISO（如 3200）" allowClear
+                value={draftFilters.iso || ""}
+                onChange={(e) => setDraftFilters((p) => ({ ...p, iso: e.target.value }))} />
+            </div>
+          </div>
+          <Text type="secondary" style={{ fontSize: 12 }}>
+            条件叠加生效：描述关键词为模糊匹配，标签为精确匹配，EXIF 按上传时记录的信息过滤。
+          </Text>
+        </div>
+      </Modal>
+
       <Modal title={<span style={{ color: accentColor, fontWeight: 700 }}>图片信息</span>} open={infoOpen} onCancel={() => setInfoOpen(false)}
         footer={null} width={isDesktop ? 520 : "100%"}
         zIndex={1050}
@@ -1111,6 +1220,26 @@ toolbarRender: (originalNode: React.ReactNode, info: { current: number; actions:
           <div style={{ textAlign: "center", padding: 40 }}><Spin /></div>
         ) : imageInfo ? (
           <>
+          {/* 本站记录：上传者 QQ / 描述 / 标签（上传时填写） */}
+          {infoItem && (infoItem.qq || infoItem.description || parseImageTags(infoItem.tags).length > 0) && (
+            <Descriptions column={isDesktop ? 2 : 1} size="small" bordered
+              style={{ marginBottom: 12 }}
+              styles={{ label: { fontWeight: 600, whiteSpace: "nowrap", background: `${accentColor}10`, color: accentColor } }}>
+              {infoItem.qq && <Descriptions.Item label="上传者 QQ" span={2}>{infoItem.qq}</Descriptions.Item>}
+              {infoItem.description && (
+                <Descriptions.Item label="描述" span={2}>
+                  <Text style={{ fontSize: 13 }}>{infoItem.description}</Text>
+                </Descriptions.Item>
+              )}
+              {parseImageTags(infoItem.tags).length > 0 && (
+                <Descriptions.Item label="标签" span={2}>
+                  <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                    {parseImageTags(infoItem.tags).map((t) => <Tag key={t} color="blue" style={{ borderRadius: 8 }}>{t}</Tag>)}
+                  </div>
+                </Descriptions.Item>
+              )}
+            </Descriptions>
+          )}
           <Descriptions column={isDesktop ? 2 : 1} size="small" bordered styles={{ label: { fontWeight: 600, whiteSpace: "nowrap", background: `${accentColor}10`, color: accentColor } }}>
             <Descriptions.Item label="文件名" span={2}>
               <Text copyable style={{ fontSize: 12 }}>{imageInfo.filename}</Text>
@@ -1118,7 +1247,7 @@ toolbarRender: (originalNode: React.ReactNode, info: { current: number; actions:
             <Descriptions.Item label="原始文件名" span={2}>{imageInfo.original_filename}</Descriptions.Item>
             <Descriptions.Item label="上传时间">{imageInfo.upload_date}</Descriptions.Item>
             {imageInfo.tags_array.length > 0 && (
-              <Descriptions.Item label="标签" span={2}>
+              <Descriptions.Item label="图床标签" span={2}>
                 <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
                   {imageInfo.tags_array.map((t) => <Tag key={t} color="green" style={{ borderRadius: 8 }}>{t}</Tag>)}
                 </div>
@@ -1133,7 +1262,7 @@ toolbarRender: (originalNode: React.ReactNode, info: { current: number; actions:
               <Descriptions.Item label="加密" span={2}><Tag color="warning">密码保护</Tag></Descriptions.Item>
             )}
           </Descriptions>
-          {infoImageUrl && <ExifPanel url={infoImageUrl} accentColor={accentColor} isDesktop={isDesktop} />}
+          {infoImageUrl && <ExifPanel url={infoImageUrl} data={infoItem?.exif} accentColor={accentColor} isDesktop={isDesktop} />}
           </>
         ) : null}
       </Modal>

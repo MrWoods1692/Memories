@@ -22,6 +22,28 @@ export interface ImageItem {
   status: number;      // 0=待审核, 1=已通过, 2=已拒绝
   created_at: number;   // Unix 毫秒时间戳（上传时间）
   qq?: string;          // 上传者 QQ
+  /** 标签（服务端存 JSON 数组字符串，如 ["风景","旅行"]） */
+  tags?: string;
+  /** 图片描述（上传时单独填写） */
+  description?: string;
+  /** 上传时记录的完整 EXIF（JSON 字符串，前端提取后随上传入库） */
+  exif?: string;
+}
+
+/** 广场搜索/筛选条件（GET /images 过滤参数） */
+export interface ImageFilters {
+  /** 描述关键词（模糊） */
+  q?: string;
+  /** 标签精确匹配 */
+  tag?: string;
+  /** EXIF 相机品牌 */
+  make?: string;
+  /** EXIF 相机型号 */
+  model?: string;
+  /** EXIF 镜头型号 */
+  lens?: string;
+  /** EXIF ISO（数字） */
+  iso?: string;
 }
 
 /** 图片列表分页响应 */
@@ -43,6 +65,12 @@ export interface UploadRecord {
   status: 'pending' | 'uploading_imagebed' | 'uploading_server' | 'done' | 'failed';
   error?: string;
   createdAt: number;
+  /** 批量/单独设置的标签 */
+  tags?: string[];
+  /** 单独填写的图片描述 */
+  description?: string;
+  /** 上传时提取的 EXIF JSON 字符串 */
+  exif?: string;
 }
 
 /** 后台用户记录（GET /users） */

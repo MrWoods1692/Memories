@@ -310,3 +310,19 @@ export function formatGps(lat?: number, lon?: number): string {
   if (lat == null || lon == null) return "-";
   return `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
 }
+
+/**
+ * 把 ExifInfo 序列化为 JSON 字符串（键按字母序排列、丢弃空值），
+ * 服务端按 "\"make\":\"xx\"" 这类模式做 LOWER LIKE 过滤，稳定键序才能正确命中。
+ */
+export function serializeExif(info: ExifInfo | null): string {
+  if (!info) return "";
+  const sorted: Record<string, unknown> = {};
+  Object.keys(info)
+    .sort()
+    .forEach((k) => {
+      const v = (info as unknown as Record<string, unknown>)[k];
+      if (v !== undefined && v !== null) sorted[k] = v;
+    });
+  return JSON.stringify(sorted);
+}

@@ -10478,7 +10478,9 @@ androidx.versionedparcelable.VersionedParcelParcel:
 androidx.work.ConfigurationKt:
     public static void <clinit>()
 androidx.work.CoroutineWorker$$InternalSyntheticLambda$1$4868da841a0e23000b4c894c3ebd889c844b46c9538bbffd3e0d7a1a3acb0725$0
-androidx.work.impl.Processor$$InternalSyntheticLambda$1$3354c334eae638a678a5f8f26330a80af9f2189a5e04c420370f770cb67bb301$0
+androidx.work.impl.Processor$$InternalSyntheticLambda$1$3354c334eae638a678a5f8f26330a80af9f2189a5e04c420370f770cb67bb301$0:
+    private static synthetic void $r8$constructor$androidx$work$impl$Processor$$InternalSyntheticLambda$1$3354c334eae638a678a5f8f26330a80af9f2189a5e04c420370f770cb67bb301$0()
+    private static synthetic void $r8$constructor$com$example$memories$DatabaseHelper$$InternalSyntheticLambda$1$48e3cc18e850e6c5b782ad84ffa4a4b8daec3b68e237c473b63edaa425c787cf$0()
 androidx.work.impl.Processor$$InternalSyntheticLambda$1$3354c334eae638a678a5f8f26330a80af9f2189a5e04c420370f770cb67bb301$1
 androidx.work.impl.WorkerUpdater$$InternalSyntheticLambda$1$a5dd3873fb8ae9bf1881898d68eff03ba81e6a277b1c59c3e7b83bed6e87ea8e$0
 androidx.work.impl.WorkerWrapper$$InternalSyntheticLambda$1$3cde3d07cceec6e126d208b32ee28b40baeb2c71070ed30aa129d36388672cc8$0
@@ -10496,10 +10498,9 @@ androidx.work.impl.utils.futures.AbstractFuture$SafeAtomicHelper$$InternalSynthe
 androidx.work.impl.workers.ConstraintTrackingWorker$$InternalSyntheticLambda$1$777a6927b410c2826e6c5a5b30d91a0a93875858656c44d5f7a9228c42d88207$0
 androidx.work.impl.workers.ConstraintTrackingWorker$$InternalSyntheticLambda$1$8d12d4e3d607c622be407a47c0d3a2bc949f15a04bbdf98e656a3246f7f77acc$0
 androidx.work.impl.workers.ConstraintTrackingWorker$$InternalSyntheticLambda$1$8d12d4e3d607c622be407a47c0d3a2bc949f15a04bbdf98e656a3246f7f77acc$1
+com.example.memories.DatabaseHelper$$InternalSyntheticLambda$1$48e3cc18e850e6c5b782ad84ffa4a4b8daec3b68e237c473b63edaa425c787cf$0
 com.example.memories.DatabaseHelper$$InternalSyntheticLambda$1$5a8de9cd26f8d1707da3b0e346b05c62de3e35967d77c2b8776df444b6f4624e$0
-com.example.memories.DatabaseHelper$$InternalSyntheticLambda$1$77fd3cf69a834d6f5cdc547a085f128952eb399095f26bfb992232367a5bfbee$0
-com.example.memories.DatabaseHelper$$InternalSyntheticLambda$1$86df6db0aa320ca801a600ca36728db79ea107ac0bf07b345b8cd30bcffa4230$0:
-    private static synthetic void $r8$constructor$androidx$work$impl$Processor$$InternalSyntheticLambda$1$3354c334eae638a678a5f8f26330a80af9f2189a5e04c420370f770cb67bb301$0()
+com.example.memories.DatabaseHelper$$InternalSyntheticLambda$1$7fc0652f0c45e050a285d87c4dcff8c8c8d427c23ad4ebd1ad015324afd548e8$0
 com.example.memories.DatabaseHelper$$InternalSyntheticLambda$1$97d8e7ffbb7b42bec8f8e4208947d7463df76c960fb09c64cfb8b53a6fa6c40d$0
 com.example.memories.DatabaseHelper$$InternalSyntheticLambda$1$cf41fe0311b11318645f45a416308a34334312ea3bc7d5e89f9a0ac3b5237ddb$0
 com.example.memories.DatabaseHelper$$InternalSyntheticLambda$1$fadfc7d9f9cca75c83019403dc6490e8be80183bd7174109ac90015310de3a5d$0
@@ -12704,7 +12705,7 @@ okhttp3.internal.http2.Http2Connection:
     public static void setPeerSettings()
     public static void start()
     public static void writeHeaders$okhttp()
-    public final void writePing(int,int,boolean)
+    public final void writePing(boolean,int,int)
     public final void writeSynReset$okhttp(int,okhttp3.internal.http2.ErrorCode)
 okhttp3.internal.http2.Http2ExchangeCodec$Companion:
     private static synthetic void $r8$constructor$okhttp3$internal$http2$Http2ExchangeCodec$Companion()

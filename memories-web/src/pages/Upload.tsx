@@ -1,15 +1,16 @@
 import { useCallback, useEffect, useState } from "react";
 import {
-  Button, Card, Dropdown, Image, Progress, Segmented, Space, Tag, Typography, Upload, Popconfirm, App,
+  Button, Card, Dropdown, Image, Input, Progress, Segmented, Select, Space, Tag, Typography, Upload, Popconfirm, App,
 } from "antd";
 import type { MenuProps } from "antd";
 import {
   CloudUploadOutlined, CheckCircleOutlined, CloseCircleOutlined,
   DeleteOutlined, ReloadOutlined, ClockCircleOutlined, PlusCircleOutlined,
   AppstoreOutlined, UnorderedListOutlined, MenuOutlined, PictureOutlined,
-  CaretUpOutlined, CaretDownOutlined, AimOutlined,
+  CaretUpOutlined, CaretDownOutlined, AimOutlined, TagsOutlined,
 } from "@ant-design/icons";
 import { clearImagesCache, uploadImageToServer, uploadToImageBed } from "@/api";
+import { parseExif, serializeExif } from "@/lib/exif";
 import { useTheme } from "@/contexts/ThemeContext";
 import ImagePlaceholder from "@/components/ImagePlaceholder";
 import type { UploadRecord } from "@/types";
@@ -49,6 +50,15 @@ class UploadEngine {
   remove(id: string) { this.queue = this.queue.filter((r) => r.id !== id); this.notify(); }
   clearDone() { this.queue = this.queue.filter((r) => r.status !== "done"); this.notify(); }
   clearAll() { this.queue = []; this.notify(); }
+
+  /** 批量更新所有记录（如批量设置标签） */
+  updateAll(fn: (r: UploadRecord) => UploadRecord) { this.queue = this.queue.map(fn); this.notify(); }
+
+  /** 更新单条记录（如单独填写描述） */
+  updateOne(id: string, patch: Partial<UploadRecord>) {
+    this.queue = this.queue.map((r) => (r.id === id ? { ...r, ...patch } : r));
+    this.notify();
+  }
 
   private saveHistory() {
     try {
@@ -101,14 +111,21 @@ class UploadEngine {
     try {
       const blob = await fetch(record.localUrl).then((r) => r.blob());
       const file = new File([blob], record.fileName, { type: blob.type });
+      // 上传前先从本地文件提取完整 EXIF 并随记录入库：图床处理（压缩/转码）后 EXIF 可能丢失
+      let exif = "";
+      try { exif = serializeExif(parseExif(new DataView(await blob.arrayBuffer()))); } catch { /* 解析失败不影响上传 */ }
       const imageBedUrl = await uploadToImageBed(file);
 
-      this.queue[idx] = { ...record, imageBedUrl, status: "uploading_server" as const };
+      this.queue[idx] = { ...record, imageBedUrl, exif, status: "uploading_server" as const };
       this.notify();
 
-      await uploadImageToServer(imageBedUrl);
+      await uploadImageToServer(imageBedUrl, {
+        tags: record.tags || [],
+        description: record.description || "",
+        exif,
+      });
       clearImagesCache();
-      this.queue[idx] = { ...record, imageBedUrl, status: "done" as const };
+      this.queue[idx] = { ...record, imageBedUrl, exif, status: "done" as const };
       this.retryMap.delete(record.id);
       this.notify();
     } catch (err) {
@@ -146,6 +163,7 @@ export default function UploadPage() {
   const [uploading, setUploading] = useState(() => engine.isRunning());
   const [viewMode, setViewMode] = useState<ViewMode>("card");
   const [filterStatus, setFilterStatus] = useState<FilterStatus>("all");
+  const [batchTags, setBatchTags] = useState<string[]>([]);
   const { accentColor } = useTheme();
 
   useEffect(() => engine.subscribe((r) => { setRecords(r); setUploading(engine.isRunning()); }), []);
@@ -164,7 +182,7 @@ export default function UploadPage() {
     if (!file.type.startsWith("image/") && !allowedExt.includes(ext)) {
       message.warning("仅支持上传图片文件"); return Upload.LIST_IGNORE;
     }
-    engine.add([{ id: uid(), fileName: file.name, fileSize: file.size, localUrl: URL.createObjectURL(file), status: "pending", createdAt: Date.now() }]);
+    engine.add([{ id: uid(), fileName: file.name, fileSize: file.size, localUrl: URL.createObjectURL(file), status: "pending", createdAt: Date.now(), tags: [], description: "" }]);
     return false;
   }, [message]);
 
@@ -174,6 +192,12 @@ export default function UploadPage() {
       return;
     }
     engine.start();
+  };
+
+  /** 批量标签：应用到全部未完成上传的图片 */
+  const applyBatchTags = (tags: string[]) => {
+    setBatchTags(tags);
+    engine.updateAll((r) => (r.status === "done" ? r : { ...r, tags: [...tags] }));
   };
 
   const retryFailed = () => {
@@ -205,7 +229,7 @@ export default function UploadPage() {
             const ext = f.name.split(".").pop()?.toLowerCase() || "";
             const allowedExt = ["jpg", "jpeg", "png", "webp", "gif", "bmp", "heic", "heif"];
             if (f.type.startsWith("image/") || allowedExt.includes(ext)) {
-              engine.add([{ id: uid(), fileName: f.name, fileSize: f.size, localUrl: URL.createObjectURL(f), status: "pending", createdAt: Date.now() }]);
+              engine.add([{ id: uid(), fileName: f.name, fileSize: f.size, localUrl: URL.createObjectURL(f), status: "pending", createdAt: Date.now(), tags: [], description: "" }]);
             }
           });
         };
@@ -282,6 +306,32 @@ export default function UploadPage() {
         </Dragger>
 
         {records.length > 0 && (
+          <div style={{
+            marginTop: 12,
+            padding: "10px 14px", borderRadius: 14,
+            background: "var(--ant-color-fill-quaternary)",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+              <TagsOutlined style={{ color: accentColor, fontSize: 14 }} />
+              <Text style={{ fontSize: 13, fontWeight: 600, flexShrink: 0 }}>批量标签</Text>
+              <Select
+                mode="tags"
+                size="small"
+                style={{ flex: 1, minWidth: 200 }}
+                placeholder="输入标签后回车，应用到全部待上传图片"
+                value={batchTags}
+                onChange={applyBatchTags}
+                maxTagCount="responsive"
+                options={Array.from(new Set(records.flatMap((r) => r.tags || []))).map((t) => ({ value: t, label: t }))}
+              />
+            </div>
+            <Text type="secondary" style={{ fontSize: 11, marginTop: 4, display: "block" }}>
+              标签随图片一起提交审核；每张图片可单独填写描述（见下方卡片）。
+            </Text>
+          </div>
+        )}
+
+        {records.length > 0 && (
           <>
             <div style={{
               display: "flex", alignItems: "center", justifyContent: "space-between",
@@ -349,6 +399,16 @@ export default function UploadPage() {
                           <Text type="secondary" style={{ fontSize: 11 }}>{formatTime(r.createdAt)}</Text>
                         </div>
                         <div style={{ marginTop: 4 }}>{statusTag(r.status, r.error)}</div>
+                        {r.status !== "done" && (
+                          <Input
+                            size="small"
+                            placeholder="给这张图片配一句描述（可选）"
+                            value={r.description || ""}
+                            disabled={r.status === "uploading_imagebed" || r.status === "uploading_server"}
+                            onChange={(e) => engine.updateOne(r.id, { description: e.target.value })}
+                            style={{ marginTop: 6, borderRadius: 8, fontSize: 12 }}
+                          />
+                        )}
                       </div>
                       {r.status !== "uploading_imagebed" && r.status !== "uploading_server" && (
                         <Button type="text" danger size="small" icon={<DeleteOutlined />} onClick={() => engine.remove(r.id)} />

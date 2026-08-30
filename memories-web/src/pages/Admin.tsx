@@ -3,7 +3,7 @@ import {
   App, Badge, Button, Card, Form, Input, Modal, Select, Space, Table, Tabs, Tag, Tooltip, Typography,
 } from "antd";
 import {
-  EyeOutlined, MonitorOutlined, ReloadOutlined, SafetyCertificateOutlined,
+  EyeOutlined, MonitorOutlined, ReloadOutlined, SafetyCertificateOutlined, PictureOutlined,
   StopOutlined, TeamOutlined, UndoOutlined, UserAddOutlined, UserDeleteOutlined,
 } from "@ant-design/icons";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -15,6 +15,7 @@ import {
 } from "@/api/admin";
 import type { AdminBan, AdminUser } from "@/types";
 import { AdminSystemInfo } from "@/pages/AdminSystemInfo";
+import AdminImages from "@/pages/AdminImages";
 
 const { Title, Text } = Typography;
 
@@ -68,7 +69,7 @@ function QqAvatar({ qq }: { qq: string }) {
   );
 }
 
-/** 后台页面：仅管理员可见，管理审核员/管理员与封禁名单 */
+/** 后台页面：审核员及以上可见，管理图片标签/描述、审核员与管理员、封禁名单（用户与封禁仅管理员） */
 export default function AdminPage() {
   const { message, modal } = App.useApp();
   const { accentColor } = useTheme();
@@ -327,11 +328,13 @@ export default function AdminPage() {
                 管理后台
               </Title>
               <Text type="secondary" style={{ fontSize: 12 }}>
-                审核员与管理员、封禁名单
+                图片标签与描述、审核员与管理员、封禁名单
               </Text>
             </div>
           </div>
           <Space size="small" wrap>
+            {user?.is_admin && (
+              <>
             <Button icon={<ReloadOutlined />} onClick={() => { loadUsers(); loadBans(); }}
               style={{ borderRadius: 10 }}>刷新</Button>
             <Button icon={<StopOutlined />} onClick={() => setBanOpen(true)} style={{ borderRadius: 10 }}>
@@ -346,11 +349,14 @@ export default function AdminPage() {
               }}>
               添加审核员 / 管理员
             </Button>
+              </>
+            )}
           </Space>
         </div>
       </div>
 
       <div style={{ padding: "0 16px" }}>
+        {user?.is_admin && (
         <Card size="small" style={{ borderRadius: 14, marginBottom: 16 }} styles={{ body: { padding: "10px 16px" } }}>
           <Space size="large" wrap>
             <Badge count={users.length} color={accentColor} showZero>
@@ -364,6 +370,7 @@ export default function AdminPage() {
             </Text>
           </Space>
         </Card>
+        )}
       </div>
 
       <div style={{ padding: "0 16px" }}>
@@ -374,6 +381,13 @@ export default function AdminPage() {
               label: <span><MonitorOutlined style={{ marginRight: 6 }} />系统信息</span>,
               children: <AdminSystemInfo />,
             },
+            {
+              key: "images",
+              label: <span><PictureOutlined style={{ marginRight: 6 }} />图片管理</span>,
+              children: <AdminImages />,
+            },
+            ...(user?.is_admin
+              ? [
             {
               key: "users",
               label: <span><TeamOutlined style={{ marginRight: 6 }} />权限用户</span>,
@@ -410,6 +424,8 @@ export default function AdminPage() {
                 </Card>
               ),
             },
+              ]
+              : []),
           ]}
         />
       </div>

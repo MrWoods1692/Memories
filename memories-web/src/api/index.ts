@@ -2,6 +2,7 @@ import type {
   AuthResponse,
   HealthResponse,
   ImageBedInfo,
+  ImageFilters,
   ImageItem,
   OAuthStartResponse,
   PaginatedResponse,
@@ -37,11 +38,13 @@ export function getLocalUserQQ(): string {
 
 /* ==================== 通用请求 ==================== */
 
-/** 通用 GET 请求，自动携带 Bearer token */
+/** 通用 GET 请求，自动携带 Bearer token 与当前登录用户 QQ（后端角色校验依赖 x-user-qq） */
 async function getRequest<T>(url: string): Promise<T> {
   const token = getAccessToken();
   const headers: Record<string, string> = {};
   if (token) headers["Authorization"] = `Bearer ${token}`;
+  const qq = getLocalUserQQ();
+  if (qq) headers["x-user-qq"] = qq;
 
   const res = await fetch(`${BASE}${url}`, { headers });
   if (!res.ok) {
@@ -51,13 +54,15 @@ async function getRequest<T>(url: string): Promise<T> {
   return res.json();
 }
 
-/** 通用 POST 请求 (application/x-www-form-urlencoded)，自动携带 Bearer token */
+/** 通用 POST 请求 (application/x-www-form-urlencoded)，自动携带 Bearer token 与登录用户 QQ */
 async function postRequest<T>(url: string, body: Record<string, string>): Promise<T> {
   const token = getAccessToken();
   const headers: Record<string, string> = {
     "Content-Type": "application/x-www-form-urlencoded",
   };
   if (token) headers["Authorization"] = `Bearer ${token}`;
+  const qq = getLocalUserQQ();
+  if (qq) headers["x-user-qq"] = qq;
 
   const params = new URLSearchParams(body);
   const res = await fetch(`${BASE}${url}`, { method: "POST", headers, body: params });
@@ -285,13 +290,15 @@ function updateFullCache(items: ImageItem[], totalPages: number) {
   } catch { /* quota exceeded */ }
 }
 
-/** GET /images?page=1&limit=20 — 带本地缓存，forceRefresh 可跳过缓存 */
+/** GET /images?page=1&limit=20&q=...&tag=... — 带本地缓存，forceRefresh 可跳过缓存；filters 为广场搜索/筛选条件 */
 export async function fetchImages(
   page: number,
   limit: number = 20,
-  forceRefresh: boolean = false
+  forceRefresh: boolean = false,
+  filters?: ImageFilters
 ): Promise<PaginatedResponse> {
-  const cacheKey = `${IMAGES_CACHE_KEY}_${page}_${limit}`;
+  const filterKey = filters ? JSON.stringify(filters) : "";
+  const cacheKey = `${IMAGES_CACHE_KEY}_${page}_${limit}_${filterKey}`;
 
   // 尝试读取分页缓存（forceRefresh 时跳过）
   if (!forceRefresh) {
@@ -306,16 +313,25 @@ export async function fetchImages(
     } catch { /* ignore */ }
   }
 
-  // 请求新数据
-  const data = await getRequest<PaginatedResponse>(`/images?page=${page}&limit=${limit}`);
+  // 请求新数据（带过滤参数，缓存 key 已含过滤条件）
+  const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+  if (filters) {
+    for (const [k, v] of Object.entries(filters)) {
+      if (v !== undefined && v !== "") params.set(k, String(v));
+    }
+  }
+  const data = await getRequest<PaginatedResponse>(`/images?${params.toString()}`);
 
   // 写入分页缓存
   try {
     localStorage.setItem(cacheKey, JSON.stringify({ data, timestamp: Date.now() }));
   } catch { /* ignore */ }
 
-  // 同时更新统一全量缓存
-  updateFullCache(data.items, data.totalPages);
+  // 同时更新统一全量缓存（筛选结果不混入全量缓存，避免污染广场首屏）
+  const hasFilter = filters && Object.values(filters).some((v) => v !== undefined && v !== "");
+  if (!hasFilter) {
+    updateFullCache(data.items, data.totalPages);
+  }
 
   return data;
 }
@@ -351,11 +367,56 @@ export function prefetchImages(urls: string[]): void {
   });
 }
 
-/** POST /images — 上传图片 URL 到服务端 */
+/** 解析服务端 tags 字段（JSON 数组字符串）→ string[] */
+export function parseImageTags(raw?: string | null): string[] {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((t) => typeof t === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+/** POST /images — 上传图片 URL 到服务端，携带标签/描述/上传时提取的 EXIF，并通过 x-user-qq 记录上传者 */
 export async function uploadImageToServer(
-  imageBedUrl: string
+  imageBedUrl: string,
+  meta?: { tags?: string[]; description?: string; exif?: string }
 ): Promise<UploadImageResponse> {
-  return postRequest<UploadImageResponse>("/images", { url: imageBedUrl });
+  const body = new URLSearchParams({ url: imageBedUrl });
+  if (meta?.tags && meta.tags.length > 0) body.set("tags", JSON.stringify(meta.tags));
+  if (meta?.description) body.set("description", meta.description);
+  if (meta?.exif) body.set("exif", meta.exif);
+
+  const headers: Record<string, string> = { "Content-Type": "application/x-www-form-urlencoded" };
+  const token = getAccessToken();
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  const qq = getLocalUserQQ();
+  if (qq) headers["x-user-qq"] = qq;
+
+  const res = await fetch(`${BASE}/images`, { method: "POST", headers, body });
+  if (!res.ok) throw new Error((await res.text()) || `请求失败: ${res.status}`);
+  return {} as UploadImageResponse;
+}
+
+/** POST /images/meta?url=... — 修改图片元数据：tags 需审核员+，description 需管理员；table 指定图片所在表（缺省自动查找） */
+export async function updateImageMeta(
+  url: string,
+  meta: { tags?: string[]; description?: string; table?: string }
+): Promise<void> {
+  const body = new URLSearchParams({ url });
+  if (meta.table) body.set("table", meta.table);
+  if (meta.tags !== undefined) body.set("tags", JSON.stringify(meta.tags));
+  if (meta.description !== undefined) body.set("description", meta.description);
+
+  const headers: Record<string, string> = { "Content-Type": "application/x-www-form-urlencoded" };
+  const token = getAccessToken();
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  const qq = getLocalUserQQ();
+  if (qq) headers["x-user-qq"] = qq;
+
+  const res = await fetch(`${BASE}/images/meta`, { method: "POST", headers, body });
+  if (!res.ok) throw new Error((await res.text()) || `请求失败: ${res.status}`);
 }
 
 /* ==================== 图床上传 ==================== */
@@ -431,6 +492,15 @@ export async function fetchPendingImages(
   limit: number = 20
 ): Promise<PaginatedResponse> {
   return getRequest<PaginatedResponse>(`/images?status=pending&page=${page}&limit=${limit}`);
+}
+
+/** GET /images?status=pending|rejected — 管理后台按审核状态分页拉取（pending 需审核员+，rejected 需管理员） */
+export async function fetchImagesByStatus(
+  status: "pending" | "rejected",
+  page: number,
+  limit: number = 20
+): Promise<PaginatedResponse> {
+  return getRequest<PaginatedResponse>(`/images?status=${status}&page=${page}&limit=${limit}`);
 }
 
 /** POST /images/audit?url=...&status=... — 审核图片：status=1 通过，status=2 拒绝 */

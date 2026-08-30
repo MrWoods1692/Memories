@@ -6,9 +6,9 @@ INJECTED from /home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:1:1-
 INJECTED from /home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:1:1-148:12
 MERGED from [frp_universal.aar] /home/mrcwoods/.gradle/caches/transforms-3/be361b4501df0ebd3cdb000a5c363e1d/transformed/frp_universal/AndroidManifest.xml:1:1-2:50
 MERGED from [androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:17:1-145:12
-MERGED from [androidx.core:core:1.9.0] /home/mrcwoods/.gradle/caches/transforms-3/58965ab1a2bf12ef28df7731ee942225/transformed/core-1.9.0/AndroidManifest.xml:17:1-30:12
 MERGED from [androidx.room:room-ktx:2.5.0] /home/mrcwoods/.gradle/caches/transforms-3/05bc65090acee7b22971a8a0dec9367c/transformed/room-ktx-2.5.0/AndroidManifest.xml:17:1-22:12
 MERGED from [androidx.room:room-runtime:2.5.0] /home/mrcwoods/.gradle/caches/transforms-3/4496fb5591bf03576dadc6b63572b9b4/transformed/room-runtime-2.5.0/AndroidManifest.xml:17:1-31:12
+MERGED from [androidx.core:core:1.9.0] /home/mrcwoods/.gradle/caches/transforms-3/58965ab1a2bf12ef28df7731ee942225/transformed/core-1.9.0/AndroidManifest.xml:17:1-30:12
 MERGED from [androidx.annotation:annotation-experimental:1.3.0] /home/mrcwoods/.gradle/caches/transforms-3/251a807d59657e148fe98dfce81c55eb/transformed/annotation-experimental-1.3.0/AndroidManifest.xml:17:1-22:12
 MERGED from [androidx.lifecycle:lifecycle-livedata:2.5.1] /home/mrcwoods/.gradle/caches/transforms-3/b06b3f0121bec829ee886814aac7cbd6/transformed/lifecycle-livedata-2.5.1/AndroidManifest.xml:17:1-24:12
 MERGED from [androidx.lifecycle:lifecycle-service:2.5.1] /home/mrcwoods/.gradle/caches/transforms-3/8c35e2d476ca283bd8cec47450caa1ca/transformed/lifecycle-service-2.5.1/AndroidManifest.xml:17:1-24:12
@@ -189,10 +189,10 @@ ADDED from /home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:74:5-14
 INJECTED from /home/mrcwoods/code/Memories/app/src/main/AndroidManifest.xml:74:5-146:19
 MERGED from [androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:28:5-143:19
 MERGED from [androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:28:5-143:19
-MERGED from [androidx.core:core:1.9.0] /home/mrcwoods/.gradle/caches/transforms-3/58965ab1a2bf12ef28df7731ee942225/transformed/core-1.9.0/AndroidManifest.xml:28:5-89
-MERGED from [androidx.core:core:1.9.0] /home/mrcwoods/.gradle/caches/transforms-3/58965ab1a2bf12ef28df7731ee942225/transformed/core-1.9.0/AndroidManifest.xml:28:5-89
 MERGED from [androidx.room:room-runtime:2.5.0] /home/mrcwoods/.gradle/caches/transforms-3/4496fb5591bf03576dadc6b63572b9b4/transformed/room-runtime-2.5.0/AndroidManifest.xml:23:5-29:19
 MERGED from [androidx.room:room-runtime:2.5.0] /home/mrcwoods/.gradle/caches/transforms-3/4496fb5591bf03576dadc6b63572b9b4/transformed/room-runtime-2.5.0/AndroidManifest.xml:23:5-29:19
+MERGED from [androidx.core:core:1.9.0] /home/mrcwoods/.gradle/caches/transforms-3/58965ab1a2bf12ef28df7731ee942225/transformed/core-1.9.0/AndroidManifest.xml:28:5-89
+MERGED from [androidx.core:core:1.9.0] /home/mrcwoods/.gradle/caches/transforms-3/58965ab1a2bf12ef28df7731ee942225/transformed/core-1.9.0/AndroidManifest.xml:28:5-89
 MERGED from [androidx.startup:startup-runtime:1.1.1] /home/mrcwoods/.gradle/caches/transforms-3/a6f81dbb9ca5de88d674a8ee2d257bfb/transformed/startup-runtime-1.1.1/AndroidManifest.xml:25:5-31:19
 MERGED from [androidx.startup:startup-runtime:1.1.1] /home/mrcwoods/.gradle/caches/transforms-3/a6f81dbb9ca5de88d674a8ee2d257bfb/transformed/startup-runtime-1.1.1/AndroidManifest.xml:25:5-31:19
 MERGED from [androidx.versionedparcelable:versionedparcelable:1.1.1] /home/mrcwoods/.gradle/caches/transforms-3/753a691fb4d751ef320546ad3563d74d/transformed/versionedparcelable-1.1.1/AndroidManifest.xml:24:5-25:19
@@ -331,12 +331,12 @@ MERGED from [frp_universal.aar] /home/mrcwoods/.gradle/caches/transforms-3/be361
 MERGED from [frp_universal.aar] /home/mrcwoods/.gradle/caches/transforms-3/be361b4501df0ebd3cdb000a5c363e1d/transformed/frp_universal/AndroidManifest.xml:2:1-39
 MERGED from [androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:21:5-44
 MERGED from [androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:21:5-44
-MERGED from [androidx.core:core:1.9.0] /home/mrcwoods/.gradle/caches/transforms-3/58965ab1a2bf12ef28df7731ee942225/transformed/core-1.9.0/AndroidManifest.xml:20:5-44
-MERGED from [androidx.core:core:1.9.0] /home/mrcwoods/.gradle/caches/transforms-3/58965ab1a2bf12ef28df7731ee942225/transformed/core-1.9.0/AndroidManifest.xml:20:5-44
 MERGED from [androidx.room:room-ktx:2.5.0] /home/mrcwoods/.gradle/caches/transforms-3/05bc65090acee7b22971a8a0dec9367c/transformed/room-ktx-2.5.0/AndroidManifest.xml:20:5-44
 MERGED from [androidx.room:room-ktx:2.5.0] /home/mrcwoods/.gradle/caches/transforms-3/05bc65090acee7b22971a8a0dec9367c/transformed/room-ktx-2.5.0/AndroidManifest.xml:20:5-44
 MERGED from [androidx.room:room-runtime:2.5.0] /home/mrcwoods/.gradle/caches/transforms-3/4496fb5591bf03576dadc6b63572b9b4/transformed/room-runtime-2.5.0/AndroidManifest.xml:21:5-44
 MERGED from [androidx.room:room-runtime:2.5.0] /home/mrcwoods/.gradle/caches/transforms-3/4496fb5591bf03576dadc6b63572b9b4/transformed/room-runtime-2.5.0/AndroidManifest.xml:21:5-44
+MERGED from [androidx.core:core:1.9.0] /home/mrcwoods/.gradle/caches/transforms-3/58965ab1a2bf12ef28df7731ee942225/transformed/core-1.9.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.core:core:1.9.0] /home/mrcwoods/.gradle/caches/transforms-3/58965ab1a2bf12ef28df7731ee942225/transformed/core-1.9.0/AndroidManifest.xml:20:5-44
 MERGED from [androidx.annotation:annotation-experimental:1.3.0] /home/mrcwoods/.gradle/caches/transforms-3/251a807d59657e148fe98dfce81c55eb/transformed/annotation-experimental-1.3.0/AndroidManifest.xml:20:5-44
 MERGED from [androidx.annotation:annotation-experimental:1.3.0] /home/mrcwoods/.gradle/caches/transforms-3/251a807d59657e148fe98dfce81c55eb/transformed/annotation-experimental-1.3.0/AndroidManifest.xml:20:5-44
 MERGED from [androidx.lifecycle:lifecycle-livedata:2.5.1] /home/mrcwoods/.gradle/caches/transforms-3/b06b3f0121bec829ee886814aac7cbd6/transformed/lifecycle-livedata-2.5.1/AndroidManifest.xml:20:5-22:41
@@ -579,6 +579,16 @@ action#androidx.work.diagnostics.REQUEST_DIAGNOSTICS
 ADDED from [androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:140:17-88
 	android:name
 		ADDED from [androidx.work:work-runtime:2.9.0] /home/mrcwoods/.gradle/caches/transforms-3/7979f46dbd9704c452d05604e150b072/transformed/work-runtime-2.9.0/AndroidManifest.xml:140:25-85
+service#androidx.room.MultiInstanceInvalidationService
+ADDED from [androidx.room:room-runtime:2.5.0] /home/mrcwoods/.gradle/caches/transforms-3/4496fb5591bf03576dadc6b63572b9b4/transformed/room-runtime-2.5.0/AndroidManifest.xml:24:9-28:63
+	android:exported
+		ADDED from [androidx.room:room-runtime:2.5.0] /home/mrcwoods/.gradle/caches/transforms-3/4496fb5591bf03576dadc6b63572b9b4/transformed/room-runtime-2.5.0/AndroidManifest.xml:27:13-37
+	tools:ignore
+		ADDED from [androidx.room:room-runtime:2.5.0] /home/mrcwoods/.gradle/caches/transforms-3/4496fb5591bf03576dadc6b63572b9b4/transformed/room-runtime-2.5.0/AndroidManifest.xml:28:13-60
+	android:directBootAware
+		ADDED from [androidx.room:room-runtime:2.5.0] /home/mrcwoods/.gradle/caches/transforms-3/4496fb5591bf03576dadc6b63572b9b4/transformed/room-runtime-2.5.0/AndroidManifest.xml:26:13-43
+	android:name
+		ADDED from [androidx.room:room-runtime:2.5.0] /home/mrcwoods/.gradle/caches/transforms-3/4496fb5591bf03576dadc6b63572b9b4/transformed/room-runtime-2.5.0/AndroidManifest.xml:25:13-74
 permission#${applicationId}.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION
 ADDED from [androidx.core:core:1.9.0] /home/mrcwoods/.gradle/caches/transforms-3/58965ab1a2bf12ef28df7731ee942225/transformed/core-1.9.0/AndroidManifest.xml:22:5-24:47
 	android:protectionLevel
@@ -599,13 +609,3 @@ uses-permission#com.example.memories.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION
 ADDED from [androidx.core:core:1.9.0] /home/mrcwoods/.gradle/caches/transforms-3/58965ab1a2bf12ef28df7731ee942225/transformed/core-1.9.0/AndroidManifest.xml:26:5-97
 	android:name
 		ADDED from [androidx.core:core:1.9.0] /home/mrcwoods/.gradle/caches/transforms-3/58965ab1a2bf12ef28df7731ee942225/transformed/core-1.9.0/AndroidManifest.xml:26:22-94
-service#androidx.room.MultiInstanceInvalidationService
-ADDED from [androidx.room:room-runtime:2.5.0] /home/mrcwoods/.gradle/caches/transforms-3/4496fb5591bf03576dadc6b63572b9b4/transformed/room-runtime-2.5.0/AndroidManifest.xml:24:9-28:63
-	android:exported
-		ADDED from [androidx.room:room-runtime:2.5.0] /home/mrcwoods/.gradle/caches/transforms-3/4496fb5591bf03576dadc6b63572b9b4/transformed/room-runtime-2.5.0/AndroidManifest.xml:27:13-37
-	tools:ignore
-		ADDED from [androidx.room:room-runtime:2.5.0] /home/mrcwoods/.gradle/caches/transforms-3/4496fb5591bf03576dadc6b63572b9b4/transformed/room-runtime-2.5.0/AndroidManifest.xml:28:13-60
-	android:directBootAware
-		ADDED from [androidx.room:room-runtime:2.5.0] /home/mrcwoods/.gradle/caches/transforms-3/4496fb5591bf03576dadc6b63572b9b4/transformed/room-runtime-2.5.0/AndroidManifest.xml:26:13-43
-	android:name
-		ADDED from [androidx.room:room-runtime:2.5.0] /home/mrcwoods/.gradle/caches/transforms-3/4496fb5591bf03576dadc6b63572b9b4/transformed/room-runtime-2.5.0/AndroidManifest.xml:25:13-74

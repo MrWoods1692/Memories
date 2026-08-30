@@ -87,7 +87,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     { key: "/gallery", label: "广场", icon: <PictureOutlined /> },
     ...(isLoggedIn ? [{ key: "/upload", label: "上传", icon: <CloudUploadOutlined /> }] : []),
     ...(isReviewerOrAdmin ? [{ key: "/review", label: "审核", icon: <AuditOutlined /> }] : []),
-    ...(user?.is_admin ? [{ key: "/admin", label: "管理后台", icon: <ControlOutlined /> }] : []),
+    ...(isReviewerOrAdmin ? [{ key: "/admin", label: "管理后台", icon: <ControlOutlined /> }] : []),
     ...(isLoggedIn ? [{ key: "/profile", label: "个人中心", icon: <UserOutlined /> }] : []),
   ];
   const items: MenuProps["items"] = navItems.map(({ key, label, icon }) => ({ key, label, icon }));

@@ -5,8 +5,10 @@ import { parseExifFromUrl, formatExposureTime, formatFNumber, formatFocalLength,
 const { Text } = Typography;
 
 interface ExifPanelProps {
-  /** 图片完整 URL */
-  url: string;
+  /** 图片完整 URL（无 data 时前端解析该 URL 的 EXIF） */
+  url?: string;
+  /** 服务端存储的 EXIF JSON 字符串（上传时提取入库，优先于 URL 解析，图床转码后也不丢失） */
+  data?: string;
   /** 主题色（用于 label 背景） */
   accentColor: string;
   /** 桌面端：2 列；移动端：1 列 */
@@ -14,14 +16,25 @@ interface ExifPanelProps {
 }
 
 /**
- * EXIF 信息展示面板：纯前端解析 JPEG EXIF，无 EXIF 或非 JPEG 时显示提示。
+ * EXIF 信息展示面板：
+ * - 有 data（服务端记录的 EXIF JSON）时直接渲染，不依赖图床是否保留 EXIF；
+ * - 无 data 时前端解析 JPEG URL 作为兜底。
  */
-export default function ExifPanel({ url, accentColor, isDesktop }: ExifPanelProps) {
-  const [loading, setLoading] = useState(true);
-  const [exif, setExif] = useState<ExifInfo | null>(null);
+export default function ExifPanel({ url, data, accentColor, isDesktop }: ExifPanelProps) {
+  const [loading, setLoading] = useState(!data);
+  const [exif, setExif] = useState<ExifInfo | null>(() => parseStoredExif(data));
   const [error, setError] = useState<string | null>(null);
 
+  // data/url 变化（如切换图片）时同步重建
   useEffect(() => {
+    const stored = parseStoredExif(data);
+    if (stored) {
+      setExif(stored);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+    if (!url) { setExif(null); setLoading(false); return; }
     let cancelled = false;
     setLoading(true);
     setExif(null);
@@ -31,7 +44,7 @@ export default function ExifPanel({ url, accentColor, isDesktop }: ExifPanelProp
       .catch(() => { if (!cancelled) setError("解析失败"); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [url]);
+  }, [url, data]);
 
   if (loading) {
     return <div style={{ textAlign: "center", padding: 16 }}><Spin size="small" /></div>;
@@ -45,6 +58,30 @@ export default function ExifPanel({ url, accentColor, isDesktop }: ExifPanelProp
     );
   }
 
+  return (
+    <>
+      <div style={{ marginTop: 12, marginBottom: 4, display: "flex", alignItems: "center", gap: 6 }}>
+        <Tag color="purple" style={{ borderRadius: 8 }}>EXIF</Tag>
+        <span style={{ fontSize: 12, color: "#999" }}>拍摄信息（上传时记录）</span>
+      </div>
+      <ExifDescriptions exif={exif} accentColor={accentColor} isDesktop={isDesktop} />
+    </>
+  );
+}
+
+/** 把服务端存储的 EXIF JSON 字符串解析为 ExifInfo，失败返回 null */
+function parseStoredExif(data?: string): ExifInfo | null {
+  if (!data) return null;
+  try {
+    const parsed = JSON.parse(data) as Record<string, unknown>;
+    return (typeof parsed === "object" && parsed !== null && Object.keys(parsed).length > 0) ? parsed as unknown as ExifInfo : null;
+  } catch {
+    return null;
+  }
+}
+
+/** EXIF 明细渲染（无解析态，供已解析对象直接使用） */
+export function ExifDescriptions({ exif, accentColor, isDesktop }: { exif: ExifInfo; accentColor: string; isDesktop: boolean }) {
   const items: { label: string; value: React.ReactNode; span?: number }[] = [];
 
   const push = (label: string, value: React.ReactNode, span?: number) => {
@@ -85,23 +122,18 @@ export default function ExifPanel({ url, accentColor, isDesktop }: ExifPanelProp
   }
 
   return (
-    <>
-      <div style={{ marginTop: 12, marginBottom: 4, display: "flex", alignItems: "center", gap: 6 }}>
-        <Tag color="purple" style={{ borderRadius: 8 }}>EXIF</Tag>
-        <span style={{ fontSize: 12, color: "#999" }}>拍摄信息（前端解析）</span>
-      </div>
-      <Descriptions
-        column={isDesktop ? 2 : 1}
-        size="small"
-        bordered
-        styles={{ label: { fontWeight: 600, whiteSpace: "nowrap", background: `${accentColor}10`, color: accentColor } }}
-      >
-        {items.map((it, idx) => (
-          <Descriptions.Item key={idx} label={it.label} span={it.span ?? 1}>
-            {it.value}
-          </Descriptions.Item>
-        ))}
-      </Descriptions>
-    </>
+    <Descriptions
+      column={isDesktop ? 2 : 1}
+      size="small"
+      bordered
+      styles={{ label: { fontWeight: 600, whiteSpace: "nowrap", background: `${accentColor}10`, color: accentColor } }}
+    >
+      {items.map((it, idx) => (
+        <Descriptions.Item key={idx} label={it.label} span={it.span ?? 1}>
+          {it.value}
+        </Descriptions.Item>
+      ))}
+    </Descriptions>
   );
 }
+
