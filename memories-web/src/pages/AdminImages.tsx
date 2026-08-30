@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  App, Button, Card, Image as AntImage, Input, Modal, Segmented, Select, Space, Table, Tag, Tooltip, Typography,
+  App, Button, Card, Image as AntImage, Input, Modal, Pagination, Segmented, Select, Space, Spin, Table, Tag, Tooltip, Typography,
 } from "antd";
 import {
   EditOutlined, ReloadOutlined, FileTextOutlined, TagsOutlined,
@@ -14,6 +14,21 @@ const { Text } = Typography;
 
 const PAGE_SIZE = 20;
 
+/** 移动端断点：宽度 < 640px 时表格列放不下，改用卡片式列表 */
+const MOBILE_BREAKPOINT = 640;
+
+function useIsMobile(): boolean {
+  const [isMobile, setIsMobile] = useState(
+    typeof window !== "undefined" ? window.innerWidth < MOBILE_BREAKPOINT : false
+  );
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth < MOBILE_BREAKPOINT);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+  return isMobile;
+}
+
 type AdminImagesTab = "approved" | "pending" | "rejected";
 
 const TAB_LABELS: Record<AdminImagesTab, string> = { approved: "已通过", pending: "待审核", rejected: "未通过" };
@@ -21,12 +36,14 @@ const TAB_LABELS: Record<AdminImagesTab, string> = { approved: "已通过", pend
 /**
  * 管理后台「图片管理」：查看图片列表，修改标签与描述。
  * 权限：审核员及以上可修改标签，管理员可修改描述（服务端同样校验）。
+ * 桌面端表格、移动端（<640px）卡片式列表，避免长 URL 与多列挤压换行。
  */
 export default function AdminImages() {
   const { message } = App.useApp();
   const { accentColor } = useTheme();
   const { user } = useAuth();
   const isAdmin = !!user?.is_admin;
+  const isMobile = useIsMobile();
 
   const [tab, setTab] = useState<AdminImagesTab>("approved");
   const [items, setItems] = useState<ImageItem[]>([]);
@@ -202,6 +219,64 @@ export default function AdminImages() {
         locale={{ emptyText: "该状态下暂无图片" }}
       />
 
+      {/* 移动端卡片列表：缩略图 + 标签 + 描述 + QQ + 时间，编辑入口常驻 */}
+      {isMobile && (loading ? (
+        <div style={{ textAlign: "center", padding: 32 }}><Spin /></div>
+      ) : items.length === 0 ? (
+        <div style={{ textAlign: "center", padding: 32 }}>
+          <Text type="secondary">该状态下暂无图片</Text>
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 8 }}>
+          {items.map((img) => {
+            const t = parseImageTags(img.tags);
+            return (
+              <Card key={img.url} size="small" style={{ borderRadius: 12 }} styles={{ body: { padding: "10px 12px" } }}>
+                <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                  <AntImage src={img.url} width={64} height={48} style={{ objectFit: "cover", borderRadius: 8, flexShrink: 0 }}
+                    preview={false}
+                    fallback="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQiIGhlaWdodD0iNDgiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjQ4IiBmaWxsPSIjZWVlIi8+PC9zdmc+" />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <Text copyable style={{ fontSize: 12, display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {img.url}
+                    </Text>
+                    <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 5 }}>
+                      {t.length > 0
+                        ? t.slice(0, 3).map((x) => <Tag key={x} color="blue" style={{ borderRadius: 6, fontSize: 10, margin: 0, lineHeight: "18px" }}>{x}</Tag>)
+                        : <Text type="secondary" style={{ fontSize: 11 }}>无标签</Text>}
+                    </div>
+                    {img.description && (
+                      <Text style={{ fontSize: 11, display: "block", marginTop: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {img.description}
+                      </Text>
+                    )}
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 5 }}>
+                      <Text type="secondary" style={{ fontSize: 11 }}>{img.qq || "—"}</Text>
+                      <Text type="secondary" style={{ fontSize: 11 }}>
+                        {img.created_at ? new Date(img.created_at).toLocaleString("zh-CN", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }) : ""}
+                      </Text>
+                    </div>
+                  </div>
+                  <Button size="small" icon={<EditOutlined />} onClick={() => openEdit(img)} style={{ borderRadius: 8, flexShrink: 0 }} />
+                </div>
+              </Card>
+            );
+          })}
+          {items.length > 0 && totalPages > 1 && (
+            <div style={{ display: "flex", justifyContent: "center", padding: "8px 0 4px" }}>
+              <Pagination
+                simple
+                size="small"
+                current={page}
+                pageSize={PAGE_SIZE}
+                total={total}
+                onChange={(p) => { setPage(p); load(p); }}
+              />
+            </div>
+          )}
+        </div>
+      ))}
+
       <Modal
         title={<span style={{ color: accentColor, fontWeight: 700 }}>编辑图片信息</span>}
         open={!!editing}
@@ -210,6 +285,9 @@ export default function AdminImages() {
         okText="保存"
         cancelText="取消"
         confirmLoading={saving}
+        width={isMobile ? "100%" : 520}
+        style={isMobile ? { maxWidth: "100vw", margin: 0, padding: 0, top: 0 } : undefined}
+        styles={{ body: { maxHeight: "80vh", overflowY: "auto" } }}
         destroyOnClose
       >
         {editing && (

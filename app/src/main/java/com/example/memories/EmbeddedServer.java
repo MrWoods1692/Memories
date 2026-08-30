@@ -1076,6 +1076,9 @@ public class EmbeddedServer extends NanoHTTPD {
             // POST /bans - 封禁用户 (qq, reason)
             if ("/bans".equals(uri) && Method.POST.equals(method)) {
                 session.parseBody(new java.util.HashMap<String, String>());
+                // getParms() returns a snapshot taken at call time; re-read AFTER parseBody,
+                // otherwise the form body's qq/reason are invisible and this always returns "missing qq".
+                params = session.getParms();
                 String targetQq = params.get("qq");
                 String reason = params.get("reason");
                 if (targetQq == null || targetQq.isEmpty()) {

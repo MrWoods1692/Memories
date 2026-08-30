@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Button, Card, Dropdown, Image, Input, Progress, Segmented, Select, Space, Tag, Typography, Upload, Popconfirm, App,
 } from "antd";
@@ -182,9 +182,10 @@ export default function UploadPage() {
     if (!file.type.startsWith("image/") && !allowedExt.includes(ext)) {
       message.warning("仅支持上传图片文件"); return Upload.LIST_IGNORE;
     }
-    engine.add([{ id: uid(), fileName: file.name, fileSize: file.size, localUrl: URL.createObjectURL(file), status: "pending", createdAt: Date.now(), tags: [], description: "" }]);
+    // 新加入的图片继承当前批量标签，之后可逐张单独调整
+    engine.add([{ id: uid(), fileName: file.name, fileSize: file.size, localUrl: URL.createObjectURL(file), status: "pending", createdAt: Date.now(), tags: [...batchTags], description: "" }]);
     return false;
-  }, [message]);
+  }, [message, batchTags]);
 
   const startUpload = () => {
     if (!engine.getRecords().some((r) => r.status === "pending" || r.status === "failed")) {
@@ -199,6 +200,12 @@ export default function UploadPage() {
     setBatchTags(tags);
     engine.updateAll((r) => (r.status === "done" ? r : { ...r, tags: [...tags] }));
   };
+
+  /** 全部已知标签（批量标签 + 各记录已选标签），供逐张选择时建议 */
+  const knownTags = useMemo(
+    () => Array.from(new Set([...batchTags, ...records.flatMap((r) => r.tags || [])])),
+    [batchTags, records]
+  );
 
   const retryFailed = () => {
     if (!engine.getRecords().some((r) => r.status === "failed")) {
@@ -229,7 +236,7 @@ export default function UploadPage() {
             const ext = f.name.split(".").pop()?.toLowerCase() || "";
             const allowedExt = ["jpg", "jpeg", "png", "webp", "gif", "bmp", "heic", "heif"];
             if (f.type.startsWith("image/") || allowedExt.includes(ext)) {
-              engine.add([{ id: uid(), fileName: f.name, fileSize: f.size, localUrl: URL.createObjectURL(f), status: "pending", createdAt: Date.now(), tags: [], description: "" }]);
+              engine.add([{ id: uid(), fileName: f.name, fileSize: f.size, localUrl: URL.createObjectURL(f), status: "pending", createdAt: Date.now(), tags: [...batchTags], description: "" }]);
             }
           });
         };
@@ -326,7 +333,7 @@ export default function UploadPage() {
               />
             </div>
             <Text type="secondary" style={{ fontSize: 11, marginTop: 4, display: "block" }}>
-              标签随图片一起提交审核；每张图片可单独填写描述（见下方卡片）。
+              批量标签会应用到全部待上传图片；每张图片下方可单独调整标签、填写描述。
             </Text>
           </div>
         )}
@@ -400,6 +407,18 @@ export default function UploadPage() {
                         </div>
                         <div style={{ marginTop: 4 }}>{statusTag(r.status, r.error)}</div>
                         {r.status !== "done" && (
+                          <>
+                          <Select
+                            mode="tags"
+                            size="small"
+                            style={{ marginTop: 6, width: "100%" }}
+                            placeholder="给这张图片选择标签（回车添加）"
+                            value={r.tags || []}
+                            disabled={r.status === "uploading_imagebed" || r.status === "uploading_server"}
+                            onChange={(v: string[]) => engine.updateOne(r.id, { tags: v })}
+                            options={knownTags.map((t) => ({ value: t, label: t }))}
+                            maxTagCount="responsive"
+                          />
                           <Input
                             size="small"
                             placeholder="给这张图片配一句描述（可选）"
@@ -408,6 +427,7 @@ export default function UploadPage() {
                             onChange={(e) => engine.updateOne(r.id, { description: e.target.value })}
                             style={{ marginTop: 6, borderRadius: 8, fontSize: 12 }}
                           />
+                          </>
                         )}
                       </div>
                       {r.status !== "uploading_imagebed" && r.status !== "uploading_server" && (
