@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
-import { Button, Card, Col, Row, Space, Spin, Statistic, Tag, Tooltip } from "antd";
+import { Button, Card, Col, Row, Space, Spin, Tag } from "antd";
 import {
-  ApiOutlined, CloudServerOutlined, DesktopOutlined, FieldTimeOutlined,
+  ApiOutlined, CloudServerOutlined, DatabaseOutlined, DesktopOutlined, FieldTimeOutlined,
   HddOutlined, ReloadOutlined, ThunderboltFilled,
 } from "@ant-design/icons";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -44,7 +44,7 @@ function MetricCard({
   title: string;
   value: ReactNode;
   suffix?: string;
-  sub: ReactNode;
+  sub?: ReactNode;
   progress?: number;
 }) {
   const { token } = theme.useToken();
@@ -63,12 +63,12 @@ function MetricCard({
           <div style={{ width: `${progress}%`, height: "100%", borderRadius: 3, background: accentColor }} />
         </div>
       )}
-      <div style={{ marginTop: 8, fontSize: 12, color: token.colorTextTertiary, lineHeight: 1.6 }}>{sub}</div>
+      {sub && <div style={{ marginTop: 8, fontSize: 12, color: token.colorTextTertiary, lineHeight: 1.6 }}>{sub}</div>}
     </Card>
   );
 }
 
-/** 说明行：标签 + 值，用于 CPU / 电池明细 */
+/** 说明行：标签 + 值，用于电池明细 */
 function InfoRow({ label, value }: { label: string; value: ReactNode }) {
   const { token } = theme.useToken();
   return (
@@ -152,7 +152,7 @@ export function AdminSystemInfo() {
               value={sysinfo ? fmtBytes(sysinfo.disk.used) : "-"}
               suffix={sysinfo ? `/ ${fmtBytes(sysinfo.disk.total)}` : undefined}
               progress={sysinfo ? pct(sysinfo.disk.used, sysinfo.disk.total) : undefined}
-              sub={sysinfo ? <span>剩余 {fmtBytes(sysinfo.disk.free)} · 数据库 {fmtBytes(sysinfo.db_size)}</span> : <span>硬盘信息不可用</span>}
+              sub={sysinfo ? <span>剩余 {fmtBytes(sysinfo.disk.free)}</span> : <span>硬盘信息不可用</span>}
             />
           </Col>
           <Col xs={12} sm={8} md={6} lg={4}>
@@ -169,7 +169,6 @@ export function AdminSystemInfo() {
               icon={<FieldTimeOutlined />}
               title="运行时间"
               value={status ? fmtUptime(status.uptime) : "-"}
-              sub={sysinfo ? <span>{sysinfo.battery.device_model} · Android {sysinfo.battery.android_version}</span> : <span>设备信息不可用</span>}
             />
           </Col>
           <Col xs={12} sm={8} md={6} lg={4}>
@@ -177,35 +176,26 @@ export function AdminSystemInfo() {
               icon={<ApiOutlined />}
               title="API 调用"
               value={status ? status.today_request_count.toLocaleString("zh-CN") : "-"}
-              sub={status ? <span>今日调用，累计 {status.request_count.toLocaleString("zh-CN")} 次</span> : <span>调用数据不可用</span>}
+            />
+          </Col>
+          <Col xs={12} sm={8} md={6} lg={4}>
+            <MetricCard
+              icon={<DatabaseOutlined />}
+              title="数据库大小"
+              value={sysinfo ? fmtBytes(sysinfo.db_size) : "-"}
             />
           </Col>
         </Row>
 
         {sysinfo && (
-          <Row gutter={[12, 12]} style={{ marginTop: 12 }}>
-            <Col xs={24} md={12}>
-              <Card size="small" styles={{ body: { padding: "4px 16px 8px" } }} style={{ borderRadius: 12 }}>
-                <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 4, color: accentColor }}>CPU 详情</div>
-                <InfoRow label="型号" value={sysinfo.cpu.model} />
-                <InfoRow label="架构" value={`${sysinfo.cpu.arch} · ${sysinfo.cpu.cores} 核`} />
-                <InfoRow label="SoC" value={sysinfo.hardware.soc} />
-                <InfoRow label="1分钟负载" value={sysinfo.cpu.load.avg1 ? sysinfo.cpu.load.avg1.toFixed(2) : "-"} />
-                <InfoRow label="15分钟负载" value={sysinfo.cpu.load.avg15 ? sysinfo.cpu.load.avg15.toFixed(2) : "-"} />
-              </Card>
-            </Col>
-            <Col xs={24} md={12}>
-              <Card size="small" styles={{ body: { padding: "4px 16px 8px" } }} style={{ borderRadius: 12 }}>
-                <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 4, color: accentColor }}>UPS 详情</div>
-                <InfoRow label="状态" value={sysinfo.battery.status} />
-                <InfoRow label="供电方式" value={sysinfo.battery.power_source} />
-                <InfoRow label="温度" value={`${sysinfo.battery.temperature}°C`} />
-                <InfoRow label="电压" value={`${sysinfo.battery.voltage}V`} />
-                <InfoRow label="健康" value={sysinfo.battery.health} />
-                <InfoRow label="类型" value={sysinfo.battery.technology} />
-              </Card>
-            </Col>
-          </Row>
+          <Card size="small" styles={{ body: { padding: "4px 16px 8px" } }} style={{ borderRadius: 12, marginTop: 12 }}>
+            <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 4, color: accentColor }}>UPS 详情</div>
+            <InfoRow label="状态" value={sysinfo.battery.status} />
+            <InfoRow label="供电方式" value={sysinfo.battery.power_source} />
+            <InfoRow label="温度" value={`${sysinfo.battery.temperature}°C`} />
+            <InfoRow label="健康" value={sysinfo.battery.health} />
+            <InfoRow label="类型" value={sysinfo.battery.technology} />
+          </Card>
         )}
       </Spin>
     </Card>
