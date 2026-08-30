@@ -683,6 +683,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             WriteQueue.submit(() -> {
                 SQLiteDatabase db = getSharedDb();
                 ContentValues cv = new ContentValues();
+                // qq 是主键，必须先写入，否则每次落盘的都是 qq=NULL 的孤儿行，按 qq 永远查不到
+                cv.put("qq", qq);
                 if (settings != null) {
                     if (settings.has("theme_preset")) cv.put("theme_preset", settings.isNull("theme_preset") ? null : settings.getString("theme_preset"));
                     if (settings.has("font_size")) cv.put("font_size", settings.isNull("font_size") ? null : settings.getInt("font_size"));
@@ -691,6 +693,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 }
                 cv.put("updated_at", System.currentTimeMillis());
                 db.insertWithOnConflict("user_settings", null, cv, SQLiteDatabase.CONFLICT_REPLACE);
+                // 清理旧版本写入的 qq=NULL 孤儿行（无主键归属，无法被任何用户命中）
+                db.delete("user_settings", "qq IS NULL", null);
                 markDatabaseDirty();
                 return null;
             }).get();
