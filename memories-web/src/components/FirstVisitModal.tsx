@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button, Checkbox, Modal, theme, Typography } from "antd";
 import { ArrowRightOutlined, LinkOutlined } from "@ant-design/icons";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -41,6 +41,17 @@ export default function FirstVisitModal() {
   // 未勾选时只关本次会话，刷新/下次打开仍会弹出
   const [dontShowAgain, setDontShowAgain] = useState(false);
 
+  // 与 AppLayout 的桌面断点保持一致；移动端收紧内边距、链接保持一行不断行
+  const [isDesktop, setIsDesktop] = useState(
+    typeof window !== "undefined" ? window.innerWidth >= 768 : true
+  );
+  useEffect(() => {
+    const onResize = () => setIsDesktop(window.innerWidth >= 768);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+  const isMobile = !isDesktop;
+
   const close = () => {
     if (dontShowAgain) markSeen();
     setOpen(false);
@@ -69,8 +80,8 @@ export default function FirstVisitModal() {
       style={{
         display: "flex",
         alignItems: "center",
-        gap: 12,
-        padding: "12px 14px",
+        gap: isMobile ? 10 : 12,
+        padding: isMobile ? "10px 12px" : "12px 14px",
         borderRadius: 14,
         textDecoration: "none",
         background: tone === "accent"
@@ -90,8 +101,8 @@ export default function FirstVisitModal() {
     >
       <div
         style={{
-          width: 36,
-          height: 36,
+          width: isMobile ? 32 : 36,
+          height: isMobile ? 32 : 36,
           // 图片 Logo 用圆形裁剪，图标分支保持圆角方块
           borderRadius: iconUrl ? "50%" : 10,
           flexShrink: 0,
@@ -111,8 +122,8 @@ export default function FirstVisitModal() {
           <img
             src={iconUrl}
             alt={title}
-            width={36}
-            height={36}
+            width={isMobile ? 32 : 36}
+            height={isMobile ? 32 : 36}
             style={{ width: "100%", height: "100%", objectFit: "cover" }}
           />
         ) : (
@@ -123,7 +134,16 @@ export default function FirstVisitModal() {
         <div style={{ fontSize: 14, fontWeight: 600, color: "var(--ant-color-text)" }}>
           {title}
         </div>
-        <div style={{ fontSize: 12, color: "var(--ant-color-text-secondary)", wordBreak: "break-all" }}>
+        <div
+          style={{
+            fontSize: isMobile ? 11 : 12,
+            color: "var(--ant-color-text-secondary)",
+            // 链接整行显示：不折断，宽度不足时截断而非换行
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+          }}
+        >
           {desc}
         </div>
       </div>
@@ -138,7 +158,7 @@ export default function FirstVisitModal() {
       footer={null}
       closable={false}
       maskClosable
-      width={420}
+      width={isMobile ? "min(420px, calc(100vw - 32px))" : 420}
       centered
       styles={{
         // 蒙层虚化：backdrop-filter 需作用于蒙层自身（mask 层），而非弹窗 content
@@ -150,7 +170,7 @@ export default function FirstVisitModal() {
         },
         content: {
           borderRadius: 20,
-          padding: "28px 24px 22px",
+          padding: isMobile ? "24px 18px 20px" : "28px 24px 22px",
           overflow: "hidden",
           maxWidth: "calc(100vw - 32px)",
           // font-family 可继承，声明在 content 根节点即可覆盖弹窗内所有文字
