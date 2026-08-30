@@ -51,19 +51,19 @@ function MetricCard({
   const { accentColor } = useTheme();
   return (
     <Card size="small" styles={{ body: { padding: "14px 16px" } }} style={{ borderRadius: 14, height: "100%" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-        <span style={{ color: accentColor, fontSize: 15 }}>{icon}</span>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+        <span style={{ color: accentColor, fontSize: 14 }}>{icon}</span>
         <span style={{ fontSize: 13, color: token.colorTextSecondary, fontWeight: 600 }}>{title}</span>
       </div>
-      <div style={{ fontSize: 24, fontWeight: 700, lineHeight: 1.2, color: token.colorText }}>
-        {value}{suffix ? <span style={{ fontSize: 14, fontWeight: 500, marginLeft: 6, color: token.colorTextSecondary }}>{suffix}</span> : null}
+      <div style={{ fontSize: 22, fontWeight: 700, lineHeight: 1.2, color: token.colorText }}>
+        {value}{suffix ? <span style={{ fontSize: 13, fontWeight: 500, marginLeft: 6, color: token.colorTextSecondary }}>{suffix}</span> : null}
       </div>
       {progress !== undefined && (
-        <div style={{ marginTop: 10, height: 6, borderRadius: 3, background: token.colorFillSecondary, overflow: "hidden" }}>
+        <div style={{ marginTop: 8, height: 6, borderRadius: 3, background: token.colorFillSecondary, overflow: "hidden" }}>
           <div style={{ width: `${progress}%`, height: "100%", borderRadius: 3, background: accentColor }} />
         </div>
       )}
-      {sub && <div style={{ marginTop: 8, fontSize: 12, color: token.colorTextTertiary, lineHeight: 1.6 }}>{sub}</div>}
+      {sub && <div style={{ marginTop: 6, fontSize: 12, color: token.colorTextTertiary, lineHeight: 1.6 }}>{sub}</div>}
     </Card>
   );
 }
@@ -72,7 +72,7 @@ function MetricCard({
 function InfoRow({ label, value }: { label: string; value: ReactNode }) {
   const { token } = theme.useToken();
   return (
-    <div style={{ display: "flex", justifyContent: "space-between", gap: 12, padding: "6px 0", fontSize: 13, borderBottom: `1px solid ${token.colorFillQuaternary}` }}>
+    <div style={{ display: "flex", justifyContent: "space-between", gap: 12, padding: "5px 0", fontSize: 13, borderBottom: `1px solid ${token.colorFillQuaternary}` }}>
       <span style={{ color: token.colorTextTertiary, flexShrink: 0 }}>{label}</span>
       <span style={{ fontWeight: 500, textAlign: "right", wordBreak: "break-all" }}>{value}</span>
     </div>
@@ -109,95 +109,110 @@ export function AdminSystemInfo() {
 
   const batteryOk = sysinfo && sysinfo.battery.level >= 0;
   const memUsed = sysinfo ? sysinfo.memory.sys_total - sysinfo.memory.sys_available : 0;
+  const diskPct = sysinfo ? pct(sysinfo.disk.used, sysinfo.disk.total) : 0;
+  const memPct = sysinfo && sysinfo.memory.sys_total > 0 ? pct(memUsed, sysinfo.memory.sys_total) : 0;
   return (
-    <Card size="small" style={{ borderRadius: 14 }} styles={{ body: { padding: 16 } }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14, flexWrap: "wrap", gap: 8 }}>
-        <Space size="small">
-          <span style={{ fontSize: 14, fontWeight: 600 }}>运行状态</span>
-          <Tag color={failed ? "error" : "success"} style={{ borderRadius: 10, margin: 0 }}>
-            {failed ? "获取失败" : "实时同步"}
-          </Tag>
-        </Space>
-        <Button size="small" icon={<ReloadOutlined />} onClick={load} style={{ borderRadius: 8 }}>刷新</Button>
-      </div>
+    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      <Card size="small" styles={{ body: { padding: 14 } }} style={{ borderRadius: 14 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12, flexWrap: "wrap", gap: 8 }}>
+          <Space size={8}>
+            <span style={{ fontSize: 14, fontWeight: 600 }}>设备资源</span>
+            <Tag color={failed ? "error" : "success"} style={{ borderRadius: 10, margin: 0 }}>
+              {failed ? "获取失败" : "实时同步"}
+            </Tag>
+          </Space>
+          <Button size="small" icon={<ReloadOutlined />} onClick={load} style={{ borderRadius: 8 }}>刷新</Button>
+        </div>
+        <Spin spinning={loading}>
+          <Row gutter={[12, 12]}>
+            <Col xs={12} md={8}>
+              <MetricCard
+                icon={<ThunderboltFilled />}
+                title="UPS 电量"
+                value={batteryOk ? sysinfo!.battery.level : "-"}
+                suffix={batteryOk ? "%" : undefined}
+                progress={batteryOk ? sysinfo!.battery.level : undefined}
+                sub={batteryOk ? <span>{sysinfo!.battery.status} · {sysinfo!.battery.power_source} · {sysinfo!.battery.temperature}°C</span> : <span>电量不可用</span>}
+              />
+            </Col>
+            <Col xs={12} md={8}>
+              <MetricCard
+                icon={<CloudServerOutlined />}
+                title="内存占用"
+                value={sysinfo && sysinfo.memory.sys_total > 0 ? fmtBytes(memUsed) : "-"}
+                suffix={sysinfo && sysinfo.memory.sys_total > 0 ? `${memPct}%` : undefined}
+                progress={sysinfo && sysinfo.memory.sys_total > 0 ? memPct : undefined}
+                sub={sysinfo ? <span>可用 {fmtBytes(sysinfo.memory.sys_available)} / 共 {fmtBytes(sysinfo.memory.sys_total)}</span> : <span>内存信息不可用</span>}
+              />
+            </Col>
+            <Col xs={24} md={8}>
+              <MetricCard
+                icon={<HddOutlined />}
+                title="硬盘占用"
+                value={sysinfo ? fmtBytes(sysinfo.disk.used) : "-"}
+                suffix={sysinfo ? `${diskPct}% / ${fmtBytes(sysinfo.disk.total)}` : undefined}
+                progress={sysinfo ? diskPct : undefined}
+                sub={sysinfo ? <span>剩余 {fmtBytes(sysinfo.disk.free)}</span> : <span>硬盘信息不可用</span>}
+              />
+            </Col>
+          </Row>
+        </Spin>
+      </Card>
 
-      <Spin spinning={loading}>
-        <Row gutter={[12, 12]}>
-          <Col xs={12} sm={8} md={6} lg={4}>
-            <MetricCard
-              icon={<ThunderboltFilled />}
-              title="UPS 电量"
-              value={batteryOk ? `${sysinfo!.battery.level}%` : "-"}
-              progress={batteryOk ? sysinfo!.battery.level : undefined}
-              sub={batteryOk
-                ? <span>{sysinfo!.battery.status} · {sysinfo!.battery.power_source} · {sysinfo!.battery.temperature}°C</span>
-                : <span>电量不可用</span>}
-            />
-          </Col>
-          <Col xs={12} sm={8} md={6} lg={4}>
-            <MetricCard
-              icon={<CloudServerOutlined />}
-              title="内存占用"
-              value={sysinfo && sysinfo.memory.sys_total > 0 ? fmtBytes(memUsed) : "-"}
-              progress={sysinfo && sysinfo.memory.sys_total > 0 ? pct(memUsed, sysinfo.memory.sys_total) : undefined}
-              sub={sysinfo
-                ? <span>可用 {fmtBytes(sysinfo.memory.sys_available)} / 共 {fmtBytes(sysinfo.memory.sys_total)}</span>
-                : <span>内存信息不可用</span>}
-            />
-          </Col>
-          <Col xs={12} sm={8} md={6} lg={4}>
-            <MetricCard
-              icon={<HddOutlined />}
-              title="硬盘占用"
-              value={sysinfo ? fmtBytes(sysinfo.disk.used) : "-"}
-              suffix={sysinfo ? `/ ${fmtBytes(sysinfo.disk.total)}` : undefined}
-              progress={sysinfo ? pct(sysinfo.disk.used, sysinfo.disk.total) : undefined}
-              sub={sysinfo ? <span>剩余 {fmtBytes(sysinfo.disk.free)}</span> : <span>硬盘信息不可用</span>}
-            />
-          </Col>
-          <Col xs={12} sm={8} md={6} lg={4}>
-            <MetricCard
-              icon={<DesktopOutlined />}
-              title="CPU 核心"
-              value={sysinfo ? sysinfo.cpu.cores : "-"}
-              suffix={sysinfo ? "核" : undefined}
-              sub={sysinfo ? <span>{sysinfo.cpu.arch}{sysinfo.cpu.load.avg1 ? ` · 负载 ${sysinfo.cpu.load.avg1.toFixed(2)}` : ""}</span> : <span>CPU 信息不可用</span>}
-            />
-          </Col>
-          <Col xs={12} sm={8} md={6} lg={4}>
-            <MetricCard
-              icon={<FieldTimeOutlined />}
-              title="运行时间"
-              value={status ? fmtUptime(status.uptime) : "-"}
-            />
-          </Col>
-          <Col xs={12} sm={8} md={6} lg={4}>
-            <MetricCard
-              icon={<ApiOutlined />}
-              title="API 调用"
-              value={status ? status.today_request_count.toLocaleString("zh-CN") : "-"}
-            />
-          </Col>
-          <Col xs={12} sm={8} md={6} lg={4}>
-            <MetricCard
-              icon={<DatabaseOutlined />}
-              title="数据库大小"
-              value={sysinfo ? fmtBytes(sysinfo.db_size) : "-"}
-            />
-          </Col>
-        </Row>
+      <Card size="small" styles={{ body: { padding: 14 } }} style={{ borderRadius: 14 }}>
+        <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 12 }}>服务运行</div>
+        <Spin spinning={loading}>
+          <Row gutter={[12, 12]}>
+            <Col xs={12} md={6}>
+              <MetricCard
+                icon={<DesktopOutlined />}
+                title="CPU 核心"
+                value={sysinfo ? sysinfo.cpu.cores : "-"}
+                suffix={sysinfo ? "核" : undefined}
+                sub={sysinfo ? <span>{sysinfo.cpu.arch}{sysinfo.cpu.load.avg1 ? ` · 负载 ${sysinfo.cpu.load.avg1.toFixed(2)}` : ""}</span> : <span>CPU 信息不可用</span>}
+              />
+            </Col>
+            <Col xs={12} md={6}>
+              <MetricCard
+                icon={<FieldTimeOutlined />}
+                title="运行时间"
+                value={status ? fmtUptime(status.uptime) : "-"}
+              />
+            </Col>
+            <Col xs={12} md={6}>
+              <MetricCard
+                icon={<ApiOutlined />}
+                title="API 调用"
+                value={status ? status.today_request_count.toLocaleString("zh-CN") : "-"}
+                suffix={status ? "次/今日" : undefined}
+              />
+            </Col>
+            <Col xs={12} md={6}>
+              <MetricCard
+                icon={<DatabaseOutlined />}
+                title="数据库大小"
+                value={sysinfo ? fmtBytes(sysinfo.db_size) : "-"}
+              />
+            </Col>
+          </Row>
+        </Spin>
+      </Card>
 
-        {sysinfo && (
-          <Card size="small" styles={{ body: { padding: "4px 16px 8px" } }} style={{ borderRadius: 12, marginTop: 12 }}>
-            <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 4, color: accentColor }}>UPS 详情</div>
-            <InfoRow label="状态" value={sysinfo.battery.status} />
-            <InfoRow label="供电方式" value={sysinfo.battery.power_source} />
-            <InfoRow label="温度" value={`${sysinfo.battery.temperature}°C`} />
-            <InfoRow label="健康" value={sysinfo.battery.health} />
-            <InfoRow label="类型" value={sysinfo.battery.technology} />
-          </Card>
-        )}
-      </Spin>
-    </Card>
+      {sysinfo && (
+        <Card size="small" styles={{ body: { padding: "14px 16px" } }} style={{ borderRadius: 14 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+            <span style={{ color: accentColor, fontSize: 15 }}><ThunderboltFilled /></span>
+            <span style={{ fontSize: 14, fontWeight: 600 }}>UPS 详情</span>
+          </div>
+          <Row gutter={[24, 10]}>
+            <Col xs={12} sm={6}><InfoRow label="状态" value={sysinfo.battery.status} /></Col>
+            <Col xs={12} sm={6}><InfoRow label="供电方式" value={sysinfo.battery.power_source} /></Col>
+            <Col xs={12} sm={6}><InfoRow label="温度" value={`${sysinfo.battery.temperature}°C`} /></Col>
+            <Col xs={12} sm={6}><InfoRow label="健康" value={sysinfo.battery.health} /></Col>
+            <Col xs={24}><InfoRow label="类型" value={sysinfo.battery.technology} /></Col>
+          </Row>
+        </Card>
+      )}
+    </div>
   );
 }
