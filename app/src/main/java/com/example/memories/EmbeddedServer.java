@@ -311,33 +311,35 @@ public class EmbeddedServer extends NanoHTTPD {
 
         try {
             if ("/images".equals(uri) && Method.GET.equals(method)) {
-                // 分页参数：page（页码，默认1），limit（每页条数，默认20），status（默认只返回审核通过）
+                // 分页参数：page（页码，默认1），limit（每页条数，默认20），status（默认=通过表，pending=待审核，rejected=未通过）
                 Map<String, String> params = session.getParms();
                 int page = 1;
                 int limit = 20;
-                boolean allStatus = false;
-                try {
-                    String pageStr = params.get("page");
-                    if (pageStr != null && !pageStr.isEmpty()) page = Integer.parseInt(pageStr);
-                    String limitStr = params.get("limit");
-                    if (limitStr != null && !limitStr.isEmpty()) limit = Integer.parseInt(limitStr);
-                    // status=all 时返回全部状态图片，需要审核身份
-                    String statusStr = params.get("status");
-                    if ("all".equals(statusStr)) {
-                        allStatus = true;
-                    }
-                } catch (NumberFormatException ignored) {}
-
-                // 如果需要全部状态图片，检查审核权限（局域网 或 审核员 role>=1）
-                if (allStatus) {
+                String table = "images_approved";
+                String statusStr = params.get("status");
+                if ("pending".equals(statusStr)) {
+                    table = "images_pending";
+                    // 待审核列表需要审核身份（局域网 或 审核员 role>=1）
                     String qq = session.getHeaders().get("x-user-qq");
                     int role = db.getUserRole(qq);
                     if (!isLanRequest(session) && role < 1) {
                         return NanoHTTPD.newFixedLengthResponse(Status.UNAUTHORIZED, "text/plain", "reviewer required");
                     }
+                } else if ("rejected".equals(statusStr)) {
+                    table = "images_rejected";
+                    // 未通过管理仅管理员可见
+                    if (!isAdmin(session, db)) {
+                        return NanoHTTPD.newFixedLengthResponse(Status.UNAUTHORIZED, "text/plain", "admin required");
+                    }
                 }
+                try {
+                    String pageStr = params.get("page");
+                    if (pageStr != null && !pageStr.isEmpty()) page = Integer.parseInt(pageStr);
+                    String limitStr = params.get("limit");
+                    if (limitStr != null && !limitStr.isEmpty()) limit = Integer.parseInt(limitStr);
+                } catch (NumberFormatException ignored) {}
 
-                String json = db.listImagesPaginatedJson(page, limit, allStatus);
+                String json = db.listImagesPaginatedJson(table, page, limit);
                 return NanoHTTPD.newFixedLengthResponse(Status.OK, "application/json", json);
             }
 
@@ -371,7 +373,7 @@ public class EmbeddedServer extends NanoHTTPD {
                 return NanoHTTPD.newFixedLengthResponse(Status.OK, "application/json", result.toString());
             }
 
-            // DELETE /images/delete?url=... — 删除图片
+            // DELETE /images/delete?url=...&table=... — 删除图片（table: pending/approved/rejected，缺省自动查找三表）
             if ("/images/delete".equals(uri) && Method.DELETE.equals(method)) {
                 if (!isAdmin(session, db)) return NanoHTTPD.newFixedLengthResponse(Status.UNAUTHORIZED, "text/plain", "admin required");
                 Map<String, String> params = session.getParms();
@@ -379,13 +381,12 @@ public class EmbeddedServer extends NanoHTTPD {
                 if (url == null || url.isEmpty()) {
                     return NanoHTTPD.newFixedLengthResponse(Status.BAD_REQUEST, "text/plain", "missing url");
                 }
-                long rowid = db.findImageRowId(url);
-                if (rowid < 0) return NanoHTTPD.newFixedLengthResponse(Status.NOT_FOUND, "text/plain", "not found");
-                boolean ok = db.deleteImage(rowid);
+                String table = params.get("table");
+                boolean ok = db.deleteImageByUrl(table, url);
                 return NanoHTTPD.newFixedLengthResponse(ok ? Status.OK : Status.NOT_FOUND, "text/plain", ok ? "deleted" : "not found");
             }
 
-            // POST /images/audit?url=...&status=... — 审核图片
+            // POST /images/audit?url=...&status=... — 审核图片：status=1 通过、status=2 拒绝（移动到对应表，拒绝不删除）
             if ("/images/audit".equals(uri) && Method.POST.equals(method)) {
                 String qq = session.getHeaders().get("x-user-qq");
                 int role = db.getUserRole(qq);
@@ -398,18 +399,26 @@ public class EmbeddedServer extends NanoHTTPD {
                 if (url == null || url.isEmpty()) {
                     return NanoHTTPD.newFixedLengthResponse(Status.BAD_REQUEST, "text/plain", "missing url");
                 }
-                long rowid = db.findImageRowId(url);
-                if (rowid < 0) return NanoHTTPD.newFixedLengthResponse(Status.NOT_FOUND, "text/plain", "not found");
                 int status = Integer.parseInt(statusStr == null ? "0" : statusStr);
-                if (status == 2) {
-                    String autoCleanup = db.getConfig("auto_cleanup_rejected");
-                    if (autoCleanup == null || "true".equals(autoCleanup)) {
-                        boolean deleted = db.deleteImage(rowid);
-                        return NanoHTTPD.newFixedLengthResponse(deleted ? Status.OK : Status.NOT_FOUND, "text/plain", "deleted");
-                    }
+                if (status != 1 && status != 2) {
+                    return NanoHTTPD.newFixedLengthResponse(Status.BAD_REQUEST, "text/plain", "invalid status");
                 }
-                boolean ok = db.updateImageStatus(rowid, status);
-                return NanoHTTPD.newFixedLengthResponse(ok ? Status.OK : Status.NOT_FOUND, "text/plain", ok ? "updated" : "not found");
+                boolean ok = db.auditImage(url, status);
+                return NanoHTTPD.newFixedLengthResponse(ok ? Status.OK : Status.NOT_FOUND, "text/plain", ok ? "moved" : "not found");
+            }
+
+            // POST /images/recover?url=... — 未通过 → 通过（仅管理员）
+            if ("/images/recover".equals(uri) && Method.POST.equals(method)) {
+                if (!isAdmin(session, db)) return NanoHTTPD.newFixedLengthResponse(Status.UNAUTHORIZED, "text/plain", "admin required");
+                Map<String, String> files = new java.util.HashMap<>();
+                session.parseBody(files);
+                Map<String, String> params = session.getParms();
+                String url = params.get("url");
+                if (url == null || url.isEmpty()) {
+                    return NanoHTTPD.newFixedLengthResponse(Status.BAD_REQUEST, "text/plain", "missing url");
+                }
+                boolean ok = db.recoverImage(url);
+                return NanoHTTPD.newFixedLengthResponse(ok ? Status.OK : Status.NOT_FOUND, "text/plain", ok ? "moved" : "not found");
             }
         } catch (Exception e) {
             Log.e(TAG, "handleImages error", e);

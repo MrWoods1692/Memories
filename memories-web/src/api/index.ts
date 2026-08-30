@@ -425,12 +425,12 @@ export async function queryImageInfo(filename: string): Promise<ImageBedInfo> {
 
 /* ==================== 图片审核 ==================== */
 
-/** GET /images?status=all — 获取所有图片（含待审核），需要审核员/管理员权限 */
+/** GET /images?status=pending — 获取待审核图片（待审核表），需要审核员/管理员权限 */
 export async function fetchPendingImages(
   page: number,
   limit: number = 20
 ): Promise<PaginatedResponse> {
-  return getRequest<PaginatedResponse>(`/images?status=all&page=${page}&limit=${limit}`);
+  return getRequest<PaginatedResponse>(`/images?status=pending&page=${page}&limit=${limit}`);
 }
 
 /** POST /images/audit?url=...&status=... — 审核图片：status=1 通过，status=2 拒绝 */

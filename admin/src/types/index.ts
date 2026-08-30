@@ -2,9 +2,11 @@
 export type ImageStatus = 0 | 1 | 2;
 
 export interface ImageItem {
+  id?: number;
   url: string;
   status: ImageStatus;
   created_at: string;
+  qq?: string;
 }
 
 // 用户角色：1=审核员, 2=管理员

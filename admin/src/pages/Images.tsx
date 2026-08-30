@@ -21,12 +21,16 @@ interface PaginatedImages {
   totalPages: number;
 }
 
+type TabKey = 'pending' | 'approved' | 'rejected';
+
+const TAB_LABELS: Record<TabKey, string> = { pending: '待审核', approved: '已通过', rejected: '未通过' };
+
 export function Images({ toast, refreshKey }: ImagesProps) {
+  const [tab, setTab] = useState<TabKey>('pending');
   const [rawImages, setRawImages] = useState<ImageItem[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [filter, setFilter] = useState('');
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 300);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -36,10 +40,16 @@ export function Images({ toast, refreshKey }: ImagesProps) {
   const [acting, setActing] = useState<Set<string>>(new Set());
   const [previewIdx, setPreviewIdx] = useState<number>(-1);
 
+  /** 当前页签对应的查询参数：待审核/未通过走各自表，已通过走默认（通过表） */
+  const tabQuery = useCallback((p: number) => {
+    const base = `/images?page=${p}&limit=${PAGE_SIZE}`;
+    return tab === 'pending' ? `${base}&status=pending` : tab === 'rejected' ? `${base}&status=rejected` : base;
+  }, [tab]);
+
   const loadPage = useCallback(async (p: number) => {
     setLoading(true);
     try {
-      const data = await apiGet<PaginatedImages>(`/images?page=${p}&limit=${PAGE_SIZE}&status=all`);
+      const data = await apiGet<PaginatedImages>(tabQuery(p));
       setRawImages(Array.isArray(data.items) ? data.items : []);
       setTotal(data.total || 0);
       setPage(data.page || p);
@@ -49,7 +59,15 @@ export function Images({ toast, refreshKey }: ImagesProps) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [tabQuery]);
+
+  const switchTab = (t: TabKey) => {
+    if (t === tab) return;
+    setTab(t);
+    setSelected(new Set());
+    setPreviewIdx(-1);
+    // loadPage 依赖 tab，切换后 useEffect 会自动重新加载第一页
+  };
 
   useEffect(() => { loadPage(1); }, [loadPage, refreshKey]);
 
@@ -61,10 +79,9 @@ export function Images({ toast, refreshKey }: ImagesProps) {
 
   const images = useMemo(() => {
     let result = rawImages;
-    if (filter) result = result.filter(i => i.status === parseInt(filter) as ImageStatus);
     if (debouncedSearch) result = result.filter(i => (i.url || '').toLowerCase().includes(debouncedSearch.toLowerCase()));
     return result;
-  }, [rawImages, filter, debouncedSearch]);
+  }, [rawImages, debouncedSearch]);
 
   const toggleSelectAll = (checked: boolean) => {
     if (checked) {
@@ -96,11 +113,27 @@ export function Images({ toast, refreshKey }: ImagesProps) {
     }
   };
 
+  /** 未通过 → 通过（仅未通过页签展示） */
+  const recoverImage = async (url: string) => {
+    setActing(prev => new Set(prev).add(url));
+    try {
+      await apiPost(`/images/recover?url=${encodeURIComponent(url)}`);
+      toast('已改为通过');
+      loadPage(page);
+    } catch {
+      toast('操作失败', 'error');
+    } finally {
+      setActing(prev => { const n = new Set(prev); n.delete(url); return n; });
+    }
+  };
+
+  const tableParam = tab === 'approved' ? 'approved' : tab === 'rejected' ? 'rejected' : 'pending';
+
   const deleteImage = (url: string) => {
     setConfirmMsg(`确定删除图片？`);
     setConfirmAction(() => async () => {
       try {
-        await apiDelete(`/images/delete?url=${encodeURIComponent(url)}`);
+        await apiDelete(`/images/delete?url=${encodeURIComponent(url)}&table=${tableParam}`);
         toast('已删除');
         loadPage(page);
       } catch {
@@ -115,7 +148,7 @@ export function Images({ toast, refreshKey }: ImagesProps) {
     setConfirmMsg(`确定删除选中的 ${selected.size} 张图片？`);
     setConfirmAction(() => async () => {
       for (const imageUrl of selected) {
-        try { await apiDelete(`/images/delete?url=${encodeURIComponent(imageUrl)}`); } catch { /* continue */ }
+        try { await apiDelete(`/images/delete?url=${encodeURIComponent(imageUrl)}&table=${tableParam}`); } catch { /* continue */ }
       }
       setSelected(new Set());
       toast('批量删除完成');
@@ -163,6 +196,20 @@ export function Images({ toast, refreshKey }: ImagesProps) {
     finally { setActing(p => { const n = new Set(p); n.delete(previewItem.url); return n; }); }
   };
 
+  /** 预览弹窗里把未通过图片恢复为通过 */
+  const handlePreviewRecover = async () => {
+    if (!previewItem) return;
+    setActing(p => new Set(p).add(previewItem.url));
+    try {
+      await apiPost(`/images/recover?url=${encodeURIComponent(previewItem.url)}`);
+      toast('已改为通过');
+      loadPage(page);
+      if (hasNext) { setTimeout(() => previewNext(), 100); }
+      else setPreviewIdx(-1);
+    } catch { toast('操作失败', 'error'); }
+    finally { setActing(p => { const n = new Set(p); n.delete(previewItem.url); return n; }); }
+  };
+
   // 键盘快捷键
   useEffect(() => {
     if (previewIdx < 0) return;
@@ -170,22 +217,16 @@ export function Images({ toast, refreshKey }: ImagesProps) {
       if (e.key === 'Escape') setPreviewIdx(-1);
       else if (e.key === 'ArrowLeft' && hasPrev) previewPrev();
       else if (e.key === 'ArrowRight' && hasNext) previewNext();
-      else if (e.key === 'a' && !e.ctrlKey && !e.metaKey) handlePreviewAudit(1);
-      else if (e.key === 'r' && !e.ctrlKey && !e.metaKey) handlePreviewAudit(2);
+      else if (e.key === 'a' && tab === 'pending' && !e.ctrlKey && !e.metaKey) handlePreviewAudit(1);
+      else if (e.key === 'r' && tab === 'pending' && !e.ctrlKey && !e.metaKey) handlePreviewAudit(2);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [previewIdx, hasPrev, hasNext, previewItem]);
+  }, [previewIdx, hasPrev, hasNext, previewItem, tab]);
 
   const isSearching = search !== debouncedSearch;
   const statusLabels: Record<number, string> = { 0: '待审核', 1: '已通过', 2: '已拒绝' };
   const statusBadge: Record<number, string> = { 0: 'badge-0', 1: 'badge-1', 2: 'badge-2' };
-  const statusCounts = useMemo(() => ({
-    all: rawImages.length,
-    pending: rawImages.filter(i => i.status === 0).length,
-    approved: rawImages.filter(i => i.status === 1).length,
-    rejected: rawImages.filter(i => i.status === 2).length,
-  }), [rawImages]);
 
   // 分页按钮生成
   const pageButtons = useMemo(() => {
@@ -203,15 +244,16 @@ export function Images({ toast, refreshKey }: ImagesProps) {
 
   return (
     <div className="card">
-      <h2><IconImage size={16} /> 图片列表 <span className="card-count">共 {total} 张{isSearching ? '…' : ''}</span></h2>
+      <h2><IconImage size={16} /> 图片管理 <span className="card-count">共 {total} 张{isSearching ? '…' : ''}</span></h2>
 
       <div className="filter-bar">
-        <select value={filter} onChange={e => setFilter(e.target.value)}>
-          <option value="">全部状态</option>
-          <option value="0">待审核</option>
-          <option value="1">已通过</option>
-          <option value="2">已拒绝</option>
-        </select>
+        <div className="status-pills" role="tablist">
+          {(Object.keys(TAB_LABELS) as TabKey[]).map(k => (
+            <button key={k} className={`status-pill ${tab === k ? 'active' : ''}`} onClick={() => switchTab(k)}>
+              {TAB_LABELS[k]}
+            </button>
+          ))}
+        </div>
         <div className="search-wrap">
           <IconSearch size={14} className="search-icon" />
           <input
@@ -220,33 +262,29 @@ export function Images({ toast, refreshKey }: ImagesProps) {
             className="search-input"
           />
         </div>
-        <div className="status-pills">
-          <button className={`status-pill ${filter === '' ? 'active' : ''}`} onClick={() => setFilter('')}>全部 {statusCounts.all}</button>
-          <button className={`status-pill ${filter === '0' ? 'active' : ''}`} onClick={() => setFilter('0')}>待审 {statusCounts.pending}</button>
-          <button className={`status-pill ${filter === '1' ? 'active' : ''}`} onClick={() => setFilter('1')}>已过 {statusCounts.approved}</button>
-          <button className={`status-pill ${filter === '2' ? 'active' : ''}`} onClick={() => setFilter('2')}>已拒 {statusCounts.rejected}</button>
-        </div>
         {selected.size > 0 && (
           <button className="btn btn-danger btn-sm" onClick={batchDelete}>
             <IconTrash size={13} /> 删除选中 ({selected.size})
           </button>
         )}
-        <button className="btn btn-warn btn-sm" onClick={() => {
-          setConfirmMsg('确定清理所有已拒绝的图片记录？此操作不可撤销。');
-          setConfirmAction(() => async () => {
-            try {
-              const resp = await apiDelete('/images/cleanup');
-              const data = JSON.parse(resp);
-              toast(data.message || '清理完成', 'success');
-              loadPage(page);
-            } catch {
-              toast('清理失败', 'error');
-            }
-            setConfirmAction(null);
-          });
-        }}>
-          <IconTrash size={13} /> 清理已拒绝
-        </button>
+        {tab === 'rejected' && (
+          <button className="btn btn-warn btn-sm" onClick={() => {
+            setConfirmMsg('确定清理所有已拒绝的图片记录？此操作不可撤销。');
+            setConfirmAction(() => async () => {
+              try {
+                const resp = await apiDelete('/images/cleanup');
+                const data = JSON.parse(resp);
+                toast(data.message || '清理完成', 'success');
+                loadPage(page);
+              } catch {
+                toast('清理失败', 'error');
+              }
+              setConfirmAction(null);
+            });
+          }}>
+            <IconTrash size={13} /> 清理已拒绝
+          </button>
+        )}
       </div>
 
       {loading ? (
@@ -295,8 +333,15 @@ export function Images({ toast, refreshKey }: ImagesProps) {
                   <td style={{whiteSpace:'nowrap',fontSize:'0.73rem'}} title={fmtTs(i.created_at)}>{relativeTime(i.created_at)}</td>
                   <td onClick={e => e.stopPropagation()}>
                     <div className="table-actions">
-                      <button className="btn btn-success btn-xs" onClick={() => auditImage(i.url, 1)} title="通过" disabled={busy}>{busy ? <span className="spin">⟳</span> : <IconCheck size={12} />}</button>
-                      <button className="btn btn-warn btn-xs" onClick={() => auditImage(i.url, 2)} title="拒绝" disabled={busy}>{busy ? <span className="spin">⟳</span> : <IconX size={12} />}</button>
+                      {tab === 'pending' && (
+                        <>
+                          <button className="btn btn-success btn-xs" onClick={() => auditImage(i.url, 1)} title="通过" disabled={busy}>{busy ? <span className="spin">⟳</span> : <IconCheck size={12} />}</button>
+                          <button className="btn btn-warn btn-xs" onClick={() => auditImage(i.url, 2)} title="拒绝" disabled={busy}>{busy ? <span className="spin">⟳</span> : <IconX size={12} />}</button>
+                        </>
+                      )}
+                      {tab === 'rejected' && (
+                        <button className="btn btn-success btn-xs" onClick={() => recoverImage(i.url)} title="给通过" disabled={busy}>{busy ? <span className="spin">⟳</span> : <IconCheck size={12} />}</button>
+                      )}
                       <button className="btn btn-danger btn-xs" onClick={() => deleteImage(i.url)} title="删除"><IconTrash size={12} /></button>
                     </div>
                   </td>
@@ -360,7 +405,7 @@ export function Images({ toast, refreshKey }: ImagesProps) {
                 </button>
               </div>
               <div className="preview-audit">
-                {previewItem.status === 0 ? (
+                {tab === 'pending' && (
                   <>
                     <button className="btn btn-success" disabled={acting.has(previewItem.url)} onClick={() => handlePreviewAudit(1)} title="通过 (A)">
                       <IconCheck size={16} /> 通过
@@ -369,15 +414,14 @@ export function Images({ toast, refreshKey }: ImagesProps) {
                       <IconX size={16} /> 不通过
                     </button>
                   </>
-                ) : (
-                  <>
-                    <button className="btn btn-success" disabled={acting.has(previewItem.url)} onClick={() => handlePreviewAudit(1)} title="改为通过">
-                      <IconCheck size={16} /> 设为通过
-                    </button>
-                    <button className="btn btn-danger" disabled={acting.has(previewItem.url)} onClick={() => handlePreviewAudit(2)} title="改为拒绝">
-                      <IconX size={16} /> 设为拒绝
-                    </button>
-                  </>
+                )}
+                {tab === 'rejected' && (
+                  <button className="btn btn-success" disabled={acting.has(previewItem.url)} onClick={handlePreviewRecover} title="给通过">
+                    <IconCheck size={16} /> 给通过
+                  </button>
+                )}
+                {tab === 'approved' && (
+                  <span className="preview-pos" style={{ color: 'var(--text-secondary)' }}>已通过图片，可在列表中删除</span>
                 )}
               </div>
             </div>

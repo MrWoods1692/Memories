@@ -26,6 +26,7 @@ export default function GalleryPage() {
   const [images, setImages] = useState<ImageItem[]>([]);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0); // 通过图片总数（来自分页响应的 total）
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const { message } = App.useApp();
@@ -439,6 +440,7 @@ export default function GalleryPage() {
         });
       }
       setTotalPages(res.totalPages); setPage(pageNum);
+      setTotal(res.total);
       retryCount.current.delete(pageNum); // 成功则清除重试记录
 
       // 自动加载下一页（不等待滚动到底部）
@@ -532,6 +534,7 @@ export default function GalleryPage() {
         }
         setImages(fresh.items.filter((item, idx, arr) => arr.findIndex((i) => i.url === item.url) === idx));
         setTotalPages(fresh.totalPages);
+        setTotal(fresh.total);
         setPage(1);
         // 预加载首屏图片
         prefetchImages(fresh.items.slice(0, 20).map((i) => i.url));
@@ -592,7 +595,7 @@ export default function GalleryPage() {
           width: "100%",
         }}>
           <Text type="secondary" style={{ fontSize: 13 }}>
-            共 {images.length} 张
+            共 {total} 张
           </Text>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             {!batchMode && (

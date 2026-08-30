@@ -25,7 +25,7 @@ import java.util.concurrent.ThreadFactory;
 
 public class DatabaseHelper extends SQLiteOpenHelper {
     private static final String DB_NAME = "memories.db";
-    private static final int DB_VERSION = 5;
+    private static final int DB_VERSION = 6;
     private static String dbPath = null;
     private static SQLiteDatabase sharedDb = null;
     private static final ExecutorService requestLogExecutor = Executors.newFixedThreadPool(
@@ -85,18 +85,21 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             throw new Exception("源文件不存在或为空");
         }
 
-        // 验证源文件是有效的 SQLite 数据库
+        // 验证源文件是有效的 SQLite 数据库（v6 起图片拆为三张表，兼容旧版单 images 表）
         SQLiteDatabase testDb = null;
         try {
             testDb = SQLiteDatabase.openDatabase(
                     sourceFile.getAbsolutePath(), null, SQLiteDatabase.OPEN_READONLY);
-            Cursor c = testDb.rawQuery("SELECT COUNT(*) FROM images", null);
-            if (!c.moveToFirst()) {
-                c.close();
-                testDb.close();
-                throw new Exception("无法读取源数据库的 images 表");
+            Cursor c = testDb.rawQuery("SELECT name FROM sqlite_master WHERE type='table' AND name IN ('images_pending','images_approved','images_rejected','images')", null);
+            boolean hasImageTable = false;
+            while (c.moveToNext()) {
+                if (c.getString(0) != null) { hasImageTable = true; break; }
             }
             c.close();
+            if (!hasImageTable) {
+                testDb.close();
+                throw new Exception("无法读取源数据库的图片表");
+            }
         } catch (Exception e) {
             if (testDb != null) testDb.close();
             throw new Exception("源文件不是有效的 Memories 数据库: " + e.getMessage());
@@ -121,11 +124,14 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         File journalFile = new File(dbPath + "-journal");
         if (journalFile.exists()) journalFile.delete();
 
-        // 重新打开数据库
+        // 重新打开数据库，统计所有图片表（三表拆分后总数 = 三张表之和）
         SQLiteDatabase db = getSharedDb();
-        Cursor c = db.rawQuery("SELECT COUNT(*) FROM images", null);
-        long count = c.moveToFirst() ? c.getLong(0) : 0;
-        c.close();
+        long count = 0;
+        for (String t : IMAGE_TABLES) {
+            Cursor c = db.rawQuery("SELECT COUNT(*) FROM " + t, null);
+            if (c.moveToFirst()) count += c.getLong(0);
+            c.close();
+        }
 
         Log.i("DatabaseHelper", "Database imported successfully, " + count + " images");
         return count;
@@ -163,7 +169,10 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
     @Override
     public void onCreate(SQLiteDatabase db) {
-        db.execSQL("CREATE TABLE images (id INTEGER PRIMARY KEY AUTOINCREMENT, url TEXT, status INTEGER DEFAULT 0, created_at INTEGER, qq TEXT)");
+        // 图片按审核状态拆分为三张表；拒绝的图片保留在 images_rejected，不自动删除
+        db.execSQL("CREATE TABLE images_pending (id INTEGER PRIMARY KEY AUTOINCREMENT, url TEXT, created_at INTEGER, qq TEXT)");
+        db.execSQL("CREATE TABLE images_approved (id INTEGER PRIMARY KEY AUTOINCREMENT, url TEXT, created_at INTEGER, qq TEXT)");
+        db.execSQL("CREATE TABLE images_rejected (id INTEGER PRIMARY KEY AUTOINCREMENT, url TEXT, created_at INTEGER, qq TEXT)");
         db.execSQL("CREATE TABLE users (id INTEGER PRIMARY KEY AUTOINCREMENT, qq TEXT, role INTEGER)");
         db.execSQL("CREATE TABLE config (k TEXT PRIMARY KEY, v TEXT)");
         db.execSQL("CREATE TABLE banned_users (qq TEXT PRIMARY KEY, reason TEXT, banned_at INTEGER)");
@@ -197,10 +206,20 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             db.execSQL("DROP TABLE images");
             db.execSQL("ALTER TABLE images_new RENAME TO images");
         }
+        if (oldVersion < 6) {
+            // v6：按 status 拆分为三张表，保留原 id；拒绝的图片不再自动删除
+            db.execSQL("CREATE TABLE IF NOT EXISTS images_pending (id INTEGER PRIMARY KEY AUTOINCREMENT, url TEXT, created_at INTEGER, qq TEXT)");
+            db.execSQL("CREATE TABLE IF NOT EXISTS images_approved (id INTEGER PRIMARY KEY AUTOINCREMENT, url TEXT, created_at INTEGER, qq TEXT)");
+            db.execSQL("CREATE TABLE IF NOT EXISTS images_rejected (id INTEGER PRIMARY KEY AUTOINCREMENT, url TEXT, created_at INTEGER, qq TEXT)");
+            db.execSQL("INSERT INTO images_pending (id, url, created_at, qq) SELECT id, url, created_at, qq FROM images WHERE status=0");
+            db.execSQL("INSERT INTO images_approved (id, url, created_at, qq) SELECT id, url, created_at, qq FROM images WHERE status=1");
+            db.execSQL("INSERT INTO images_rejected (id, url, created_at, qq) SELECT id, url, created_at, qq FROM images WHERE status=2");
+            db.execSQL("DROP TABLE images");
+        }
     }
 
     /**
-     * 添加图片，返回自增主键 id；同时记录上传者 qq 与上传时间 created_at。
+     * 添加上传图片到待审核表，返回自增主键 id；同时记录上传者 qq 与上传时间 created_at。
      */
     public long addImage(String url, String qq) {
         try {
@@ -210,7 +229,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 cv.put("url", url);
                 cv.put("qq", qq == null ? "" : qq);
                 cv.put("created_at", System.currentTimeMillis());
-                long result = db.insert("images", null, cv);
+                long result = db.insert("images_pending", null, cv);
                 markDatabaseDirty();
                 return result;
             }).get();
@@ -343,54 +362,43 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         return sdf.format(timestamp);
     }
 
+    /** 图片表白名单：待审核 / 已通过 / 未通过 */
+    private static final String[] IMAGE_TABLES = {"images_pending", "images_approved", "images_rejected"};
+
+    private static boolean isImageTable(String table) {
+        for (String t : IMAGE_TABLES) if (t.equals(table)) return true;
+        return false;
+    }
+
+    /** 表名 → 兼容旧接口的状态值（0=待审核, 1=已通过, 2=已拒绝） */
+    private static int tableStatus(String table) {
+        if ("images_pending".equals(table)) return 0;
+        if ("images_rejected".equals(table)) return 2;
+        return 1;
+    }
+
     public String listImagesJson() {
-        SQLiteDatabase db = getSharedDb();
-        Cursor c = db.rawQuery("SELECT id, url, status, created_at, qq FROM images ORDER BY created_at DESC", null);
-        JSONArray arr = new JSONArray();
-        while (c.moveToNext()) {
-            JSONObject o = new JSONObject();
-            try {
-                o.put("id", c.getLong(0));
-                o.put("url", c.getString(1));
-                o.put("status", c.getInt(2));
-                o.put("created_at", c.getLong(3));
-                o.put("qq", c.getString(4) == null ? "" : c.getString(4));
-                arr.put(o);
-            } catch (Exception ignored) {}
-        }
-        c.close();
-        return arr.toString();
+        return listImagesPaginatedJson("images_approved", 1, 1000000);
     }
 
     /**
-     * 分页查询图片列表 — 默认只返回审核通过的图片 (status=1)
+     * 分页查询指定图片表（images_pending / images_approved / images_rejected）
+     * @param table 目标表名（白名单校验，非法值回落为通过表）
      * @param page 页码，从 1 开始
      * @param limit 每页条数，默认 20
      * @return JSON: {"items":[...], "total":N, "page":1, "limit":20, "totalPages":N}
      */
-    public String listImagesPaginatedJson(int page, int limit) {
-        return listImagesPaginatedJson(page, limit, false);
-    }
-
-    /**
-     * 分页查询图片列表，支持返回全部状态
-     * @param page 页码，从 1 开始
-     * @param limit 每页条数，默认 20
-     * @param allStatus true=返回全部状态, false=只返回审核通过 (status=1)
-     * @return JSON: {"items":[...], "total":N, "page":1, "limit":20, "totalPages":N}
-     */
-    public String listImagesPaginatedJson(int page, int limit, boolean allStatus) {
+    public String listImagesPaginatedJson(String table, int page, int limit) {
+        if (!isImageTable(table)) table = "images_approved";
         if (page < 1) page = 1;
         if (limit < 1) limit = 20;
         int offset = (page - 1) * limit;
+        int status = tableStatus(table);
 
         SQLiteDatabase db = getSharedDb();
 
-        String whereClause = allStatus ? "" : " WHERE status = 1";
-        String countSql = "SELECT COUNT(*) FROM images" + whereClause;
-
-        // 查总数
-        Cursor countCur = db.rawQuery(countSql, null);
+        // 查总数（通过表的总数即广场展示的总图片数）
+        Cursor countCur = db.rawQuery("SELECT COUNT(*) FROM " + table, null);
         long total = 0;
         if (countCur.moveToFirst()) total = countCur.getLong(0);
         countCur.close();
@@ -399,7 +407,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
         // 查分页数据
         Cursor c = db.rawQuery(
-            "SELECT id, url, status, created_at, qq FROM images" + whereClause + " ORDER BY created_at DESC LIMIT ? OFFSET ?",
+            "SELECT id, url, created_at, qq FROM " + table + " ORDER BY created_at DESC LIMIT ? OFFSET ?",
             new String[]{String.valueOf(limit), String.valueOf(offset)}
         );
         JSONArray items = new JSONArray();
@@ -408,9 +416,9 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             try {
                 o.put("id", c.getLong(0));
                 o.put("url", c.getString(1));
-                o.put("status", c.getInt(2));
-                o.put("created_at", c.getLong(3));
-                o.put("qq", c.getString(4) == null ? "" : c.getString(4));
+                o.put("status", status);
+                o.put("created_at", c.getLong(2));
+                o.put("qq", c.getString(3) == null ? "" : c.getString(3));
                 items.put(o);
             } catch (Exception ignored) {}
         }
@@ -429,21 +437,23 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         return result.toString();
     }
 
-    /** 根据 url 查找图片主键 id（rowid 与显式自增 id 等价），用于 delete/audit 操作 */
-    public long findImageRowId(String url) {
+    /** 根据 url 查找指定图片表中的主键 id，用于 delete/audit/recover 操作 */
+    public long findImageRowId(String table, String url) {
+        if (!isImageTable(table)) return -1;
         SQLiteDatabase db = getSharedDb();
-        Cursor c = db.rawQuery("SELECT rowid FROM images WHERE url=?", new String[]{url});
-        long rowid = -1;
-        if (c.moveToFirst()) rowid = c.getLong(0);
+        Cursor c = db.rawQuery("SELECT id FROM " + table + " WHERE url=?", new String[]{url});
+        long id = -1;
+        if (c.moveToFirst()) id = c.getLong(0);
         c.close();
-        return rowid;
+        return id;
     }
 
-    public boolean deleteImage(long id) {
+    public boolean deleteImage(String table, long id) {
+        if (!isImageTable(table)) return false;
         try {
             return WriteQueue.submit(() -> {
                 SQLiteDatabase db = getSharedDb();
-                int rows = db.delete("images", "rowid=?", new String[]{String.valueOf(id)});
+                int rows = db.delete(table, "id=?", new String[]{String.valueOf(id)});
                 if (rows > 0) markDatabaseDirty();
                 return rows > 0;
             }).get();
@@ -453,25 +463,75 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         }
     }
 
-    public boolean updateImageStatus(long id, int status) {
+    /**
+     * 按 url 删除图片；table 为空时依次查找三张表。
+     * 仅删除指定记录，不涉及审核状态变更。
+     */
+    public boolean deleteImageByUrl(String table, String url) {
+        String[] tables = (table != null && !table.isEmpty()) ? new String[]{table} : IMAGE_TABLES;
+        for (String t : tables) {
+            long id = findImageRowId(t, url);
+            if (id >= 0) return deleteImage(t, id);
+        }
+        return false;
+    }
+
+    /**
+     * 把一行图片从 fromTable 移动到 toTable（保留 id/url/created_at/qq）。
+     * 审核（待审核→通过/拒绝）与恢复（未通过→通过）都走移动而非删除，拒绝的图片不会消失。
+     */
+    public boolean moveImage(String fromTable, String toTable, long id) {
+        if (!isImageTable(fromTable) || !isImageTable(toTable)) return false;
         try {
             return WriteQueue.submit(() -> {
                 SQLiteDatabase db = getSharedDb();
+                Cursor c = db.rawQuery("SELECT url, created_at, qq FROM " + fromTable + " WHERE id=?", new String[]{String.valueOf(id)});
+                if (!c.moveToFirst()) {
+                    c.close();
+                    return false;
+                }
+                String url = c.getString(0);
+                long createdAt = c.getLong(1);
+                String qq = c.getString(2);
+                c.close();
+
                 ContentValues cv = new ContentValues();
-                cv.put("status", status);
-                int rows = db.update("images", cv, "rowid=?", new String[]{String.valueOf(id)});
-                if (rows > 0) markDatabaseDirty();
-                return rows > 0;
+                cv.put("id", id);
+                cv.put("url", url);
+                cv.put("created_at", createdAt);
+                cv.put("qq", qq == null ? "" : qq);
+                long inserted = db.insertWithOnConflict(toTable, null, cv, SQLiteDatabase.CONFLICT_REPLACE);
+                if (inserted >= 0) {
+                    db.delete(fromTable, "id=?", new String[]{String.valueOf(id)});
+                    markDatabaseDirty();
+                    return true;
+                }
+                return false;
             }).get();
         } catch (Exception e) {
-            Log.e("DatabaseHelper", "updateImageStatus error", e);
+            Log.e("DatabaseHelper", "moveImage error", e);
             return false;
         }
     }
 
+    /** 审核待审核图片：status=1 移动到通过表，status=2 移动到未通过表（都不删除） */
+    public boolean auditImage(String url, int status) {
+        String to = status == 1 ? "images_approved" : "images_rejected";
+        long id = findImageRowId("images_pending", url);
+        if (id < 0) return false;
+        return moveImage("images_pending", to, id);
+    }
+
+    /** 未通过 → 通过（管理员在未通过管理页操作） */
+    public boolean recoverImage(String url) {
+        long id = findImageRowId("images_rejected", url);
+        if (id < 0) return false;
+        return moveImage("images_rejected", "images_approved", id);
+    }
+
     public long getImageCount() {
         SQLiteDatabase db = getSharedDb();
-        Cursor c = db.rawQuery("SELECT COUNT(*) FROM images", null);
+        Cursor c = db.rawQuery("SELECT COUNT(*) FROM images_approved", null);
         long cnt = 0;
         if (c.moveToFirst()) cnt = c.getLong(0);
         c.close();
@@ -1057,13 +1117,13 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     }
 
     /**
-     * 清理所有已拒绝（status=2）的图片记录，返回删除数量
+     * 手动清理所有未通过图片记录（仅管理员触发，审核拒绝不会自动删除），返回删除数量
      */
     public int cleanupRejectedImages() {
         try {
             return WriteQueue.submit(() -> {
                 SQLiteDatabase db = getSharedDb();
-                int deleted = db.delete("images", "status=?", new String[]{"2"});
+                int deleted = db.delete("images_rejected", null, null);
                 if (deleted > 0) markDatabaseDirty();
                 return deleted;
             }).get();
