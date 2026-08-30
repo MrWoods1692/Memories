@@ -25,7 +25,7 @@ import java.util.concurrent.ThreadFactory;
 
 public class DatabaseHelper extends SQLiteOpenHelper {
     private static final String DB_NAME = "memories.db";
-    private static final int DB_VERSION = 4;
+    private static final int DB_VERSION = 5;
     private static String dbPath = null;
     private static SQLiteDatabase sharedDb = null;
     private static final ExecutorService requestLogExecutor = Executors.newFixedThreadPool(
@@ -163,7 +163,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
     @Override
     public void onCreate(SQLiteDatabase db) {
-        db.execSQL("CREATE TABLE images (url TEXT, status INTEGER DEFAULT 0, created_at INTEGER)");
+        db.execSQL("CREATE TABLE images (id INTEGER PRIMARY KEY AUTOINCREMENT, url TEXT, status INTEGER DEFAULT 0, created_at INTEGER, qq TEXT)");
         db.execSQL("CREATE TABLE users (id INTEGER PRIMARY KEY AUTOINCREMENT, qq TEXT, role INTEGER)");
         db.execSQL("CREATE TABLE config (k TEXT PRIMARY KEY, v TEXT)");
         db.execSQL("CREATE TABLE banned_users (qq TEXT PRIMARY KEY, reason TEXT, banned_at INTEGER)");
@@ -190,18 +190,25 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             db.execSQL("DROP TABLE images");
             db.execSQL("ALTER TABLE images_new RENAME TO images");
         }
+        if (oldVersion < 5) {
+            // 新增显式自增主键 id 与上传者 qq 列，按原 rowid 顺序重建，保证 id 连续分配
+            db.execSQL("CREATE TABLE images_new (id INTEGER PRIMARY KEY AUTOINCREMENT, url TEXT, status INTEGER DEFAULT 0, created_at INTEGER, qq TEXT)");
+            db.execSQL("INSERT INTO images_new (url, status, created_at) SELECT url, status, created_at FROM images ORDER BY rowid");
+            db.execSQL("DROP TABLE images");
+            db.execSQL("ALTER TABLE images_new RENAME TO images");
+        }
     }
 
     /**
-     * 添加图片，返回 SQLite 自动分配的 rowid。
-     * rowid 在删除后会被 SQLite 自动回收复用，无需手动管理。
+     * 添加图片，返回自增主键 id；同时记录上传者 qq 与上传时间 created_at。
      */
-    public long addImage(String url) {
+    public long addImage(String url, String qq) {
         try {
             return WriteQueue.submit(() -> {
                 SQLiteDatabase db = getSharedDb();
                 ContentValues cv = new ContentValues();
                 cv.put("url", url);
+                cv.put("qq", qq == null ? "" : qq);
                 cv.put("created_at", System.currentTimeMillis());
                 long result = db.insert("images", null, cv);
                 markDatabaseDirty();
@@ -338,14 +345,16 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
     public String listImagesJson() {
         SQLiteDatabase db = getSharedDb();
-        Cursor c = db.rawQuery("SELECT url, status, created_at FROM images ORDER BY created_at DESC", null);
+        Cursor c = db.rawQuery("SELECT id, url, status, created_at, qq FROM images ORDER BY created_at DESC", null);
         JSONArray arr = new JSONArray();
         while (c.moveToNext()) {
             JSONObject o = new JSONObject();
             try {
-                o.put("url", c.getString(0));
-                o.put("status", c.getInt(1));
-                o.put("created_at", c.getLong(2));
+                o.put("id", c.getLong(0));
+                o.put("url", c.getString(1));
+                o.put("status", c.getInt(2));
+                o.put("created_at", c.getLong(3));
+                o.put("qq", c.getString(4) == null ? "" : c.getString(4));
                 arr.put(o);
             } catch (Exception ignored) {}
         }
@@ -390,16 +399,18 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
         // 查分页数据
         Cursor c = db.rawQuery(
-            "SELECT url, status, created_at FROM images" + whereClause + " ORDER BY created_at DESC LIMIT ? OFFSET ?",
+            "SELECT id, url, status, created_at, qq FROM images" + whereClause + " ORDER BY created_at DESC LIMIT ? OFFSET ?",
             new String[]{String.valueOf(limit), String.valueOf(offset)}
         );
         JSONArray items = new JSONArray();
         while (c.moveToNext()) {
             JSONObject o = new JSONObject();
             try {
-                o.put("url", c.getString(0));
-                o.put("status", c.getInt(1));
-                o.put("created_at", c.getLong(2));
+                o.put("id", c.getLong(0));
+                o.put("url", c.getString(1));
+                o.put("status", c.getInt(2));
+                o.put("created_at", c.getLong(3));
+                o.put("qq", c.getString(4) == null ? "" : c.getString(4));
                 items.put(o);
             } catch (Exception ignored) {}
         }
@@ -418,10 +429,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         return result.toString();
     }
 
-    /**
-     * 删除图片。SQLite 隐式 rowid 会在后续插入时自动回收。
-     */
-    /** 根据 url 查找 rowid，用于 delete/audit 操作 */
+    /** 根据 url 查找图片主键 id（rowid 与显式自增 id 等价），用于 delete/audit 操作 */
     public long findImageRowId(String url) {
         SQLiteDatabase db = getSharedDb();
         Cursor c = db.rawQuery("SELECT rowid FROM images WHERE url=?", new String[]{url});

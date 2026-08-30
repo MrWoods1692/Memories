@@ -1,4 +1,3 @@
-/** OAuth 回调重定向参数（URL query params） */
 export interface OAuthRedirectParams {
   token: string;
   qq: string;
@@ -18,10 +17,11 @@ export interface AuthResponse {
 
 /** 图片资源（来自 GET /images） */
 export interface ImageItem {
-  id?: number;
+  id?: number;          // 自增主键
   url: string;
   status: number;      // 0=待审核, 1=已通过, 2=已拒绝
-  created_at: number;   // Unix 毫秒时间戳
+  created_at: number;   // Unix 毫秒时间戳（上传时间）
+  qq?: string;          // 上传者 QQ
 }
 
 /** 图片列表分页响应 */

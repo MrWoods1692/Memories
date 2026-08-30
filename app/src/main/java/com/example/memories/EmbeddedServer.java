@@ -349,7 +349,9 @@ public class EmbeddedServer extends NanoHTTPD {
                 if (url == null || url.isEmpty()) {
                     return NanoHTTPD.newFixedLengthResponse(Status.BAD_REQUEST, "text/plain", "missing url");
                 }
-                long id = db.addImage(url);
+                // 记录上传者的 QQ（局域网未登录时为空），上传时间由 addImage 写入 created_at
+                String qq = session.getHeaders().get("x-user-qq");
+                long id = db.addImage(url, qq == null ? "" : qq);
 
                 // 自动同步到 WebDAV（后台线程，不阻塞响应）
                 autoSyncToWebdav();
