@@ -1,4 +1,5 @@
 import type { AdminBan, AdminUser } from "@/types";
+import type { ServerStatus, SysInfo } from "@/types/sysinfo";
 import { BASE, getAccessToken } from "@/api";
 
 /** 读取本地登录用户的 QQ，用于后端 x-user-qq 鉴权（内网请求不依赖该头） */
@@ -69,4 +70,14 @@ export async function banAdminUser(qq: string, reason: string): Promise<unknown>
 /** DELETE /bans/{qq} — 解封用户（管理员权限） */
 export async function unbanAdminUser(qq: string): Promise<unknown> {
   return adminFetch<unknown>(`/bans/${encodeURIComponent(qq)}`, { method: "DELETE" });
+}
+
+/** GET /status — 服务端状态：图片数、API 调用数量、运行时间等（无需鉴权） */
+export async function fetchServerStatus(): Promise<ServerStatus> {
+  return adminFetch<ServerStatus>("/status");
+}
+
+/** GET /sysinfo — 设备资源：UPS 电量、内存占用、硬盘占用、CPU 核心等（无需鉴权） */
+export async function fetchSysInfo(): Promise<SysInfo> {
+  return adminFetch<SysInfo>("/sysinfo");
 }

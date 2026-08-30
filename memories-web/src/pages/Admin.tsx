@@ -3,8 +3,8 @@ import {
   App, Badge, Button, Card, Form, Input, Modal, Select, Space, Table, Tabs, Tag, Tooltip, Typography,
 } from "antd";
 import {
-  EyeOutlined, SafetyCertificateOutlined, TeamOutlined, UndoOutlined,
-  UserAddOutlined, UserDeleteOutlined, StopOutlined, ReloadOutlined,
+  EyeOutlined, MonitorOutlined, ReloadOutlined, SafetyCertificateOutlined,
+  StopOutlined, TeamOutlined, UndoOutlined, UserAddOutlined, UserDeleteOutlined,
 } from "@ant-design/icons";
 import { useTheme } from "@/contexts/ThemeContext";
 import { theme } from "antd";
@@ -14,6 +14,7 @@ import {
   removeAdminUser, unbanAdminUser,
 } from "@/api/admin";
 import type { AdminBan, AdminUser } from "@/types";
+import { AdminSystemInfo } from "@/pages/AdminSystemInfo";
 
 const { Title, Text } = Typography;
 
@@ -71,6 +72,7 @@ function QqAvatar({ qq }: { qq: string }) {
 export default function AdminPage() {
   const { message, modal } = App.useApp();
   const { accentColor } = useTheme();
+  const { token } = theme.useToken();
   const { user } = useAuth();
   const isMobile = useIsMobile();
 
@@ -367,6 +369,11 @@ export default function AdminPage() {
       <div style={{ padding: "0 16px" }}>
         <Tabs
           items={[
+            {
+              key: "system",
+              label: <span><MonitorOutlined style={{ marginRight: 6 }} />系统信息</span>,
+              children: <AdminSystemInfo />,
+            },
             {
               key: "users",
               label: <span><TeamOutlined style={{ marginRight: 6 }} />权限用户</span>,
