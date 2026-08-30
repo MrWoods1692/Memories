@@ -17,11 +17,17 @@ async function adminFetch<T>(url: string, init?: RequestInit): Promise<T> {
   if (qq) headers.set("x-user-qq", qq);
 
   const res = await fetch(`${BASE}${url}`, { ...init, headers });
+  const text = await res.text();
   if (!res.ok) {
-    const text = await res.text();
     throw new Error(text || `请求失败: ${res.status}`);
   }
-  return res.json() as Promise<T>;
+  // 后端写操作（如 DELETE /users/{qq} 返回 "deleted"）是纯文本而非 JSON，
+  // 直接 res.json() 会抛 "unexpected character"，这里做 JSON 兜底解析
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    return text as unknown as T;
+  }
 }
 
 /** GET /users — 获取审核员与管理员列表（管理员权限） */
