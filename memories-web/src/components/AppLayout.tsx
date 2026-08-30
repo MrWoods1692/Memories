@@ -82,14 +82,20 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const siderWidth = collapsed ? 60 : 180;
 
   const isReviewerOrAdmin = user?.is_reviewer || user?.is_admin;
-  const items: MenuProps["items"] = [
-    { label: "广场", key: "/gallery", icon: <PictureOutlined /> },
-    ...(isLoggedIn ? [{ label: "上传", key: "/upload", icon: <CloudUploadOutlined /> }] : []),
-    ...(isReviewerOrAdmin ? [{ label: "审核", key: "/review", icon: <AuditOutlined /> }] : []),
-    ...(user?.is_admin ? [{ label: "管理后台", key: "/admin", icon: <ControlOutlined /> }] : []),
-    ...(isLoggedIn ? [{ label: "个人中心", key: "/profile", icon: <UserOutlined /> }] : []),
+  // 侧边栏与移动端底部导航共用同一份菜单项（label / key / icon）
+  const navItems: { key: string; label: string; icon: ReactNode }[] = [
+    { key: "/gallery", label: "广场", icon: <PictureOutlined /> },
+    ...(isLoggedIn ? [{ key: "/upload", label: "上传", icon: <CloudUploadOutlined /> }] : []),
+    ...(isReviewerOrAdmin ? [{ key: "/review", label: "审核", icon: <AuditOutlined /> }] : []),
+    ...(user?.is_admin ? [{ key: "/admin", label: "管理后台", icon: <ControlOutlined /> }] : []),
+    ...(isLoggedIn ? [{ key: "/profile", label: "个人中心", icon: <UserOutlined /> }] : []),
   ];
-  const currentKey = items?.find((opt) => opt && location.pathname.startsWith(opt.key as string))?.key || "/gallery";
+  const items: MenuProps["items"] = navItems.map(({ key, label, icon }) => ({ key, label, icon }));
+  const currentKey = navItems.find((opt) => location.pathname.startsWith(opt.key))?.key || "/gallery";
+
+  // 非普通用户（审核员 / 管理员）移动端为「图标在上、文字在下」，普通用户保持横排
+  const stackedMobileNav = isReviewerOrAdmin;
+  const bottomPadding = isDesktop ? 24 : stackedMobileNav ? 76 : 64;
 
   return (
     <Layout style={{ minHeight: "100vh", background: token.colorBgLayout }} hasSider={isDesktop}>
@@ -204,7 +210,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       )}
       <Layout style={{ marginLeft: isDesktop ? siderWidth : 0, transition: "margin-left 0.2s", background: token.colorBgLayout }}>
         <Content style={{
-          paddingBottom: isDesktop ? 24 : 64,
+          paddingBottom: bottomPadding,
           paddingTop: isDesktop ? 16 : 0,
           maxWidth: 1200, margin: "0 auto", width: "100%",
         }}>
@@ -221,13 +227,37 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           paddingBottom: "env(safe-area-inset-bottom, 0)",
           display: "flex", alignItems: "center",
         }}>
-          <Menu
-            mode="horizontal"
-            selectedKeys={[currentKey as string]}
-            items={items}
-            onClick={({ key }) => navigate(key)}
-            style={{ flex: 1, justifyContent: "center", borderBottom: "none", background: "transparent" }}
-          />
+          {stackedMobileNav ? (
+            /* 非普通用户：图标在上、文字在下 */
+            <div style={{ flex: 1, display: "flex", justifyContent: "center", padding: "6px 8px 8px" }}>
+              {navItems.map(({ key, label, icon }) => (
+                <div
+                  key={key}
+                  onClick={() => navigate(key)}
+                  style={{
+                    flex: 1, maxWidth: 92,
+                    display: "flex", flexDirection: "column", alignItems: "center", gap: 3,
+                    padding: "2px 0", cursor: "pointer",
+                    color: currentKey === key ? accentColor : "var(--ant-color-text-secondary)",
+                    fontSize: 11, lineHeight: 1.2, fontWeight: currentKey === key ? 600 : 400,
+                    transition: "color 0.2s",
+                  }}
+                >
+                  <span style={{ fontSize: 20, lineHeight: 1, display: "flex" }}>{icon}</span>
+                  <span style={{ whiteSpace: "nowrap" }}>{label}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            /* 普通用户：保持原横向菜单 */
+            <Menu
+              mode="horizontal"
+              selectedKeys={[currentKey as string]}
+              items={items}
+              onClick={({ key }) => navigate(key)}
+              style={{ flex: 1, justifyContent: "center", borderBottom: "none", background: "transparent" }}
+            />
+          )}
           {!isLoggedIn && (
             <Button type="primary" size="small" icon={<LoginOutlined />}
               onClick={startLogin}
