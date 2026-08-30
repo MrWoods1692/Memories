@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Avatar, Button, Card, Divider, Dropdown, Popconfirm, Progress, Slider, Tag, Typography, App } from "antd";
 import type { MenuProps } from "antd";
 import {
-  UserOutlined, LogoutOutlined, SafetyCertificateOutlined, CheckCircleOutlined,
+  UserOutlined, LogoutOutlined, SafetyCertificateOutlined, CheckCircleOutlined, ClockCircleOutlined,
   SunOutlined, MoonOutlined, BgColorsOutlined, FontSizeOutlined, ClearOutlined, DeleteOutlined,
   GlobalOutlined, ExportOutlined, SendOutlined, IdcardOutlined, CrownOutlined, CopyOutlined,
   UnorderedListOutlined, CloudUploadOutlined,
@@ -29,7 +29,7 @@ const cacheKeys = ["img_cache_", "images_cache_", "upload_history"];
 
 export default function ProfilePage() {
   const { user, logout } = useAuth();
-  const { preset, setPreset, fontSize, setFontSize, font, setFont, isDark, toggleDark, accentColor,
+  const { preset, setPreset, fontSize, setFontSize, font, setFont, darkMode, setDarkMode, isDark, toggleDark, accentColor,
     fontLoadStatus, fontLoadProgress, fontLoadingId } = useTheme();
   const { clearCache } = useImageCache();
   const { message } = App.useApp();
@@ -87,6 +87,19 @@ export default function ProfilePage() {
               </div>
             ),
           })),
+          { type: "divider" },
+          {
+            key: "darkmode",
+            label: "外观模式",
+            children: (["auto", "light", "dark"] as const).map((m) => ({
+              key: `mode_${m}`,
+              label: (
+                <span style={{ fontWeight: darkMode === m ? 600 : 400 }}>
+                  {m === "auto" ? "跟随时间" : m === "light" ? "浅色" : "深色"}{darkMode === m ? " ✓" : ""}
+                </span>
+              ),
+            })),
+          },
         ],
       },
       { type: "divider" },
@@ -99,6 +112,7 @@ export default function ProfilePage() {
       else if (key.startsWith("theme_")) setPreset(themePresets.find((t) => `theme_${t.id}` === key) || themePresets[0]);
       else if (key.startsWith("font_")) setFont(fontOptions.find((f) => `font_${f.id}` === key) || fontOptions[0]);
       else if (key.startsWith("size_")) setFontSize(parseInt(key.replace("size_", "")));
+      else if (key.startsWith("mode_")) setDarkMode(key.replace("mode_", "") as "auto" | "light" | "dark");
     },
   };
 
@@ -426,8 +440,15 @@ export default function ProfilePage() {
         <Dropdown menu={{
           items: [
             { key: "toggle", icon: isDark ? <SunOutlined /> : <MoonOutlined />, label: isDark ? "切换到浅色" : "切换到深色" },
+            { type: "divider" },
+            { key: "auto", icon: darkMode === "auto" ? <CheckCircleOutlined style={{ color: accentColor }} /> : <ClockCircleOutlined />, label: "跟随时间（21:00 - 06:30 暗色）" },
+            { key: "light", icon: darkMode === "light" ? <CheckCircleOutlined style={{ color: accentColor }} /> : <SunOutlined />, label: "浅色" },
+            { key: "dark", icon: darkMode === "dark" ? <CheckCircleOutlined style={{ color: accentColor }} /> : <MoonOutlined />, label: "深色" },
           ],
-          onClick: () => toggleDark(),
+          onClick: ({ key }) => {
+            if (key === "toggle") toggleDark();
+            else if (key === "auto" || key === "light" || key === "dark") setDarkMode(key);
+          },
         }} trigger={['contextMenu']}>
         <Card size="small" style={{ borderRadius: 12, marginBottom: 16 }}
           styles={{ body: { padding: "14px 18px" } }}
