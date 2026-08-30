@@ -229,6 +229,10 @@ public class EmbeddedServer extends NanoHTTPD {
                 return handleBans(session);
             }
 
+            if (uri.startsWith("/preferences")) {
+                return handlePreferences(session);
+            }
+
             if (uri.startsWith("/users")) {
                 return handleUsers(session);
             }
@@ -1042,6 +1046,78 @@ public class EmbeddedServer extends NanoHTTPD {
         }
 
         return NanoHTTPD.newFixedLengthResponse(Status.NOT_IMPLEMENTED, "text/plain", "Not Implemented");
+    }
+
+    // --- WebDAV 备份配置获取 ---
+
+    /**
+     * 用户个人偏好（外观/字体/字号等）服务端同步。
+     * 身份来自 x-user-qq 请求头（前端登录后自携带），因此任意设备登录后
+     * 都能拉到同一份偏好；不做角色门槛，任何登录用户均可读写自己的记录。
+     */
+    private Response handlePreferences(IHTTPSession session) {
+        DatabaseHelper db = new DatabaseHelper(context);
+        String uri = session.getUri();
+        Method method = session.getMethod();
+
+        try {
+            if (!"/preferences".equals(uri)) {
+                return NanoHTTPD.newFixedLengthResponse(Status.NOT_IMPLEMENTED, "text/plain", "Not Implemented");
+            }
+
+            // 无身份标识无法归属偏好，避免局域网调试写入误伤他人记录
+            String qq = session.getHeaders().get("x-user-qq");
+            if (qq == null || qq.isEmpty()) {
+                return NanoHTTPD.newFixedLengthResponse(Status.UNAUTHORIZED, "text/plain", "missing x-user-qq");
+            }
+
+            // GET /preferences - 读取当前用户偏好（无记录返回 {}）
+            if (Method.GET.equals(method)) {
+                String json = db.getUserSettings(qq).toString();
+                return NanoHTTPD.newFixedLengthResponse(Status.OK, "application/json", json);
+            }
+
+            // POST /preferences?theme_preset=&font_size=&font_family=&dark= - 保存当前用户偏好
+            if (Method.POST.equals(method)) {
+                Map<String, String> files = new java.util.HashMap<>();
+                session.parseBody(files);
+                Map<String, String> params = session.getParms();
+
+                JSONObject settings = new JSONObject();
+                if (params.containsKey("theme_preset")) {
+                    String v = params.get("theme_preset");
+                    settings.put("theme_preset", v != null ? v : JSONObject.NULL);
+                }
+                if (params.containsKey("font_size")) {
+                    String v = params.get("font_size");
+                    try {
+                        settings.put("font_size", v != null && !v.isEmpty() ? Integer.parseInt(v) : JSONObject.NULL);
+                    } catch (NumberFormatException e) {
+                        return NanoHTTPD.newFixedLengthResponse(Status.BAD_REQUEST, "text/plain", "invalid font_size");
+                    }
+                }
+                if (params.containsKey("font_family")) {
+                    String v = params.get("font_family");
+                    settings.put("font_family", v != null ? v : JSONObject.NULL);
+                }
+                if (params.containsKey("dark")) {
+                    String v = params.get("dark");
+                    try {
+                        settings.put("dark", v != null && !v.isEmpty() ? Integer.parseInt(v) : JSONObject.NULL);
+                    } catch (NumberFormatException e) {
+                        return NanoHTTPD.newFixedLengthResponse(Status.BAD_REQUEST, "text/plain", "invalid dark");
+                    }
+                }
+
+                db.setUserSettings(qq, settings);
+                return NanoHTTPD.newFixedLengthResponse(Status.OK, "application/json", db.getUserSettings(qq).toString());
+            }
+
+            return NanoHTTPD.newFixedLengthResponse(Status.NOT_IMPLEMENTED, "text/plain", "Not Implemented");
+        } catch (Exception e) {
+            Log.e(TAG, "handlePreferences error", e);
+            return NanoHTTPD.newFixedLengthResponse(Status.INTERNAL_ERROR, "text/plain", "error");
+        }
     }
 
     // --- WebDAV 备份配置获取 ---

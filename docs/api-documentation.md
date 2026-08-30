@@ -926,6 +926,61 @@ OAuth 参数通过通用 `/config` 端点管理（详见[配置管理](#5-配置
 
 ---
 
+## 12. 个人偏好
+
+个人外观/字体/字号等设置按 QQ 存储于服务端，任意设备登录后都能同步同一份偏好。身份来自请求头 `x-user-qq`，无需管理员权限，任何已登录用户只能读写自己的记录。
+
+### `GET /preferences`
+
+读取当前登录用户的个人偏好。
+
+**请求头**：
+
+| 头 | 类型 | 必填 | 说明 |
+|----|------|------|------|
+| `x-user-qq` | `string` | 是 | 当前登录用户的 QQ 号 |
+
+**响应**：无记录时返回 `{}`，前端沿用本地默认值。
+
+```json
+{
+  "theme_preset": "forest",
+  "font_size": 15,
+  "font_family": "LXGW WenKai",
+  "dark": 1,
+  "updated_at": 1721000000000
+}
+```
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `theme_preset` | `string` | 主题配色 id（前端 themePresets 中的 id） |
+| `font_size` | `number` | 字号（px） |
+| `font_family` | `string` | 字体 id（前端 fontOptions 中的 id） |
+| `dark` | `number` | 外观模式：`0`=跟随时间，`1`=浅色，`2`=深色 |
+| `updated_at` | `number` | 最后保存时间（Unix 毫秒时间戳） |
+
+---
+
+### `POST /preferences`
+
+保存当前登录用户的个人偏好（整体 upsert，缺省字段不参与写入）。
+
+**请求头**：同 GET，需携带 `x-user-qq`。
+
+**请求体** (`application/x-www-form-urlencoded`)：
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `theme_preset` | `string` | 否 | 主题配色 id |
+| `font_size` | `number` | 否 | 字号（px） |
+| `font_family` | `string` | 否 | 字体 id |
+| `dark` | `number` | 否 | `0`=跟随时间，`1`=浅色，`2`=深色 |
+
+**响应**：保存后的完整偏好（同 GET 返回结构）。
+
+---
+
 ## 数据模型
 
 ### ImageItem（图片）
@@ -1028,7 +1083,7 @@ not found
 
 数据库文件存储在外部存储：**`/sdcard/Memories/memories.db`**，卸载应用不丢失。若外部存储不可用则回退到内部存储。
 
-包含以下 4 张表：
+包含以下 5 张表：
 
 ### `images` - 图片表
 
@@ -1091,6 +1146,28 @@ CREATE TABLE banned_users (
 | `qq` | `TEXT` | QQ 号（主键） |
 | `reason` | `TEXT` | 封禁原因 |
 | `banned_at` | `INTEGER` | 封禁时间戳 |
+
+### `user_settings` - 用户个人偏好表
+
+```sql
+CREATE TABLE user_settings (
+    qq TEXT PRIMARY KEY,
+    theme_preset TEXT,
+    font_size INTEGER,
+    font_family TEXT,
+    dark INTEGER,
+    updated_at INTEGER
+);
+```
+
+| 列 | 类型 | 说明 |
+|----|------|------|
+| `qq` | `TEXT` | QQ 号（主键），每用户一行 |
+| `theme_preset` | `TEXT` | 主题配色 id |
+| `font_size` | `INTEGER` | 字号（px） |
+| `font_family` | `TEXT` | 字体 id |
+| `dark` | `INTEGER` | 外观模式：`0`=跟随时间，`1`=浅色，`2`=深色 |
+| `updated_at` | `INTEGER` | 最后保存时间（Unix 毫秒时间戳） |
 
 ---
 

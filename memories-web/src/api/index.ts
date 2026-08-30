@@ -26,6 +26,15 @@ export function clearTokens() {
   localStorage.removeItem("user_info");
 }
 
+/** 读取本地登录用户的 QQ（用于后端 x-user-qq 归属，如个人偏好） */
+export function getLocalUserQQ(): string {
+  try {
+    return String(JSON.parse(localStorage.getItem("user_info") || "{}")?.qq || "");
+  } catch {
+    return "";
+  }
+}
+
 /* ==================== 通用请求 ==================== */
 
 /** 通用 GET 请求，自动携带 Bearer token */
@@ -430,4 +439,51 @@ export async function auditImage(
   status: 1 | 2
 ): Promise<void> {
   await postRequest<unknown>(`/images/audit?url=${encodeURIComponent(url)}&status=${status}`, {});
+}
+
+/* ==================== 个人偏好（服务端同步） ==================== */
+
+/** 用户个人偏好（外观/字体/字号等），服务端按 QQ 存储，跨设备登录同步 */
+export interface UserPreferences {
+  theme_preset?: string;
+  font_size?: number;
+  font_family?: string;
+  /** 0=跟随时间自动，1=浅色，2=深色 */
+  dark?: number;
+  updated_at?: number;
+}
+
+/** 构造携带 x-user-qq 的请求头（个人偏好归属当前登录用户） */
+function preferenceHeaders(extra?: Record<string, string>): Record<string, string> {
+  const headers: Record<string, string> = { ...extra };
+  const qq = getLocalUserQQ();
+  if (qq) headers["x-user-qq"] = qq;
+  return headers;
+}
+
+/** GET /preferences — 拉取当前登录用户的个人偏好（无记录返回空对象） */
+export async function fetchUserPreferences(): Promise<UserPreferences> {
+  if (!getLocalUserQQ()) return {};
+  const res = await fetch(`${BASE}/preferences`, { headers: preferenceHeaders() });
+  if (!res.ok) throw new Error(`请求失败: ${res.status}`);
+  return (await res.json()) as UserPreferences;
+}
+
+/** POST /preferences — 保存当前登录用户的个人偏好，返回服务端落盘后的结果 */
+export async function saveUserPreferences(
+  prefs: Omit<UserPreferences, "updated_at">
+): Promise<UserPreferences> {
+  const qq = getLocalUserQQ();
+  if (!qq) throw new Error("未登录");
+  const body = new URLSearchParams();
+  for (const [k, v] of Object.entries(prefs)) {
+    if (v !== undefined) body.set(k, String(v));
+  }
+  const res = await fetch(`${BASE}/preferences`, {
+    method: "POST",
+    headers: preferenceHeaders({ "Content-Type": "application/x-www-form-urlencoded" }),
+    body,
+  });
+  if (!res.ok) throw new Error(`请求失败: ${res.status}`);
+  return (await res.json()) as UserPreferences;
 }

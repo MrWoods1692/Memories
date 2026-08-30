@@ -25,7 +25,7 @@ import java.util.concurrent.ThreadFactory;
 
 public class DatabaseHelper extends SQLiteOpenHelper {
     private static final String DB_NAME = "memories.db";
-    private static final int DB_VERSION = 3;
+    private static final int DB_VERSION = 4;
     private static String dbPath = null;
     private static SQLiteDatabase sharedDb = null;
     private static final ExecutorService requestLogExecutor = Executors.newFixedThreadPool(
@@ -167,6 +167,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         db.execSQL("CREATE TABLE users (id INTEGER PRIMARY KEY AUTOINCREMENT, qq TEXT, role INTEGER)");
         db.execSQL("CREATE TABLE config (k TEXT PRIMARY KEY, v TEXT)");
         db.execSQL("CREATE TABLE banned_users (qq TEXT PRIMARY KEY, reason TEXT, banned_at INTEGER)");
+        // 用户个人偏好（外观/字体/字号等），按 qq 一行，供多设备登录后同步
+        db.execSQL("CREATE TABLE user_settings (qq TEXT PRIMARY KEY, theme_preset TEXT, font_size INTEGER, font_family TEXT, dark INTEGER, updated_at INTEGER)");
         db.execSQL("CREATE TABLE api_requests (id INTEGER PRIMARY KEY AUTOINCREMENT, method TEXT, path TEXT, status_code INTEGER, remote_ip TEXT, user_qq TEXT, timestamp_ms INTEGER, elapsed_ms REAL)");
         db.execSQL("CREATE TABLE api_stats_daily (day TEXT PRIMARY KEY, total_requests INTEGER DEFAULT 0, success_count INTEGER DEFAULT 0, error_count INTEGER DEFAULT 0, last_seen_at INTEGER)");
     }
@@ -176,6 +178,10 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         if (oldVersion < 2) {
             db.execSQL("CREATE TABLE IF NOT EXISTS api_requests (id INTEGER PRIMARY KEY AUTOINCREMENT, method TEXT, path TEXT, status_code INTEGER, remote_ip TEXT, user_qq TEXT, timestamp_ms INTEGER, elapsed_ms REAL)");
             db.execSQL("CREATE TABLE IF NOT EXISTS api_stats_daily (day TEXT PRIMARY KEY, total_requests INTEGER DEFAULT 0, success_count INTEGER DEFAULT 0, error_count INTEGER DEFAULT 0, last_seen_at INTEGER)");
+        }
+        if (oldVersion < 4) {
+            // 新增用户个人偏好表：已有安装通过升级路径建表，新建安装走 onCreate
+            db.execSQL("CREATE TABLE IF NOT EXISTS user_settings (qq TEXT PRIMARY KEY, theme_preset TEXT, font_size INTEGER, font_family TEXT, dark INTEGER, updated_at INTEGER)");
         }
         if (oldVersion < 3) {
             // 移除 images 表的显式 id 列，改用隐式 rowid（自动回收）
@@ -636,6 +642,77 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         }
         c.close();
         return arr.toString();
+    }
+
+    // ==================== 用户个人偏好 ====================
+
+    /**
+     * 读取指定用户的个人偏好。
+     * 无记录时返回空对象（键均缺省），由前端沿用本地默认值。
+     */
+    public JSONObject getUserSettings(String qq) {
+        JSONObject settings = new JSONObject();
+        if (qq == null || qq.isEmpty()) return settings;
+        SQLiteDatabase db = getSharedDb();
+        Cursor c = db.rawQuery(
+            "SELECT theme_preset, font_size, font_family, dark, updated_at FROM user_settings WHERE qq=?",
+            new String[]{qq}
+        );
+        if (c.moveToFirst()) {
+            try {
+                if (!c.isNull(0)) settings.put("theme_preset", c.getString(0));
+                if (!c.isNull(1)) settings.put("font_size", c.getInt(1));
+                if (!c.isNull(2)) settings.put("font_family", c.getString(2));
+                if (!c.isNull(3)) settings.put("dark", c.getInt(3));
+                settings.put("updated_at", c.getLong(4));
+            } catch (Exception e) {
+                Log.e("DatabaseHelper", "getUserSettings error", e);
+            }
+        }
+        c.close();
+        return settings;
+    }
+
+    /**
+     * 整体保存指定用户的个人偏好（upsert）。
+     * settings 中的键可为 theme_preset / font_size / font_family / dark，缺省键不参与写入。
+     */
+    public void setUserSettings(String qq, JSONObject settings) {
+        if (qq == null || qq.isEmpty()) return;
+        try {
+            WriteQueue.submit(() -> {
+                SQLiteDatabase db = getSharedDb();
+                ContentValues cv = new ContentValues();
+                if (settings != null) {
+                    if (settings.has("theme_preset")) cv.put("theme_preset", settings.isNull("theme_preset") ? null : settings.getString("theme_preset"));
+                    if (settings.has("font_size")) cv.put("font_size", settings.isNull("font_size") ? null : settings.getInt("font_size"));
+                    if (settings.has("font_family")) cv.put("font_family", settings.isNull("font_family") ? null : settings.getString("font_family"));
+                    if (settings.has("dark")) cv.put("dark", settings.isNull("dark") ? null : settings.getInt("dark"));
+                }
+                cv.put("updated_at", System.currentTimeMillis());
+                db.insertWithOnConflict("user_settings", null, cv, SQLiteDatabase.CONFLICT_REPLACE);
+                markDatabaseDirty();
+                return null;
+            }).get();
+        } catch (Exception e) {
+            Log.e("DatabaseHelper", "setUserSettings error", e);
+        }
+    }
+
+    /** 删除指定用户的所有个人偏好（移除用户时调用） */
+    public boolean deleteUserSettings(String qq) {
+        if (qq == null || qq.isEmpty()) return false;
+        try {
+            return WriteQueue.submit(() -> {
+                SQLiteDatabase db = getSharedDb();
+                int rows = db.delete("user_settings", "qq=?", new String[]{qq});
+                if (rows > 0) markDatabaseDirty();
+                return rows > 0;
+            }).get();
+        } catch (Exception e) {
+            Log.e("DatabaseHelper", "deleteUserSettings error", e);
+            return false;
+        }
     }
 
     // ==================== 数据库可视化管理 ====================

@@ -42,7 +42,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [banned, setBanned] = useState(false);
   const [oauthError, setOauthError] = useState<OAuthErrorInfo | null>(null);
-  const { resetTheme } = useTheme();
+  const { resetTheme, resetSync } = useTheme();
 
   useEffect(() => {
     // 1. 先检查 URL 中是否有 OAuth 回调错误
@@ -85,12 +85,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const logout = useCallback(() => {
+    resetSync();
     clearTokens();
     setUser(null);
     setBanned(false);
     setOauthError(null);
     resetTheme();
-  }, [resetTheme]);
+  }, [resetTheme, resetSync]);
 
   const clearBanned = useCallback(() => {
     setBanned(false);

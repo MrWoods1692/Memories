@@ -1,5 +1,6 @@
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import type { ThemeConfig } from "antd";
+import { fetchUserPreferences, saveUserPreferences, type UserPreferences } from "@/api";
 
 /* ==================== 字体列表 ==================== */
 
@@ -232,9 +233,14 @@ interface ThemeContextType {
   setFontSize: (n: number) => void;
   font: FontOption;
   setFont: (f: FontOption) => void;
+  /** 外观模式：auto=按时间自动，light=浅色，dark=深色 */
+  darkMode: DarkMode;
+  setDarkMode: (m: DarkMode) => void;
   isDark: boolean;
   toggleDark: () => void;
   resetTheme: () => void;
+  /** 退出登录或回到游客态时调用：标记偏好未同步，避免默认值覆盖服务端记录 */
+  resetSync: () => void;
   antdTheme: ThemeConfig;
   /** 主题强调色（暗色下已调亮，适合文字/图标） */
   accentColor: string;
@@ -253,9 +259,12 @@ const ThemeContext = createContext<ThemeContextType>({
   setFontSize: () => {},
   font: fontOptions[0],
   setFont: () => {},
+  darkMode: "auto",
+  setDarkMode: () => {},
   isDark: false,
   toggleDark: () => {},
   resetTheme: () => {},
+  resetSync: () => {},
   antdTheme: {},
   accentColor: "#1D6E5A",
   fontLoadStatus: "idle",
@@ -267,6 +276,24 @@ const STORAGE_KEY = "memories_theme";
 const FONT_KEY = "memories_font_size";
 const FONT_FAMILY_KEY = "memories_font_family";
 const DARK_KEY = "memories_dark";
+const DARK_MODE_KEY = "memories_dark_mode";
+const DARK_MODES: DarkMode[] = ["auto", "light", "dark"];
+
+type DarkMode = "auto" | "light" | "dark";
+
+function loadDarkMode(): DarkMode {
+  try {
+    const stored = localStorage.getItem(DARK_MODE_KEY);
+    if (stored && DARK_MODES.includes(stored as DarkMode)) return stored as DarkMode;
+    const legacy = localStorage.getItem(DARK_KEY);
+    if (legacy === "true") return "dark";
+    if (legacy === "false") return "light";
+    localStorage.setItem(DARK_MODE_KEY, "auto");
+    return "auto";
+  } catch {
+    return "auto";
+  }
+}
 
 function loadPreset(): ThemePreset {
   try {
@@ -285,16 +312,6 @@ function loadFontSize(): number {
   }
 }
 
-function loadDark(): boolean {
-  try {
-    const stored = localStorage.getItem(DARK_KEY);
-    if (stored !== null) return stored === "true";
-  } catch { /* ignore */ }
-  // 无手动设置时，根据时间自动判断：21:00 - 06:30 暗色
-  return isNightTime();
-}
-
-/** 判断当前是否在夜间时段（21:00 - 06:30） */
 function isNightTime(): boolean {
   const now = new Date();
   const hours = now.getHours();
@@ -422,7 +439,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const [preset, setPresetState] = useState<ThemePreset>(loadPreset);
   const [fontSize, setFontSizeState] = useState(loadFontSize);
   const [font, setFontState] = useState<FontOption>(loadFont);
-  const [isDark, setIsDarkState] = useState(loadDark);
+  const [darkMode, setDarkModeState] = useState<DarkMode>(loadDarkMode);
+  const [isDark, setIsDarkState] = useState(() => (loadDarkMode() === "auto" ? isNightTime() : loadDarkMode() === "dark"));
   const [fontLoadStatus, setFontLoadStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
   const [fontLoadProgress, setFontLoadProgress] = useState(0);
   const [fontLoadingId, setFontLoadingId] = useState<string | null>(null);
@@ -483,10 +501,21 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       });
   }, []);
 
+  const setDarkMode = useCallback((m: DarkMode) => {
+    setDarkModeState(m);
+    setIsDarkState(m === "auto" ? isNightTime() : m === "dark");
+    localStorage.setItem(DARK_MODE_KEY, m);
+    // 旧版布尔量键仅在显式选择浅/深色时写入，auto 时清除以保持自动跟随时间
+    if (m === "auto") localStorage.removeItem(DARK_KEY);
+    else localStorage.setItem(DARK_KEY, String(m === "dark"));
+  }, []);
+
   const toggleDark = useCallback(() => {
-    setIsDarkState((prev) => {
-      const next = !prev;
-      localStorage.setItem(DARK_KEY, String(next));
+    setDarkModeState((prev) => {
+      const next: DarkMode = prev === "dark" ? "light" : "dark";
+      setIsDarkState(next === "dark");
+      localStorage.setItem(DARK_MODE_KEY, next);
+      localStorage.setItem(DARK_KEY, String(next === "dark"));
       return next;
     });
   }, []);
@@ -503,21 +532,147 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     setFontLoadProgress(0);
     setFontLoadingId(null);
     localStorage.removeItem(DARK_KEY);
+    localStorage.removeItem(DARK_MODE_KEY);
+    setDarkModeState("auto");
     setIsDarkState(isNightTime());
   }, []);
 
-  // 夜间自动暗色模式：每分钟检查一次
+  const resetSync = useCallback(() => {
+    syncedRef.current = false;
+  }, []);
+
+  // 偏好变化后防抖上传服务端（游客态或服务端未就绪时跳过）
+  const pushTimerRef = useRef(0);
+  useEffect(() => {
+    if (!syncedRef.current) return;
+    window.clearTimeout(pushTimerRef.current);
+    pushTimerRef.current = window.setTimeout(() => {
+      const s = prefsRef.current;
+      saveUserPreferences({
+        theme_preset: s.presetId,
+        font_size: s.fontSize,
+        font_family: s.fontFamilyId,
+        dark: s.darkMode === "light" ? 1 : s.darkMode === "dark" ? 2 : 0,
+      }).catch(() => {});
+    }, 400);
+    return () => window.clearTimeout(pushTimerRef.current);
+  }, [preset.id, fontSize, font.id, darkMode]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 夜间自动暗色模式：仅在 auto 模式下每分钟检查一次
   useEffect(() => {
     const check = () => {
-      const stored = localStorage.getItem(DARK_KEY);
-      // 只有无手动设置时才自动切换
-      if (stored === null) {
+      if (localStorage.getItem(DARK_MODE_KEY) === "auto") {
         setIsDarkState(isNightTime());
       }
     };
     const interval = setInterval(check, 60000);
     return () => clearInterval(interval);
   }, []);
+
+  // 偏好状态镜像，供同步回调读取最新值而不引入依赖循环
+  const prefsRef = useRef({ presetId: preset.id, fontSize, fontFamilyId: font.id, darkMode });
+  prefsRef.current = { presetId: preset.id, fontSize, fontFamilyId: font.id, darkMode };
+  /** 偏好是否已与服务端一致（登出/恢复默认后置 false，避免把默认值覆盖服务端记录） */
+  const syncedRef = useRef(false);
+
+  // 登录态变化时同步服务端偏好：任意设备登录后拉到同一份外观/字体/字号
+  useEffect(() => {
+    const loadLocalQQ = () => {
+      try {
+        return String(JSON.parse(localStorage.getItem("user_info") || "{}")?.qq || "");
+      } catch {
+        return "";
+      }
+    };
+    let cancelled = false;
+    let timer = 0;
+
+    const applyServer = (p: UserPreferences) => {
+      if (p.theme_preset) {
+        const presetMatch = themePresets.find((t) => t.id === p.theme_preset);
+        if (presetMatch) {
+          setPresetState(presetMatch);
+          localStorage.setItem(STORAGE_KEY, presetMatch.id);
+        }
+      }
+      if (p.font_size) {
+        const size = Number(p.font_size);
+        if (size >= 12 && size <= 18) {
+          setFontSizeState(size);
+          localStorage.setItem(FONT_KEY, String(size));
+        }
+      }
+      if (p.font_family) {
+        const fontMatch = fontOptions.find((f) => f.id === p.font_family);
+        if (fontMatch) {
+          setFontState(fontMatch);
+          localStorage.setItem(FONT_FAMILY_KEY, fontMatch.id);
+          if (fontMatch.file && !loadedFonts.has(fontMatch.id)) {
+            setFontLoadStatus("loading");
+            setFontLoadProgress(0);
+            setFontLoadingId(fontMatch.id);
+            loadFontFile(fontMatch, (v) => setFontLoadProgress(v))
+              .then(() => {
+                setFontLoadStatus("done");
+                setFontLoadingId(null);
+                setTimeout(() => {
+                  setFontLoadProgress(0);
+                  setFontLoadStatus("idle");
+                }, 1200);
+              })
+              .catch(() => {
+                setFontLoadStatus("error");
+                setFontLoadingId(null);
+                setTimeout(() => {
+                  setFontLoadProgress(0);
+                  setFontLoadStatus("idle");
+                }, 2500);
+              });
+          } else {
+            injectFontFace(fontMatch);
+          }
+        }
+      }
+      if (p.dark === 0 || p.dark === 1 || p.dark === 2) {
+        const mode: DarkMode = p.dark === 1 ? "light" : p.dark === 2 ? "dark" : "auto";
+        setDarkModeState(mode);
+        setIsDarkState(mode === "auto" ? isNightTime() : mode === "dark");
+        localStorage.setItem(DARK_MODE_KEY, mode);
+        if (mode === "auto") localStorage.removeItem(DARK_KEY);
+        else localStorage.setItem(DARK_KEY, String(mode === "dark"));
+      }
+    };
+
+    const syncFromServer = () => {
+      if (!loadLocalQQ() || cancelled) return;
+      // 本地改动尚未上传，先不覆盖（避免与 debounce 上传冲突）
+      if (syncedRef.current) return;
+      fetchUserPreferences()
+        .then((p) => {
+          if (!cancelled) {
+            applyServer(p);
+            syncedRef.current = true;
+          }
+        })
+        .catch(() => {});
+    };
+
+    const onStorage = (e: StorageEvent) => {
+      // 多标签页：同浏览器另一标签修改偏好时即时同步
+      if (e.key && e.key.startsWith("memories_")) {
+        syncedRef.current = false;
+        syncFromServer();
+      }
+    };
+
+    if (loadLocalQQ()) syncFromServer();
+    window.addEventListener("storage", onStorage);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+      window.removeEventListener("storage", onStorage);
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 初始化时加载字体
   useEffect(() => {
@@ -620,7 +775,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     <ThemeContext.Provider
       value={{
         preset, setPreset, fontSize, setFontSize, font, setFont,
-        isDark, toggleDark, resetTheme, antdTheme, accentColor,
+        darkMode, setDarkMode, isDark, toggleDark, resetTheme, resetSync, antdTheme, accentColor,
         fontLoadStatus, fontLoadProgress, fontLoadingId,
       }}
     >

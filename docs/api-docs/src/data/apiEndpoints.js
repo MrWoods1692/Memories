@@ -13,6 +13,7 @@ export const authMatrix = [
   { endpoint: '/config', method: 'POST', role: '管理员 (≥2)' },
   { endpoint: '/frpc/config', method: 'POST', role: '管理员 (≥2)' },
   { endpoint: '/db/*', method: '全部', role: '管理员 (≥2)' },
+  { endpoint: '/preferences', method: 'GET/POST', role: '任意已登录用户（x-user-qq 归属）' },
 ]
 
 export const endpointGroups = [
@@ -509,6 +510,55 @@ export const endpointGroups = [
       },
     ],
   },
+  {
+    icon: 'IconSetting',
+    title: '个人偏好',
+    desc: '外观/字体/字号等个人设置，按 QQ 跨设备同步',
+    endpoints: [
+      {
+        id: 'preferences-get',
+        method: 'GET',
+        path: '/preferences',
+        summary: '获取个人偏好',
+        auth: 'any-logged-in',
+        description: '读取当前登录用户的服务端偏好（无记录返回 {}，前端沿用本地默认值）。身份来自 x-user-qq 请求头。',
+        headers: [{ name: 'x-user-qq', type: 'string', required: true, desc: '当前登录用户的 QQ 号' }],
+        response: {
+          type: 'json',
+          content: `{
+  "theme_preset": "forest",
+  "font_size": 15,
+  "font_family": "LXGW WenKai",
+  "dark": 1,
+  "updated_at": 1721000000000
+}`,
+        },
+        responseFields: [
+          { name: 'theme_preset', type: 'string', desc: '主题配色 id（themePresets 中的 id）' },
+          { name: 'font_size', type: 'number', desc: '字号（px）' },
+          { name: 'font_family', type: 'string', desc: '字体 id（fontOptions 中的 id）' },
+          { name: 'dark', type: 'number', desc: '外观模式：0=跟随时间，1=浅色，2=深色' },
+          { name: 'updated_at', type: 'number', desc: '最后保存时间（Unix 毫秒时间戳）' },
+        ],
+      },
+      {
+        id: 'preferences-post',
+        method: 'POST',
+        path: '/preferences',
+        summary: '保存个人偏好',
+        auth: 'any-logged-in',
+        description: '整体 upsert 当前用户偏好，缺省字段不参与写入。返回保存后的完整偏好。',
+        headers: [{ name: 'x-user-qq', type: 'string', required: true, desc: '当前登录用户的 QQ 号' }],
+        bodyParams: [
+          { name: 'theme_preset', type: 'string', required: false, desc: '主题配色 id' },
+          { name: 'font_size', type: 'number', required: false, desc: '字号（px）' },
+          { name: 'font_family', type: 'string', required: false, desc: '字体 id' },
+          { name: 'dark', type: 'number', required: false, desc: '0=跟随时间，1=浅色，2=深色' },
+        ],
+        response: { type: 'json', content: '{ 同 GET 返回的完整偏好 }' },
+      },
+    ],
+  },
 ]
 
 export const databaseTables = [
@@ -540,17 +590,38 @@ export const databaseTables = [
       { name: 'id', type: 'INTEGER', desc: '自增主键' },
       { name: 'qq', type: 'TEXT', desc: 'QQ 号' },
       { name: 'role', type: 'INTEGER', desc: '1=审核员, 2=管理员' },
-    ],
-  },
-  {
-    name: 'config',
-    desc: '配置表',
-    sql: `CREATE TABLE config (
-    k TEXT PRIMARY KEY,
-    v TEXT
+    {
+      name: 'config',
+      desc: '配置表',
+      sql: `CREATE TABLE config (
+      k TEXT PRIMARY KEY,
+      v TEXT
 );`,
-    columns: [
-      { name: 'k', type: 'TEXT', desc: '配置键（主键）。OAuth state 键以 oauth_state_ 为前缀' },
+      columns: [
+        { name: 'k', type: 'TEXT', desc: '配置键（主键）。OAuth state 键以 oauth_state_ 为前缀' },
+        { name: 'v', type: 'TEXT', desc: '配置值。OAuth state 存 JSON（含 code_verifier、frontend_redirect 等）' },
+      ],
+    },
+    {
+      name: 'user_settings',
+      desc: '用户个人偏好表（跨设备同步）',
+      sql: `CREATE TABLE user_settings (
+      qq TEXT PRIMARY KEY,
+      theme_preset TEXT,
+      font_size INTEGER,
+      font_family TEXT,
+      dark INTEGER,
+      updated_at INTEGER
+);`,
+      columns: [
+        { name: 'qq', type: 'TEXT', desc: 'QQ 号（主键），每用户一行' },
+        { name: 'theme_preset', type: 'TEXT', desc: '主题配色 id' },
+        { name: 'font_size', type: 'INTEGER', desc: '字号（px）' },
+        { name: 'font_family', type: 'TEXT', desc: '字体 id' },
+        { name: 'dark', type: 'INTEGER', desc: '0=跟随时间，1=浅色，2=深色' },
+        { name: 'updated_at', type: 'INTEGER', desc: '最后保存时间（Unix 毫秒时间戳）' },
+      ],
+    },
       { name: 'v', type: 'TEXT', desc: '配置值。OAuth state 值为 JSON（含 code_verifier 等）' },
     ],
   },
