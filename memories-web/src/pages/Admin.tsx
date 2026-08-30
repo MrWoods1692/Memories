@@ -3,7 +3,7 @@ import {
   App, Badge, Button, Card, Form, Input, Modal, Select, Space, Table, Tabs, Tag, Tooltip, Typography,
 } from "antd";
 import {
-  SafetyCertificateOutlined, TeamOutlined, UndoOutlined,
+  EyeOutlined, SafetyCertificateOutlined, TeamOutlined, UndoOutlined,
   UserAddOutlined, UserDeleteOutlined, StopOutlined, ReloadOutlined,
 } from "@ant-design/icons";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -23,6 +23,22 @@ const roleOptions = [
 ];
 
 const roleLabel = (role: number) => (role === 2 ? "管理员" : "审核员");
+
+/** 移动端判定：宽度小于 640px 时表格空间紧张，QQ 号文字无法横排显示 */
+const MOBILE_BREAKPOINT = 640;
+
+/** 监听视口宽度是否处于移动端区间（复用 AppLayout 的 resize 模式） */
+function useIsMobile(): boolean {
+  const [isMobile, setIsMobile] = useState(
+    typeof window !== "undefined" ? window.innerWidth < MOBILE_BREAKPOINT : false
+  );
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth < MOBILE_BREAKPOINT);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+  return isMobile;
+}
 
 /** QQ 圆形头像地址（腾讯 qlogo 服务，s=640 为原始尺寸） */
 const qqAvatar = (qq: string) => `https://q1.qlogo.cn/g?b=qq&nk=${encodeURIComponent(String(qq))}&s=640`;
@@ -56,6 +72,7 @@ export default function AdminPage() {
   const { message, modal } = App.useApp();
   const { accentColor } = useTheme();
   const { user } = useAuth();
+  const isMobile = useIsMobile();
 
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [bans, setBans] = useState<AdminBan[]>([]);
@@ -163,18 +180,52 @@ export default function AdminPage() {
   const isAdminCount = useMemo(() => users.filter((u: AdminUser) => u.role === 2).length, [users]);
   const isReviewerCount = useMemo(() => users.filter((u: AdminUser) => u.role === 1).length, [users]);
 
+  /** 移动端无法完整显示 QQ 号时的查看交互：优先复制到剪贴板，不支持或失败则弹窗显示 */
+  const showQq = (qq: string) => {
+    if (!navigator.clipboard) {
+      modal.info({ title: "QQ 号", content: qq, okText: "知道了" });
+      return;
+    }
+    navigator.clipboard.writeText(qq).then(() => {
+      message.success(`已复制 QQ ${qq}`);
+    }).catch(() => {
+      modal.info({ title: "QQ 号", content: qq, okText: "知道了" });
+    });
+  };
+
+  /** 移动端 QQ 号列：只显示头像 + 查看按钮，QQ 号文本不再占用列宽 */
+  const renderMobileQq = (qq: string) => (
+    <Space size="small" align="center">
+      <QqAvatar qq={qq} />
+      <Tooltip title={`查看 QQ ${qq}`}>
+        <Button size="small" type="text" icon={<EyeOutlined />} onClick={() => showQq(qq)} style={{ paddingInline: 6 }} />
+      </Tooltip>
+    </Space>
+  );
+
   const userColumns = [
     {
       title: "QQ 号",
       dataIndex: "qq",
       key: "qq",
-      render: (qq: string) => (
-        <Space size="small" align="center">
-          <QqAvatar qq={qq} />
-          <Text style={{ fontWeight: 500 }}>{qq}</Text>
-          {String(qq) === String(user?.qq) && <Tag color="blue" style={{ margin: 0 }}>我</Tag>}
-        </Space>
-      ),
+      render: (qq: string) => {
+        // 移动端表格列宽不足，QQ 号会折断换行：只显示头像 + 查看按钮
+        if (isMobile) {
+          return (
+            <Space size="small" align="center">
+              {renderMobileQq(qq)}
+              {String(qq) === String(user?.qq) && <Tag color="blue" style={{ margin: 0 }}>我</Tag>}
+            </Space>
+          );
+        }
+        return (
+          <Space size="small" align="center">
+            <QqAvatar qq={qq} />
+            <Text style={{ fontWeight: 500 }}>{qq}</Text>
+            {String(qq) === String(user?.qq) && <Tag color="blue" style={{ margin: 0 }}>我</Tag>}
+          </Space>
+        );
+      },
     },
     {
       title: "角色",
@@ -217,7 +268,16 @@ export default function AdminPage() {
   ];
 
   const banColumns = [
-    { title: "QQ 号", dataIndex: "qq", key: "qq", render: (qq: string) => (<Space size="small" align="center"><QqAvatar qq={qq} /><Text style={{ fontWeight: 500 }}>{qq}</Text></Space>) },
+    {
+      title: "QQ 号",
+      dataIndex: "qq",
+      key: "qq",
+      render: (qq: string) => isMobile ? (
+        renderMobileQq(qq)
+      ) : (
+        <Space size="small" align="center"><QqAvatar qq={qq} /><Text style={{ fontWeight: 500 }}>{qq}</Text></Space>
+      ),
+    },
     {
       title: "原因",
       dataIndex: "reason",
