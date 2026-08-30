@@ -201,12 +201,12 @@ export default function FirstVisitModal() {
         </Title>
         <Paragraph type="secondary" style={{ marginBottom: 0, marginTop: 8, fontSize: 13, lineHeight: 1.7 }}>
           这是校园墙回忆的<span style={{ color: accentColor, fontWeight: 600 }}>新项目</span>；
-          老网站项目「沙塘大道第一墙」已启用新域名，两个站点都可以正常访问。
+          老项目「沙塘大道第一墙」已启用新域名，两个站点都可以正常访问。
         </Paragraph>
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 18 }}>
-        {linkCard("沙塘大道第一墙", `老网站项目 · ${OLD_SITE_URL}`, OLD_SITE_URL, "accent", OLD_SITE_ICON)}
+        {linkCard("沙塘大道第一墙", `校园墙 · ${OLD_SITE_URL}`, OLD_SITE_URL, "accent", OLD_SITE_ICON)}
         {linkCard("Memories", `本项目 · ${MEMORIES_URL}`, MEMORIES_URL, "secondary")}
       </div>
 
