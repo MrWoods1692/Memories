@@ -184,10 +184,13 @@ export interface BanRecord {
 /**
  * 查询指定 QQ 的封禁记录，供被封禁用户在登录页看到封禁原因。
  * 需要管理员权限：外网封禁的用户只能查自己；内网访问时后端直接放行（/bans 路由对内网开放）。
+ * 后端 /bans 恒定返回 JSON 数组（?qq= 时仅含该用户）；未封禁时数组为空，这里归一化为 null，
+ * 避免空数组作为真值被调用方误判为「已被封禁」。
  */
 export async function fetchBanRecord(qq: string): Promise<BanRecord | null> {
   try {
-    return await getRequest<BanRecord>(`/bans?q=${encodeURIComponent(qq)}`);
+    const records = await getRequest<BanRecord[]>(`/bans?q=${encodeURIComponent(qq)}`);
+    return records.length > 0 ? records[0] : null;
   } catch {
     return null;
   }
